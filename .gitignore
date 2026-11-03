@@ -1,0 +1,14 @@
+# Only the curated public portfolio files are tracked.
+*
+!/.gitignore
+!/media/
+!/subtitles/
+!/README.md
+!/README.ja.md
+!/CREDITS.md
+!/media/a2acraft-en-45s.mp4
+!/media/a2acraft-ja-45s.mp4
+!/media/poster-en.jpg
+!/media/poster-ja.jpg
+!/subtitles/en.srt
+!/subtitles/ja.srt
