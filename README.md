@@ -22,6 +22,18 @@ Agents take on different roles, share what they find, and bring their results to
 
 This is a concept film showing the intended experience. It includes illustrative task creation and a manually arranged map; it is not a recording of live agent execution. The conversations, tasks, and project examples are fictional.
 
+## Current prototype
+
+A2ACraft is an MVP in development. The prototype lets you explore a town, talk to residents while keeping the map visible, and choose companions and equipment. We are working toward a short playable experience where your choices during a shared task change the town.
+
+![Running village prototype with fictional sample data](media/prototype-village.png)
+
+This screenshot shows the current frontend running in a browser with fictional sample data. There is no public playable download yet; live model connections and a distributable build still need further validation.
+
+## Help shape the first quest
+
+What everyday task would you like to turn into a small adventure? [Share an idea or feedback](https://github.com/thinksyncs/a2acraft/issues/new). Please use fictional examples and keep private conversations and credentials out of public issues.
+
 This public repository contains the films and portfolio overview. Application code and internal specifications remain private.
 
 [Credits and media sources](CREDITS.md)

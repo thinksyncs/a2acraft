@@ -22,6 +22,8 @@ The film uses a 45-second excerpt with sample-rate conversion, volume adjustment
 
 Town, character, and item visuals come from the project's artwork and are assembled for this concept film. Dialogue, tasks, and project examples are fictional. Service names identify their respective services and do not imply partnership, sponsorship, or endorsement.
 
+`media/prototype-village.png` is a screenshot of the running development frontend, captured in Chromium with fictional sample data. It is separate from the concept film and does not demonstrate live model execution or a packaged native application.
+
 Voice and music credits also appear in the film. Model weights and speech tools are not included in this portfolio. The licenses above apply to the named third-party components; they do not grant a blanket license to the project or film.
 
 A2ACraft is an independent project name; this portfolio makes no claim of A2A protocol conformance or affiliation.
