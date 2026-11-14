@@ -9,6 +9,9 @@ const attachmentPlaceholder='［添付ファイルは移行されていません
 const omittedWarning='ツール実行・内部指示・推論の記録は移行していません。';
 const injectedUserContext=/^(?:# AGENTS\.md instructions for(?:\s|$)|<environment_context(?:>|\s)|<permissions instructions>|<collaboration_mode>)/u;
 const attachmentWarning='添付ファイルの本体は移行していません。必要なファイルは送信前に添付し直してください。';
+// Legacy rollouts omit channel. Explicit assistant channels must identify text
+// intended for the user; analysis and unknown internal channels stay private.
+const visibleAssistantChannel=channel=>channel==null||channel==='final'||channel==='commentary';
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const fail=message=>{throw Error(message);};
 const boundedString=(value,max)=>typeof value==='string'?value.slice(0,max):'';
@@ -148,6 +151,7 @@ export function parseCodexRollout(text){
   updatedAt=latest(updatedAt,createdAt);
   if(record.type==='response_item'){
    if(payload.type!=='message'||!['user','assistant'].includes(payload.role)){result.warnings.add(omittedWarning);continue;}
+   if(payload.role==='assistant'&&!visibleAssistantChannel(payload.channel)){result.warnings.add(omittedWarning);continue;}
    const content=userContent(payload.content);
    // Rollouts can mix old response-only turns with newer mirrored events. Keep
    // both formats, excluding recognizable runtime scaffolding when canonical
@@ -156,6 +160,7 @@ export function parseCodexRollout(text){
    candidates.push({role:payload.role,...content,id:payload.id,createdAt,source:'response'});
   }else if(record.type==='event_msg'){
    if(payload.type==='user_message'||payload.type==='agent_message'){
+    if(payload.type==='agent_message'&&!visibleAssistantChannel(payload.channel)){result.warnings.add(omittedWarning);continue;}
     if(typeof payload.message!=='string')fail('Codexのイベント本文が不正です。');
     candidates.push({role:payload.type==='user_message'?'user':'assistant',text:payload.message,createdAt,source:'event',attachments:payload.type==='user_message'&&[payload.images,payload.local_images,payload.attachments].some(value=>Array.isArray(value)&&value.length>0)});
    }else if(payload.type==='thread_name_updated')name=titleText(payload.thread_name)||titleText(payload.name)||name;
@@ -173,4 +178,26 @@ export function parseCodexRollout(text){
  for(const {source,sources,...message} of merged)result.add(message);
  if(!result.messages.length)fail('移行できるユーザーまたはアシスタントのメッセージがありません。');
  return {sourceThreadId:meta.id,title:name||titleText(result.messages.find(row=>row.role==='user')?.text)||'Codexの会話',createdAt:timestamp(meta.timestamp)??timestamp(records.find(row=>row.type==='session_meta')?.timestamp),updatedAt,cwd:boundedString(meta.cwd,4096),messages:result.messages,warnings:[...result.warnings]};
+}
+
+// Portable exports may concatenate complete sessions. Validate every session
+// before returning any history so a malformed bundle cannot partly import.
+export function parseCodexRolloutBundle(text){
+ if(typeof text!=='string'||!text.trim())fail('CodexのJSONL履歴ファイルを選択してください。');
+ if(Buffer.byteLength(text,'utf8')>MAX_CODEX_HISTORY_BYTES)fail('履歴ファイルは16 MiB以下にしてください。');
+ const sessions=[],seen=new Set();let current=null,lineNumber=0;
+ for(const line of text.replace(/^\uFEFF/u,'').split(/\r?\n/u)){
+  lineNumber++;if(!line.trim())continue;
+  let record;try{record=JSON.parse(line);}catch{fail(`JSONL履歴の${lineNumber}行目が不正です。`);}
+  if(record?.type==='session_meta'){
+   const id=record.payload?.id;
+   if(!identifier(id))fail('CodexのセッションIDが不正です。');
+   if(seen.has(id))fail('履歴ファイルに同じセッションIDが複数含まれています。');
+   if(sessions.length>=50)fail('1ファイルに取り込める会話は50件までです。');
+   seen.add(id);current=[];sessions.push(current);
+  }
+  if(!current)fail('各会話はCodexのsession_metaから開始してください。');
+  current.push(line);
+ }
+ return sessions.map(lines=>parseCodexRollout(lines.join('\n')));
 }

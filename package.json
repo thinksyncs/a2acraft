@@ -1,6 +1,6 @@
 {
   "name": "personal-chat-ui",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "A2ACraft by Toppy — conversations become worlds.",
   "author": "ToppyMicroServices",
@@ -99,6 +99,7 @@
           "schedules.mjs",
           "reports.mjs",
           "codex-history.mjs",
+          "imported-history-context.mjs",
           "public/**/*",
           "codex-workspace-policy.mjs",
           "codex-launch.mjs",

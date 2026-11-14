@@ -1,10 +1,12 @@
-# A2ACraft 0.4.0 — Mac preview status
+# A2ACraft 0.4.1 — Mac preview status
 
 Checked on 2026-11-14. This is a tester preview, not a completed general release.
 
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 323 passed, zero failures/skips |
+| Automated regression tests | 341 passed, zero failures/skips |
+| Codex history import | Visible messages only; single-file bundles, idempotent updates and safe snapshots covered by regression tests |
+| Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
 | Packaged Apple Silicon application | Built with the frontend, Codex 0.169.0, icon and third-party notices |
 | Native launch and app-specific ChatGPT sign-in | Observed in the native application; sign-in persisted across restart |
 | Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |

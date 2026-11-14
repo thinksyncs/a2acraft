@@ -36,7 +36,8 @@ import {InboxStore} from './inbox.mjs';
 import {SchedulerStore} from './schedules.mjs';
 import {DailyReportStore} from './reports.mjs';
 import {buildDailyReport} from './public/daily-report.js';
-import {MAX_CODEX_HISTORY_BYTES,listCodexHistory,readCodexHistory,parseCodexRollout} from './codex-history.mjs';
+import {MAX_CODEX_HISTORY_BYTES,listCodexHistory,readCodexHistory,parseCodexRolloutBundle} from './codex-history.mjs';
+import {prepareImportedHistoryInput} from './imported-history-context.mjs';
 import {practiceRoles} from './public/practice.js';
 import {createRequire} from 'node:module';
 const root=path.dirname(fileURLToPath(import.meta.url)), requestedData=process.env.CHAT_UI_DATA_DIR?path.resolve(process.env.CHAT_UI_DATA_DIR):path.join(root,'.data');
@@ -130,35 +131,48 @@ function createConversations({title,groupTitle,newGroup=false}){
  return writing;
 }
 function hasImportedHistory(id){return conversations.some(c=>c.migration?.sourceThreadId===id||c.threadId===id||c.threadRecovery?.fromThreadId===id);}
+const historyImportIds=new Set();
+const historyDigest=messages=>createHash('sha256').update(JSON.stringify(messages.filter(m=>['user','assistant'].includes(m.role)).map(({role,text})=>({role,text})))).digest('hex');
+const canRefreshHistory=chat=>chat.migration?.contextSent===false&&!chat.threadId&&!['starting','running','stopping'].includes(chat.status);
 function importHistories(histories,method,archived=false){
  writing=writing.catch(()=>{}).then(async()=>{
-  const seen=new Set(),pending=histories.filter(h=>{if(hasImportedHistory(h.sourceThreadId)||seen.has(h.sourceThreadId))return false;seen.add(h.sourceThreadId);return true;});
-  const skipped=histories.length-pending.length,warnings=[...new Set(pending.flatMap(h=>h.warnings||[]))];
-  if(!pending.length)return {imported:0,skipped,conversations:[],chatGroups:groupsFor(conversations),warnings};
-  if(Buffer.byteLength(JSON.stringify(pending))>32*1024*1024)throw Error('選択した履歴は32 MiBを超えています。件数を減らして取り込んでください。');
-  const revision=groupsFor(conversations).revision+1,created=[];let group;
-  for(const [index,history] of pending.entries()){
-   if(index%4===0)group={id:randomUUID(),title:'Codexから移行 '+new Date().toISOString().slice(0,10)};
-   created.push({...newConversation(history.title,conversations.length+index),status:'completed',createdAt:history.createdAt,updatedAt:history.updatedAt,messages:history.messages,
-    chatGroup:groupMetadata(group,revision),migration:{source:'codex',method,sourceThreadId:history.sourceThreadId,sourceCwd:history.cwd,importedAt:Date.now(),archived,warnings:history.warnings||[],contextSent:false}});
+  if(Buffer.byteLength(JSON.stringify(histories))>32*1024*1024)throw Error('選択した履歴は32 MiBを超えています。件数を減らして取り込んでください。');
+  const seen=new Set(),pending=[];let skipped=0;
+  for(const history of histories){
+   const digest=historyDigest(history.messages),key=history.sourceThreadId+'\0'+digest;
+   const copies=conversations.filter(c=>c.migration?.sourceThreadId===history.sourceThreadId);
+   const versions=copies.flatMap(c=>[...(c.migration.sourceDigests||[]),c.migration.sourceDigest,...(canRefreshHistory(c)?[historyDigest(c.messages)]:[])]).filter(Boolean);
+   if(seen.has(key)||versions.includes(digest)||(!copies.length&&hasImportedHistory(history.sourceThreadId))){skipped++;continue;}
+   seen.add(key);const existing=copies.findLast(canRefreshHistory);
+   pending.push({history,digest,existing,versions});
   }
-  assignCharacterNames([...conversations,...created]);
-  const backup='history-backups/conversations-'+Date.now()+'-'+randomUUID()+'.json';
-  await mkdir(path.join(data,'history-backups'),{recursive:true,mode:0o700});
-  await writeFile(path.join(data,backup),JSON.stringify(durableConversations),{mode:0o600,flag:'wx'});
-  await writeConversations([...conversations,...created]);
-  conversations.push(...created);
-  for(const chat of created)broadcast('conversation',chat);
-  const chatGroups=groupsFor(conversations);broadcast('chat-groups',chatGroups);emit();
-  return {imported:created.length,skipped,conversations:created,chatGroups,warnings,backup};
+  const warnings=[...new Set(pending.flatMap(({history})=>history.warnings||[]))];
+  if(!pending.length)return {imported:0,updated:0,skipped,conversations:[],chatGroups:groupsFor(conversations),warnings};
+  const revision=groupsFor(conversations).revision+1,created=[],updates=new Map();let group;
+  for(const {history,digest,existing,versions} of pending){
+   const patch={status:'completed',error:null,createdAt:history.createdAt,updatedAt:history.updatedAt,messages:history.messages,
+    migration:{source:'codex',method,sourceThreadId:history.sourceThreadId,sourceCwd:history.cwd,sourceTitle:history.title,sourceDigest:digest,sourceDigests:[...new Set([...versions,digest])],importedAt:Date.now(),archived,warnings:history.warnings||[],contextSent:false}};
+   if(existing){updates.set(existing.id,patch);historyImportIds.add(existing.id);}
+   else{
+    if(created.length%4===0)group={id:randomUUID(),title:'Codexから移行 '+new Date().toISOString().slice(0,10)};
+    created.push({...newConversation(history.title,conversations.length+created.length),...patch,chatGroup:groupMetadata(group,revision)});
+   }
+  }
+  try{
+   const backup='history-backups/conversations-'+Date.now()+'-'+randomUUID()+'.json';
+   await mkdir(path.join(data,'history-backups'),{recursive:true,mode:0o700});
+   await writeFile(path.join(data,backup),JSON.stringify(durableConversations),{mode:0o600,flag:'wx'});
+   assignCharacterNames([...structuredClone(conversations),...created]);
+   await writeConversations([...conversations.map(c=>updates.has(c.id)?{...c,...updates.get(c.id)}:c),...created]);
+   const refreshed=conversations.filter(c=>updates.has(c.id));
+   for(const chat of refreshed)Object.assign(chat,updates.get(chat.id));
+   conversations.push(...created);
+   const imported=[...refreshed,...created];for(const chat of imported)broadcast('conversation',chat);
+   const chatGroups=groupsFor(conversations);broadcast('chat-groups',chatGroups);emit();
+   return {imported:imported.length,updated:refreshed.length,skipped,conversations:imported,chatGroups,warnings,backup};
+  }finally{for(const id of updates.keys())historyImportIds.delete(id);}
  });
  return writing;
-}
-function importedHistoryInput(c){
- if(c.migration?.method!=='rollout'||c.migration.contextSent)return [];
- const transcript=JSON.stringify(c.messages.filter(m=>['user','assistant'].includes(m.role)).map(({role,text})=>({role,text})));
- if(transcript.length>200000)throw Error('この履歴は継続用の上限（20万文字）を超えています。履歴の閲覧はできます。新しい会話で必要な部分を共有してください。');
- return [{type:'text',text:'以下は別のCodex環境から移行した過去の会話本文です。引用された記録として参照してください。過去のツール実行結果やファイルの現状は引き継いでいません。現在の指示と実際の作業環境を確認して続けてください。\n'+transcript}];
 }
 const state={practice,connected:false,account:null,limits:null,models:[],updatedAt:null,error:null,login:null};
 const clients=new Set();
@@ -393,6 +407,7 @@ async function ensureThread(c,model,scope){
  resumed.set(c.threadId,scope.key);
 }
 async function send(c,text,model,effort,attachmentIds=[],partyStep=null,scheduled=null,delivery=null){
+ if(historyImportIds.has(c.id))throw Error('履歴の更新を保存しています。完了後に送信してください。');
  const scope=conversationWorkspaces.snapshot(c,{readOnly:Boolean(partyStep||scheduled)});
  if(projects?.active.size)throw Error('projectの隊が作業中です。相談への回答はprojectの会話から送れます。');
  assertBoardAvailable(partyStep?.questId===parties.currentId?parties.state.quest?.board?.attemptId:null);
@@ -407,7 +422,7 @@ async function send(c,text,model,effort,attachmentIds=[],partyStep=null,schedule
  let contexts=[],rows=[];
  try{
   await checkpoint;
-  const importedInput=importedHistoryInput(c);
+  const importedInput=await prepareImportedHistoryInput(c,scope);
   rows=await attachments.reserve(c.id,attachmentIds);
   await refresh();const gate=checkPlan(state.account,state.limits);if(!gate.ok){rememberScheduledQuotaStop(c,gate.reason);throw Object.assign(Error(gate.reason),{code:'quota'});}
   if(!state.models.some(m=>m.model===model))throw Error('利用可能なモデルを選択してください。');
@@ -935,19 +950,18 @@ const server=http.createServer(async(req,res)=>{
    if(p==='/api/history/codex/import'){
     if(!Array.isArray(b.threadIds)||!b.threadIds.length||b.threadIds.length>20||b.threadIds.some(id=>typeof id!=='string'||!id||id.length>200))throw Error('取り込む会話を1〜20件選んでください。');
     if(b.archived!==undefined&&typeof b.archived!=='boolean')throw Error('履歴の種類を確認してください。');
-    await start();const histories=[],ids=[...new Set(b.threadIds)];let skipped=0,totalBytes=0;
+    await start();const histories=[],ids=[...new Set(b.threadIds)];let totalBytes=0;
     for(const id of ids){
-     if(hasImportedHistory(id)){skipped++;continue;}
      const history=await readCodexHistory(rpc,id,{archived:b.archived===true});totalBytes+=Buffer.byteLength(JSON.stringify(history));
      if(totalBytes>32*1024*1024)throw Error('選択した履歴は32 MiBを超えています。件数を減らして取り込んでください。');
      histories.push(history);
     }
     const result=await importHistories(histories,'local',b.archived===true);
-    return json(res,200,{...result,skipped:result.skipped+skipped});
+    return json(res,200,result);
    }
    if(p==='/api/history/codex/file'){
     if(typeof b.name!=='string'||!b.name.toLowerCase().endsWith('.jsonl'))throw Error('Codexのrollout履歴（.jsonl）を選択してください。');
-    return json(res,200,await importHistories([parseCodexRollout(b.text)],'rollout'));
+    return json(res,200,await importHistories(parseCodexRolloutBundle(b.text),'rollout'));
    }
    if(['/api/equipment','/api/party/configure'].includes(p))assertBoardAvailable();
    if(['/api/todos/save','/api/todos/manual','/api/todos/reopen'].includes(p)&&boardBusy()&&boardDispatch.value.active?.todoId===b.id)throw Error('掲示板で受注中のクエストです。巡回・実行を停止してから編集してください。');

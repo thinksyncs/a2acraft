@@ -71,10 +71,10 @@ function initCodexMigration({api,onImported,getDemo,dates}) {
     fields.disabled=busy||unavailable;
     fields.setAttribute('aria-busy',String(busy));
     more.hidden=!cursor;
-    selection.hidden=!rows.some(row=>!row.imported);
+    selection.hidden=!rows.length;
     submit.disabled=busy||unavailable||!selected.size;
     submit.textContent=selected.size?`選択した${selected.size}件を取り込む`:'選択した会話を取り込む';
-    select.textContent=selected.size?'選択を解除':`先頭${Math.min(maximum,rows.filter(row=>!row.imported).length)}件を選択`;
+    select.textContent=selected.size?'選択を解除':`先頭${Math.min(maximum,rows.length)}件を選択`;
     status.textContent=getDemo()?'デモではCodexの履歴を取り込みません。':message;
   }
   function fail(value){error.textContent=value||'';error.hidden=!value;}
@@ -89,11 +89,11 @@ function initCodexMigration({api,onImported,getDemo,dates}) {
     list.replaceChildren();
     for(const row of rows){
       const label=document.createElement('label');label.className='history-codex-row';
-      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.dataset.codexHistoryId=row.id;checkbox.checked=selected.has(row.id);checkbox.disabled=Boolean(row.imported);
+      const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.dataset.codexHistoryId=row.id;checkbox.checked=selected.has(row.id);
       const text=document.createElement('span'),title=document.createElement('strong'),metadata=document.createElement('small');
       title.textContent=row.title||'タイトルのない会話';
       const timestamp=typeof row.updatedAt==='number'?row.updatedAt:Date.parse(row.updatedAt);
-      metadata.textContent=[Number.isFinite(timestamp)&&timestamp>0&&timestamp<=8640000000000000?dates.format(timestamp):'更新日時不明',row.cwd,row.imported?'取り込み済み':''].filter(Boolean).join(' · ');
+      metadata.textContent=[Number.isFinite(timestamp)&&timestamp>0&&timestamp<=8640000000000000?dates.format(timestamp):'更新日時不明',row.cwd,row.imported?'保存済み・更新可':''].filter(Boolean).join(' · ');
       text.append(title,metadata);label.append(checkbox,text);list.append(label);
     }
     refresh();
@@ -134,7 +134,7 @@ function initCodexMigration({api,onImported,getDemo,dates}) {
     refresh();
   });
   select.addEventListener('click',()=>{
-    if(selected.size)selected.clear();else selected=new Set(rows.filter(row=>!row.imported).slice(0,maximum).map(row=>row.id));
+    if(selected.size)selected.clear();else selected=new Set(rows.slice(0,maximum).map(row=>row.id));
     fail('');renderRows();
   });
   submit.addEventListener('click',()=>run(async()=>{

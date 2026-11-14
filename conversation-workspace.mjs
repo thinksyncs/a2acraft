@@ -28,6 +28,7 @@ export class ConversationWorkspaces {
     const developerInstructions = chatInstructions + '\n\n' + standingAgentInstructions +
       (work ? '\nLOCAL_WORKSPACE_TASK: Only create or edit files inside this conversation\'s assigned working directory. Do not initialize a repository, run Git, publish, or access other conversations. Do not use network tools. Explain the resulting filenames and checks.' : '\nThis turn is read-only. Do not modify files.');
     return {key: (work ? 'work:' : 'chat:') + cwd, cwd,
+      historyDirectory: path.join(this.directory, 'chats', chat.id, '.a2acraft-history'),
       thread: {cwd, approvalPolicy: 'never', sandbox: work ? 'workspace-write' : 'read-only', developerInstructions},
       // Inherit the verified thread policy, including managed deny rules.
       turn: {cwd, approvalPolicy: 'never'}};

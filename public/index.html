@@ -317,17 +317,17 @@
     <summary>Codex appから履歴を取り込む</summary>
     <p class="history-help">ユーザーとアシスタントの会話をコピーします。取り込んだ会話は下の履歴一覧から開けます。画像の原本・ツールの実行記録・設定は移行対象に含まれません。</p>
     <fieldset id="history-migration-fields">
-      <legend>このPCのCodexから選ぶ</legend>
-      <p class="history-help">chat-uiを起動したPCで、同じCodexの保存先を使う会話を読み込みます。Cloud上では手元のPCの会話は表示されません。</p>
+      <legend>A2ACraftのCodex履歴から選ぶ</legend>
+      <p class="history-help">この一覧はA2ACraft専用の保存先です。普段のCodexアプリの会話は、下の履歴ファイルから取り込めます。</p>
       <label class="history-checkbox"><input id="history-codex-archived" type="checkbox"> アーカイブ済みの会話を表示</label>
       <div class="history-migration-actions"><button id="history-codex-load" class="outline" type="button">Codexの会話を読み込む</button><button id="history-codex-more" class="outline" type="button" hidden>さらに読み込む</button></div>
       <div id="history-codex-list" class="history-codex-list" aria-label="取り込むCodexの会話"></div>
       <div id="history-codex-selection" class="history-migration-actions" hidden><button id="history-codex-select" class="outline" type="button">先頭20件を選択</button><button id="history-codex-import" class="primary" type="button" disabled>選択した会話を取り込む</button></div>
-      <p class="history-help">元の会話は保持します。取り込み後に送信すると、履歴を引き継いだ別のCodexスレッドを、このアプリの作業フォルダで開始します。エージェントは読み取り専用です。</p>
-      <label for="history-codex-files">別のPCから履歴ファイルを取り込む</label>
-      <p id="history-codex-file-help" class="history-help">Codexを使っていたPCの <code>~/.codex/sessions</code> または <code>~/.codex/archived_sessions</code> にある <code>rollout-*.jsonl</code> を選択してください。複数選択可、1ファイル16 MiBまで。保存先を変更している場合は、その保存先を使います。</p>
+      <p class="history-help">元の会話は保持します。取り込んだ会話を開いて送信すると、履歴を引き継いで続けられます。ファイルを作るときは入力欄の「＋」から「作業」を選びます。</p>
+      <label for="history-codex-files">Codexの履歴ファイルを取り込む</label>
+      <p id="history-codex-file-help" class="history-help">Codexの <code>rollout-*.jsonl</code> または書き出した一括履歴のJSONLを選択します。複数選択可、1ファイル16 MiBまで。</p>
       <input id="history-codex-files" type="file" accept=".jsonl" multiple aria-describedby="history-codex-file-help">
-      <p class="history-help">ファイルからの取り込みは本文のコピーです。続けて送信する際は、その本文を引き継いだ新しい会話を開始します。元の作業環境や添付ファイルは引き継ぎません。本文が20万文字を超える場合は閲覧のみ利用できます。</p>
+      <p class="history-help">長い会話も全文を作業フォルダに保存して参照できます。元のプロジェクトのコードや添付画像は、会話本文とは別に用意してください。</p>
     </fieldset>
     <p id="history-migration-status" class="history-status" role="status" aria-live="polite"></p>
     <p id="history-migration-error" class="history-error" role="alert" hidden></p>
