@@ -1,4 +1,8 @@
 const processCode = value => typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,31}$/.test(value) ? value : 'unknown';
+// Match only backend-owned constants. Do not expose arbitrary IPC strings in a
+// native dialog: they may contain account information or local content.
+export const backendStartupStages=Object.freeze(['bootstrap','storage','workspace','context-store','attachments','history','history-migration','local-stores','party-recovery','projects','world-load','world-layout','activity-sync','listen']);
+const knownStartupStages=new Set(backendStartupStages);
 
 // Report process status only. Child stderr, URLs, request bodies and account
 // data must never become startup diagnostics.
@@ -29,6 +33,7 @@ export async function waitForBackendReady(child,{timeoutMs=30000,stopOptions}={}
   // deadlock startup if a native dependency emits enough diagnostics.
   child.stdout?.resume();
   child.stderr?.resume();
+  let latestStage='bootstrap';
   try {
     return await new Promise((resolve,reject)=>{
       let settled=false;
@@ -41,10 +46,11 @@ export async function waitForBackendReady(child,{timeoutMs=30000,stopOptions}={}
       const onExit=(code,signal)=>done(Error('GUIサーバーが起動中に終了しました。 '+processDiagnostic({code,signal})));
       const onError=error=>done(Error('GUIサーバーを起動できませんでした。 '+processDiagnostic({code:error?.code})));
       const onMessage=value=>{
+        if(value?.type==='startup-progress'&&knownStartupStages.has(value.stage))latestStage=value.stage;
         if(value?.type==='ready'&&Number.isInteger(value.port)&&value.port>0&&value.port<=65535&&value.origin===`http://127.0.0.1:${value.port}`)done(null,value);
         if(value?.type==='startup-error')done(Error('GUIサーバーを起動できませんでした。 '+processDiagnostic({code:value.code})));
       };
-      const timer=setTimeout(()=>done(Error(`GUIサーバーの起動がタイムアウトしました。 timeout=${timeoutMs}ms`)),timeoutMs);
+      const timer=setTimeout(()=>done(Error(`GUIサーバーの起動がタイムアウトしました。 timeout=${timeoutMs}ms, stage=${latestStage}`)),timeoutMs);
       child.on('message',onMessage);child.once('exit',onExit);child.once('error',onError);
       if(child.exitCode!==null||child.signalCode!==null)onExit(child.exitCode,child.signalCode);
     });

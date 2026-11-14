@@ -39,6 +39,21 @@ test('startup timeout stops only the passed child and cleans up even if it needs
   for(const event of ['message','exit','error'])assert.equal(owned.listenerCount(event),0);
 });
 
+test('startup timeout reports only the latest allowlisted progress identifier',async()=>{
+  const child=childFixture(),ready=waitForBackendReady(child,{timeoutMs:10});
+  child.emit('message',{type:'startup-progress',stage:'history'});
+  child.emit('message',{type:'startup-progress',stage:'world-layout',path:'/private/never-print',account:'never-print-account'});
+  child.emit('message',{type:'startup-progress',stage:'Bearer never-print-secret'});
+  child.emit('message',{type:'startup-progress',stage:{toString(){return 'never-print-object';}}});
+  await assert.rejects(ready,error=>{
+    assert.match(error.publicDiagnostic,/stage=world-layout$/);
+    assert.doesNotMatch(error.publicDiagnostic,/private|never-print|Bearer|account/);return true;
+  });
+  for(const event of ['message','exit','error'])assert.equal(child.listenerCount(event),0);
+  const early=childFixture();
+  await assert.rejects(waitForBackendReady(early,{timeoutMs:5}),error=>/stage=bootstrap$/.test(error.publicDiagnostic));
+});
+
 test('startup and spawn diagnostics exclude payloads and retain only process status',async()=>{
   const child=childFixture(),ready=waitForBackendReady(child);
   child.emit('message',{type:'startup-error',code:'EACCES',message:'Bearer never-print-this-secret'});

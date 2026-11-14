@@ -40,14 +40,20 @@ import {MAX_CODEX_HISTORY_BYTES,listCodexHistory,readCodexHistory,parseCodexRoll
 import {prepareImportedHistoryInput} from './imported-history-context.mjs';
 import {practiceRoles} from './public/practice.js';
 import {createRequire} from 'node:module';
+// Fixed identifiers only: never emit paths, saved content or provider output.
+function startupStage(stage){if(process.connected)process.send({type:'startup-progress',stage},()=>{});}
+startupStage('storage');
 const root=path.dirname(fileURLToPath(import.meta.url)), requestedData=process.env.CHAT_UI_DATA_DIR?path.resolve(process.env.CHAT_UI_DATA_DIR):path.join(root,'.data');
 await mkdir(requestedData,{recursive:true,mode:0o700});
 const data=await realpath(requestedData),workspace=resolveWorkspaceDirectory(data,process.env.CHAT_UI_WORKSPACE_DIR);
 const practice=process.env.CHAT_UI_PRACTICE==='1';
 if(practice&&path.basename(path.dirname(data))!=='practice')throw Error('Practice mode requires its own practice/data directory');
+startupStage('workspace');
 await ensureAgentWorkspace(workspace);
 const terminals = new TerminalSessions(workspace);
+startupStage('context-store');
 const contextBoard=await new ContextBoard(data).load();
+startupStage('attachments');
 const attachments=await new AttachmentStore(data).load();
 const require = createRequire(path.join(process.env.CHAT_UI_PACKAGE_ROOT || root, 'package.json'));
 const vendorFiles = {
@@ -60,6 +66,7 @@ if(!Number.isInteger(requestedPort)||requestedPort<0||requestedPort>65535)throw 
 if(desktop&&sessionToken.length<32)throw Error('Desktop session token is required');
 let port=requestedPort,origin=`http://127.0.0.1:${port}`,closing=false;
 let conversations=[],durableConversations=[],persistenceError=null,persistenceEventsReady=false;
+startupStage('history');
 try {
  conversations=JSON.parse(await readFile(path.join(data,'conversations.json'),'utf8'));
  const ids=new Set();
@@ -97,6 +104,7 @@ function groupsFor(rows){
 function groupMetadata(group,revision){return {id:group.id,title:group.title,revision};}
 let migratedGroups=false;
 const migrated=[],seenGroups=new Map();
+startupStage('history-migration');
 for(const conversation of conversations){
  const metadata=conversation.chatGroup;
  let group=typeof metadata?.id==='string'&&metadata.id&&typeof metadata.title==='string'&&metadata.title.trim()?seenGroups.get(metadata.id):null;
@@ -186,6 +194,7 @@ function broadcast(type,payload){for(const res of clients)res.write(`event: ${ty
 function publicState(){return {...state,agentBoard:agentBoard?.public()||{revision:0,count:0},world:world?.public()||null,projects:projects?.public()||{version:1,revision:0,items:[],concurrency:2,activeCount:0},persistenceError,policy:checkPlan(state.account,state.limits),chatGroups:groupsFor(conversations),party:parties.public(),adventure:adventure.public(),village:village.public(),plugins:plugins.public(),teams:teams.public(),teamsDrafts:teamsDrafts.public(),todos:todos.public(),media:media.public(),inbox:inbox.public(),schedules:schedules.public(),reports:reports.public(),boardDispatch:boardPublic(),workQuestPlanning:Boolean(workQuestWaiter),active:Boolean(projects?.active.size)||boardBusy()||hasScheduledRun()||Boolean(scheduledStarting)||Boolean(teamsWaiter)||Boolean(workQuestWaiter)||startingTodo||parties.active||conversations.some(c=>['starting','running','stopping'].includes(c.status))};}
 function emit(){broadcast('state',publicState());}
 function changed(c){c.updatedAt=Date.now();if(['completed','failed','cancelled'].includes(c.status)&&c.activity&&!c.activity.completedAt)c.activity.completedAt=c.updatedAt;const saved=save();broadcast('conversation',c);if(['completed','failed','cancelled'].includes(c.status))saved.then(()=>{queueActivitySync();if(c.project||world?.value.links[c.id])world?.observe().catch(()=>{});}).catch(()=>{});return saved;}
+startupStage('local-stores');
 const inbox=await new InboxStore(data,value=>broadcast('inbox',value)).load();
 const schedules=await new SchedulerStore(data,value=>{broadcast('schedules',value);if(activityReady)emit();}).load();
 const reports=await new DailyReportStore(data,value=>broadcast('reports',value)).load();
@@ -449,6 +458,7 @@ async function send(c,text,model,effort,attachmentIds=[],partyStep=null,schedule
  finally{contextBoard.release(contexts);attachments.release(rows);}
 }
 let partyWaiter=null,startingTodo=false,durableParty=null;
+startupStage('party-recovery');
 const parties=await new PartyRunner({
  getConversations:()=>conversations,execute:executePartyStep,interrupt:interruptPartyStep,
  read:async()=>{try{const raw=await readFile(path.join(data,'party.json'),'utf8');if(raw.length>1500000)throw Error('パーティの保存内容が大きすぎます。');return JSON.parse(raw);}catch(error){if(error.code==='ENOENT')return null;throw error;}},
@@ -476,6 +486,7 @@ function queueActivitySync(){
  }).catch(()=>broadcast('activity-error',{error:'通知の保存を確認できません。Inboxで更新してください。'}));
  return activityWork;
 }
+startupStage('projects');
 agentBoard=await new AgentBoard(data,()=>{if(activityReady)emit();}).load();
 projectCodex=new ProjectCodex({rpc,refresh,getState:()=>state,getConversation:id=>conversations.find(c=>c.id===id),save:changed,onChange:emit,board:agentBoard,contextBoard,attachContexts:contexts=>attachContexts(contexts,{strict:true})});
 projects=await new ProjectService(data,{
@@ -489,8 +500,11 @@ projects=await new ProjectService(data,{
  record:async({conversationId,id,role,text})=>{const chat=conversations.find(c=>c.id===conversationId);if(!chat)throw Error('担当会話がありません。');if(!chat.messages.some(m=>m.id===id)){chat.messages.push({id,role,text,createdAt:Date.now()});await changed(chat);}},
  onChange:value=>{broadcast('projects',value);if(activityReady)emit();world?.observe().catch(error=>broadcast('activity-error',{error:error.message}));}
 }).load();
+startupStage('world-load');
 world=await new WorldState(data,{getProjects:()=>projects.value.items,getChats:()=>conversations,adventure,onChange:()=>{if(activityReady)emit();}}).load();
+startupStage('world-layout');
 await world.observe({migration:true});
+startupStage('activity-sync');
 activityReady=true;await queueActivitySync();
 const activityTimer=setInterval(()=>{queueActivitySync();queueScheduledExecution();queueBoardExecution();projects?.kick();},1000);activityTimer.unref();
 async function startTodo(id,model,effort){
@@ -1128,6 +1142,7 @@ const server=http.createServer(async(req,res)=>{
  }catch(e){json(res,400,{error:e.message});}
 });
 persistenceEventsReady=true;
+startupStage('listen');
 server.listen(requestedPort,'127.0.0.1',()=>{port=server.address().port;origin=`http://127.0.0.1:${port}`;if(process.env.CHAT_UI_READY_STDOUT==='1')console.log(JSON.stringify({type:'ready',port,origin}));console.log(`Personal Chat UI: ${origin}  |  Demo: ${origin}/?demo=1`);process.send?.({type:'ready',port,origin});});
 server.on('error',e=>{process.send?.({type:'startup-error',message:e.message});console.error(e.message);process.exitCode=1;});
 async function shutdown(){

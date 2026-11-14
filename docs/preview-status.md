@@ -4,15 +4,15 @@ Checked on 2026-11-14. This is a tester preview, not a completed general release
 
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 341 passed, zero failures/skips |
+| Automated regression tests | 342 passed, zero failures/skips |
 | Codex history import | Visible messages only; single-file bundles, idempotent updates and safe snapshots covered by regression tests |
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
 | Packaged Apple Silicon application | Built with the frontend, Codex 0.169.0, icon and third-party notices |
-| Native launch and app-specific ChatGPT sign-in | Observed in the native application; sign-in persisted across restart |
+| Native launch and app-specific ChatGPT sign-in | Observed before the latest rebuild; normal-data startup now needs rechecking after a GUI-server timeout |
 | Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |
 | Live model response and file work | Not accepted yet: thread creation was blocked by an OS sandbox initialization error on the managed test host |
 | Protection rules | No SSH/Proton protection was relaxed; the app checks effective thread permissions before sending a turn |
-| Startup/renderer failure recovery | Recovery dialog added and unit-tested; final native acceptance remains pending |
+| Startup/renderer failure recovery | Recovery dialog observed; timeout now reports only a fixed boot-stage identifier. Final native acceptance remains pending |
 | Developer ID signing and notarization | Not available; Apple Developer Program registration is pending |
 | Intel Mac | Not supported by the pinned document-extraction runtime |
 
