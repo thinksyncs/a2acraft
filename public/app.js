@@ -11,6 +11,7 @@ import {initWorkspaceTabs,chatGroupsFor,groupForConversation} from './workspace-
 import {assignCharacterNames} from './character-names.js';
 import {initActivity} from './activity.js';
 import {initHistory} from './history.js';
+import {initConnectionReadiness} from './connection-readiness.js';
 import {initAdventure} from './adventure.js';
 import {initVillage} from './village.js';
 import {createResidentConversation} from './resident-conversation.js';
@@ -55,6 +56,7 @@ let renderedNavigation = '';
 let conversationRenderTimer = 0;
 let booting = true, connectionRequested = false, connectionBusy = false, connectionError = '', serverUnavailable = false, eventStream;
 let offlineBrowsing=false,historyLoaded=false,historyLoadError='';
+let connectionReadiness;
 let practiceEffortInitialized=false;
 let townToolsOpen=false,townSidebarWasCollapsed=false,currentTownSection='town';
 let contextBoard = [];
@@ -711,6 +713,7 @@ function updateComposer() {
   sendBlocked = $('#workspace').hidden || (!demo&&(!state.connected||state.account?.type!=='chatgpt'||state.login||serverUnavailable)) || Boolean(state.workQuestPlanning) || boardActive() || partyActive() || !chat || steerPending || pendingSends.has(selected) || conversationModeRequests.has(selected) || !state.policy?.ok || (chats.some(active) && !steering) || (!$('#prompt').value.trim() && !files.length) || attachments.busy(selected) || unsupportedImage || !$('#model').value;
   if(chat?.project)sendBlocked=demo||!question||serverUnavailable||$('#workspace').hidden||steerPending||!$('#prompt').value.trim()||files.length>0;
   else if(state.projects?.activeCount)sendBlocked=true;
+  if(connectionReadiness?.busy)sendBlocked=true;
   attachments.render();
   $('#send-btn').setAttribute('aria-disabled', String(sendBlocked));
   $('#send-btn').innerHTML = steering ? '追加 <span>↗</span>' : '送信 <span>↑</span>';
@@ -727,8 +730,9 @@ function updateComposer() {
   $('#stop-btn').setAttribute('aria-label',chat?.status === 'stopping'?'停止要求中':'この会話を停止');
   resizePrompt();
   $('#model').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active); $('#effort').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
-  $('#logout-btn').disabled = !state.account || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
-  $('#login-btn').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
+  $('#logout-btn').disabled = !state.account || connectionBusy || Boolean(connectionReadiness?.busy) || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
+  $('#login-btn').disabled = connectionBusy || Boolean(connectionReadiness?.busy) || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
+  connectionReadiness?.render();
   party.render();castle.render();for(const chat of chats){const panel=panels.get(chat.id);if(panel)party.renderPane(panel.element,chat);}
   todoView.render();
   adventure.render();updateAdventureReturn();
@@ -747,7 +751,8 @@ async function addChat() {
 }
 async function connect(login = false) {
   if (demo) return toast('デモ表示です。実接続モードでログインできます。');
-  if (booting || connectionBusy) return;
+  if (booting || connectionBusy || connectionReadiness?.busy) return;
+  connectionReadiness?.reset();
   offlineBrowsing=false;
   connectionRequested = true; connectionBusy = true; connectionError = ''; updateState();
   try {
@@ -838,8 +843,11 @@ function openOfflineWorkspace() {
 $('#open-offline').onclick = openOfflineWorkspace;
 $('#connect-settings').onclick = () => {
   offlineBrowsing=true;updateState();
-  switchView('settings',()=>($('#desktop-settings').hidden?$('#login-btn'):$('#select-codex-path')).focus());
+  switchView('settings',()=>$('#settings-connect-btn').focus());
 };
+connectionReadiness=initConnectionReadiness({api,getState:()=>({...state,connected:state.connected&&!serverUnavailable}),demo,onConnect:()=>connect(),
+  isBlocked:()=>booting||connectionBusy||Boolean(state.login)||Boolean(state.workQuestPlanning)||boardActive()||partyActive()||Boolean(state.projects?.activeCount)||chats.some(active),
+  onBusyChange:busy=>{for(const id of ['select-codex-path','reset-codex-path','select-work-directory','save-work-directory'])$('#'+id).disabled=busy;updateComposer();}});
 $('#start-connect').onclick = () => connect(); $('#connect-btn').onclick = () => connect(); $('#login-btn').onclick = () => connect(true);
 $('#logout-btn').onclick = async () => { if (demo) return toast('デモアカウントです。'); try { await api('logout'); } catch (error) { toast(error.message); } };
 async function refreshUsage() { if (demo) { state.updatedAt = Date.now(); updateState(); return toast('デモの残量表示を更新しました。'); } try { state = await api('refresh'); updateState(); } catch (error) { toast(error.message); } }

@@ -28,13 +28,15 @@ A2ACraft is an MVP in development. The prototype lets you explore a town, talk t
 
 ![Running village prototype with fictional sample data](media/prototype-village.png)
 
-This screenshot shows the frontend with fictional sample data. The repository now also contains the A2ACraft 0.4.0 Mac application source.
+This screenshot shows the frontend with fictional sample data. The repository also contains the A2ACraft 0.4.2 Mac application source.
 
 ### Mac preview
 
 The Apple Silicon preview bundles Codex 0.169.0 and provides an independent ChatGPT sign-in. You can open saved conversations without connecting, retain drafts and map position across restarts, and choose read-only conversation or work in a dedicated chat folder. External tools and inherited shell startup are disabled in the dedicated Codex configuration.
 
-This is a tester preview, not a notarized general release. Apple Developer Program enrollment, Developer ID signing and notarization are still pending. ChatGPT sign-in was verified, but live response and file-work acceptance remain blocked by an OS sandbox initialization error on the managed test host. See the [verification status](docs/preview-status.md).
+Imported Codex conversations can be opened and prepared for continuation. Connection settings include a separate readiness check that starts no model turn and verifies the effective conversation and file-work permissions.
+
+This is a tester preview, not a notarized general release. Apple Developer Program enrollment, Developer ID signing and notarization are still pending. Native history import and ChatGPT reconnection were verified; live response, file work and final native acceptance remain pending. See the [verification status](docs/preview-status.md).
 
 - [Build the Mac application](docs/electron.md)
 - [First start and verification](docs/mac-first-start.md)

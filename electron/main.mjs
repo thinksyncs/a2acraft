@@ -251,7 +251,7 @@ async function startBackend() {
   // An explicit saved path or CODEX_BIN always takes precedence.
   env.CODEX_BIN=await resolveCodexExecutable({configured:settings.codexPath,environment:process.env.CODEX_BIN,
     bundled:bundledCodexPath({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath:app.getAppPath()})});
-  backend = spawn(process.execPath, [path.join(backendRoot, 'server.mjs')], {
+  backend = spawn(process.execPath, [path.join(backendRoot, 'backend-bootstrap.mjs')], {
     cwd: dataDir, env, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], windowsHide: true
   });
   const child = backend;

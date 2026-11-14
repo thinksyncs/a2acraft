@@ -40,6 +40,13 @@ createInterface({input:process.stdin}).on('line',line=>{
  if(error)return emit({id:m.id,error:{code:-1,message:error}});
  const p=m.params||{};let result={};
  if(m.method==='config/read')result={config:{forced_login_method:'chatgpt',cli_auth_credentials_store:'file',allow_login_shell:false,mcp_servers:{},hooks:{},features:{apps:false,plugins:false,remote_plugin:false,hooks:false,shell_snapshot:false,skill_mcp_dependency_install:false}}};
+ if(m.method==='configRequirements/read')result={requirements:control.permissionRequirements??null};
+ const requestedSandbox=p.permissions==='a2acraft-chat'?'read-only':p.permissions==='a2acraft-work'?'workspace-write':p.sandbox;
+ if(['thread/start','thread/resume','thread/fork'].includes(m.method)&&Object.hasOwn(p,'permissions')){
+  assert(['a2acraft-chat','a2acraft-work'].includes(p.permissions));
+  assert.equal(control.permissionRequirements?.allowedPermissionProfiles?.[p.permissions],true);
+  assert.equal(p.sandbox,undefined);assert.deepEqual(p.runtimeWorkspaceRoots,[p.cwd]);
+ }
  if(m.method==='thread/list'){
   if(control.historyListError)return emit({id:m.id,error:{code:-1,message:control.historyListError}});
   const rows=(control.historyThreads||[]).filter(thread=>Boolean(thread.archived)===Boolean(p.archived)).sort((a,b)=>b.updatedAt-a.updatedAt);
@@ -67,11 +74,23 @@ createInterface({input:process.stdin}).on('line',line=>{
   {name:'openai-docs',description:'公式資料を調べる。',path:'/fixture/skills/docs/SKILL.md'},
   {name:'disabled-skill',description:'Disabled',path:'/fixture/skills/disabled/SKILL.md',enabled:false}
  ]).map(skill=>({enabled:true,scope:'user',...skill}))}]};
- if(['thread/start','thread/resume'].includes(m.method)){if(control.projects&&p.developerInstructions?.includes('VILLAGE_PROJECT_ENGINE'))assert(['read-only','workspace-write'].includes(p.sandbox));else if(control.localWork&&p.developerInstructions?.includes('LOCAL_WORKSPACE_TASK')){assert.equal(p.sandbox,'workspace-write');assert.match(p.cwd,/[/\\]workspace[/\\]chats[/\\][A-Za-z0-9_-]+$/);}else assert.equal(p.sandbox,'read-only');assert.equal(p.approvalPolicy,'never');const number=m.method==='thread/start'?++threadNumber:null;result={thread:{id:p.threadId||(control.autoComplete?'thread-fixture-'+process.pid+'-'+number:'thread-fixture'+(number===1?'':'-'+number))}};}
- if(m.method==='thread/fork'){assert.equal(p.sandbox,control.localWork&&p.developerInstructions?.includes('LOCAL_WORKSPACE_TASK')?'workspace-write':'read-only');assert.equal(p.approvalPolicy,'never');result={thread:{id:'thread-fork-fixture-'+process.pid+'-'+ ++threadNumber}};}
+ if(['thread/start','thread/resume'].includes(m.method)){
+  if(p.developerInstructions?.includes('A2ACraft permission readiness check.')){
+   assert.equal(m.method,'thread/start');assert.equal(p.ephemeral,true);
+   assert.match(p.cwd,/[/\\]\.a2acraft-check[/\\](chat|work)$/);
+   assert.equal(requestedSandbox,p.cwd.endsWith(path.sep+'work')?'workspace-write':'read-only');
+  }else if(control.projects&&p.developerInstructions?.includes('VILLAGE_PROJECT_ENGINE'))assert(['read-only','workspace-write'].includes(requestedSandbox));
+  else if(control.localWork&&p.developerInstructions?.includes('LOCAL_WORKSPACE_TASK')){assert.equal(requestedSandbox,'workspace-write');assert.match(p.cwd,/[/\\]workspace[/\\]chats[/\\][A-Za-z0-9_-]+$/);}
+  else assert.equal(requestedSandbox,'read-only');
+  assert.equal(p.approvalPolicy,'never');const number=m.method==='thread/start'?++threadNumber:null;
+  result={thread:{id:p.threadId||(control.autoComplete?'thread-fixture-'+process.pid+'-'+number:'thread-fixture'+(number===1?'':'-'+number))}};
+ }
+ if(m.method==='thread/fork'){assert.equal(requestedSandbox,control.localWork&&p.developerInstructions?.includes('LOCAL_WORKSPACE_TASK')?'workspace-write':'read-only');assert.equal(p.approvalPolicy,'never');result={thread:{id:'thread-fork-fixture-'+process.pid+'-'+ ++threadNumber}};}
  if(['thread/start','thread/resume','thread/fork'].includes(m.method)){
   result.cwd=control.effectiveCwd??p.cwd;result.approvalPolicy=control.effectiveApprovalPolicy??'never';
-  result.sandbox=Object.hasOwn(control,'effectiveSandbox')?control.effectiveSandbox:p.sandbox==='workspace-write'?{type:'workspaceWrite',writableRoots:[p.cwd],networkAccess:false,excludeTmpdirEnvVar:true,excludeSlashTmp:true}:{type:'readOnly',networkAccess:false};
+  result.sandbox=Object.hasOwn(control,'effectiveSandbox')?control.effectiveSandbox:requestedSandbox==='workspace-write'?{type:'workspaceWrite',writableRoots:[p.cwd],networkAccess:false,excludeTmpdirEnvVar:true,excludeSlashTmp:true}:{type:'readOnly',networkAccess:false};
+  if(Object.hasOwn(control,'activePermissionProfile'))result.activePermissionProfile=control.activePermissionProfile;
+  else if(p.permissions)result.activePermissionProfile={id:p.permissions};
  }
  if(m.method==='turn/start'){
   const projectInput=control.projects&&(p.input||[]).find(i=>i.text?.startsWith('VILLAGE_PROJECT '));

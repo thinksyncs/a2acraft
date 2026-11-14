@@ -1,7 +1,7 @@
 const processCode = value => typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,31}$/.test(value) ? value : 'unknown';
 // Match only backend-owned constants. Do not expose arbitrary IPC strings in a
 // native dialog: they may contain account information or local content.
-export const backendStartupStages=Object.freeze(['bootstrap','storage','workspace','context-store','attachments','history','history-migration','local-stores','party-recovery','projects','world-load','world-layout','activity-sync','listen']);
+export const backendStartupStages=Object.freeze(['bootstrap','module-load','storage','workspace','context-store','attachments','history','history-migration','local-stores','party-recovery','projects','world-load','world-layout','activity-sync','listen']);
 const knownStartupStages=new Set(backendStartupStages);
 
 // Report process status only. Child stderr, URLs, request bodies and account

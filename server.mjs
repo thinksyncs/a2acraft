@@ -9,7 +9,8 @@ import {checkPlan} from './policy.mjs';
 import {deliverSend} from './send-delivery.mjs';
 import {ensureAgentWorkspace,standingAgentInstructions} from './codex-workspace-policy.mjs';
 import {ConversationWorkspaces,resolveWorkspaceDirectory} from './conversation-workspace.mjs';
-import {prepareCodexLaunch,verifyIsolatedConfig,verifyThreadPermissions} from './codex-launch.mjs';
+import {prepareCodexLaunch,verifyIsolatedConfig,verifyThreadPermissions,threadPermissionRequest} from './codex-launch.mjs';
+import {checkCodexReadiness} from './codex-readiness.mjs';
 import {TerminalSessions} from './terminal.mjs';
 import {ContextBoard,contextInput} from './context-board.mjs';
 import {AttachmentStore,MAX_ATTACHMENT_BYTES} from './attachments.mjs';
@@ -209,7 +210,7 @@ const boardDispatch=await new BoardDispatchStore(data,value=>{broadcast('board-d
 const adventure=await new AdventureStore(data,value=>{broadcast('adventure',value);if(activityReady)emit();}).load();
 const village=await new VillageStore(data,value=>{broadcast('village',value);if(activityReady)emit();}).load();
 const media=await new MediaStore(data,value=>broadcast('media',value)).load();
-let proc,ready,seq=0,authVersion=0,loginFailure=null; const pending=new Map(),resumed=new Map();
+let proc,ready,seq=0,authVersion=0,loginFailure=null,readinessPending=null,codexRequirements=null; const pending=new Map(),resumed=new Map();
 const conversationWorkspaces=new ConversationWorkspaces({directory:workspace,save,changed:c=>broadcast('conversation',c),guard:()=>closing||projects?.active.size||boardBusy()||hasScheduledRun()||scheduledStarting||teamsWaiter||workQuestWaiter||startingTodo||parties.unfinished||conversations.some(c=>['starting','running','stopping'].includes(c.status))});
 let skillCatalog=null;
 async function availableSkills(forceReload=false){
@@ -240,7 +241,19 @@ async function equippedSkills(c){
 }
 function skillInput(skills){return skills.map(({name,path})=>({type:'skill',name,path}));}
 function consumeShot(c,skills){if(skills.some(skill=>skill.singleUse&&skill.id===c.armedSkillId))c.armedSkillId=null;}
-function rpc(method,params={}){return new Promise((resolve,reject)=>{if(!proc?.stdin?.writable)return reject(Error('Codexに接続していません。'));const id=++seq;const timer=setTimeout(()=>{pending.delete(id);reject(Error(`${method}: 応答がありません。`));},30000);pending.set(id,{resolve,reject,timer});proc.stdin.write(JSON.stringify({id,method,params})+'\n');});}
+function rpc(method,params={}){return new Promise((resolve,reject)=>{
+ if(!proc?.stdin?.writable)return reject(Error('Codexに接続していません。'));
+ const original=params;
+ if(['thread/start','thread/resume','thread/fork'].includes(method))params=threadPermissionRequest(params,codexRequirements);
+ const accept=result=>{
+  try{
+   if(params!==original&&params.permissions)verifyThreadPermissions(result,{cwd:params.cwd,readOnly:original.sandbox==='read-only',expectedProfile:params.permissions});
+   resolve(result);
+  }catch(error){reject(error);}
+ };
+ const id=++seq,timer=setTimeout(()=>{pending.delete(id);reject(Error(`${method}: 応答がありません。`));},30000);
+ pending.set(id,{resolve:accept,reject,timer});proc.stdin.write(JSON.stringify({id,method,params})+'\n');
+});}
 function onMessage(m){
  if(m.method==='item/tool/call'&&m.id!==undefined&&projectCodex){
   const child=proc;
@@ -304,11 +317,12 @@ async function start(){
   if(proc!==child)throw Error(state.error||'Codexとの接続が切れました。');
   child.stdin.write(JSON.stringify({method:'initialized'})+'\n');
   verifyIsolatedConfig(await rpc('config/read',{includeLayers:false}));
+  codexRequirements=(await rpc('configRequirements/read',{}))?.requirements||null;
   state.connected=true;state.error=null;emit();
  })();
  try{await ready;}catch(e){const child=proc;if(child){disconnect(e.message);child.kill();}ready=null;throw e;}
 }
-function disconnect(message){let delegationChanged=false;for(const c of conversations)if(markAgentDelegationUnknown(c)){delegationChanged=true;broadcast('conversation',c);}if(delegationChanged)save();projectCodex?.disconnect(message);proc=null;state.connected=false;state.account=null;state.limits=null;state.models=[];state.login=null;state.error=message;ready=null;resumed.clear();for(const p of pending.values()){clearTimeout(p.timer);p.reject(Error(message));}pending.clear();workQuestWaiter?.close({error:'Codexとの接続が切れました。クエストの分解を中断しました。'});teamsWaiter?.close({error:'Codexとの接続が切れました。返信案は送信されていません。'});partyWaiter?.close({error:'接続が切れました。仲間の実行結果は未確認です。',needsRetry:true});for(const c of conversations)if(['running','starting','stopping'].includes(c.status)){c.status='failed';c.error='接続が切れました。実行結果は未確認です。';changed(c);}emit();}
+function disconnect(message){let delegationChanged=false;for(const c of conversations)if(markAgentDelegationUnknown(c)){delegationChanged=true;broadcast('conversation',c);}if(delegationChanged)save();projectCodex?.disconnect(message);proc=null;state.connected=false;state.account=null;state.limits=null;state.models=[];state.login=null;state.error=message;ready=null;codexRequirements=null;resumed.clear();for(const p of pending.values()){clearTimeout(p.timer);p.reject(Error(message));}pending.clear();workQuestWaiter?.close({error:'Codexとの接続が切れました。クエストの分解を中断しました。'});teamsWaiter?.close({error:'Codexとの接続が切れました。返信案は送信されていません。'});partyWaiter?.close({error:'接続が切れました。仲間の実行結果は未確認です。',needsRetry:true});for(const c of conversations)if(['running','starting','stopping'].includes(c.status)){c.status='failed';c.error='接続が切れました。実行結果は未確認です。';changed(c);}emit();}
 async function refresh(){
  if(!state.connected)return;
  const child=proc,version=authVersion,current=()=>proc===child&&version===authVersion;
@@ -1086,6 +1100,24 @@ const server=http.createServer(async(req,res)=>{
    if(p==='/api/terminal/input'){terminals.write(b.id,b.data);return json(res,200,{ok:true});}
    if(p==='/api/terminal/resize'){terminals.resize(b.id,b.cols,b.rows);return json(res,200,{ok:true});}
    if(p==='/api/terminal/close'){terminals.close(b.id);return json(res,200,{ok:true});}
+   if(p==='/api/codex/readiness'){
+    if(!state.connected||state.account?.type!=='chatgpt')throw Error('Codexに接続してから確認してください。');
+    if(publicState().active||state.login)throw Error('実行中の処理が終わってから確認してください。');
+    // No model turn or quota gate: diagnose startup permissions even when the
+    // user's remaining model allowance has reached the send-stop threshold.
+    if(!readinessPending){
+     const child=proc,version=authVersion;
+     readinessPending=checkCodexReadiness({workspace,rpc:async(...args)=>{
+      if(proc!==child||authVersion!==version)throw Error('Connection changed');
+      return rpc(...args);
+     }}).then(result=>{
+      if(proc!==child||authVersion!==version||!state.connected||state.account?.type!=='chatgpt')
+       throw Error('接続が変わりました。もう一度確認してください。');
+      return {...result,checkedAt:Date.now()};
+     }).finally(()=>{readinessPending=null;});
+    }
+    return json(res,200,await readinessPending);
+   }
    if(p==='/api/connect'){authVersion++;loginFailure=null;await start();await refreshForConnect();return json(res,200,publicState());}
    if(p==='/api/refresh'){await refresh();return json(res,200,publicState());}
    if(p==='/api/login'){

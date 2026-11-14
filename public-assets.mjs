@@ -20,6 +20,7 @@ const sourceFiles = [
   "castle.js",
   "character-appearance.js",
   "character-names.js",
+  "connection-readiness.js",
   "context-sharing.js",
   "conversation-history.js",
   "daily-report.js",
