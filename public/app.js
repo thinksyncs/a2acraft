@@ -587,6 +587,11 @@ function updatePanel(chat, index) {
   element.querySelector('.panel-model').textContent = chat.model || 'モデル未選択';
   element.querySelector('.panel-count').textContent = (demo ? 'DEMO' : 'CODEX PLAN') + ' · ' + chat.messages.length + '件のメッセージ';
   const list = element.querySelector('.messages');
+  // A focusable region lets keyboard and assistive-technology users reach the
+  // scrollable history. Imported transcripts must not become live announcements.
+  list.tabIndex = 0;
+  list.setAttribute('role', 'region');
+  list.setAttribute('aria-label', chat.title + 'の会話履歴');
   const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
   const current = streamingMessage(chat), ids = new Set();
   if (chat.messages.length) list.querySelector('.empty')?.remove();
