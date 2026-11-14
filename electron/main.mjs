@@ -142,13 +142,14 @@ async function readSettings() {
     settings = {};
     for (const key of ['codexPath','workDirectory'])
       if(typeof value[key]==='string'&&path.isAbsolute(value[key]))settings[key]=value[key];
+    if(typeof value.accessibilitySupportEnabled==='boolean')settings.accessibilitySupportEnabled=value.accessibilitySupportEnabled;
   } catch { settings = {}; }
   await uiStore.load();
   // Failed map reads remain protected: map:read retries and reports the error,
   // and map:save cannot replace the unreadable file with default positions.
   await mapStore.load().catch(() => {});
 }
-async function writeSettings() {
+async function writeSettings({requiresRestart=true}={}) {
   const file = settingsFile();
   const snapshot = JSON.stringify(settings, null, 2);
   settingsWriting = settingsWriting.catch(() => {}).then(async () => {
@@ -156,8 +157,26 @@ async function writeSettings() {
     await rename(file + '.tmp', file);
   });
   await settingsWriting;
-  restartRequired = true;
+  if(requiresRestart)restartRequired = true;
   return publicSettings();
+}
+function accessibilityMenuItem(){
+  return {id:'screen-reading',label:'画面の読み取りに対応',type:'checkbox',checked:app.isAccessibilitySupportEnabled(),
+    click:async item=>{
+      const previous=settings.accessibilitySupportEnabled,enabled=item.checked;
+      item.enabled=false;
+      try{
+        app.setAccessibilitySupportEnabled(enabled);
+        settings.accessibilitySupportEnabled=enabled;
+        await writeSettings({requiresRestart:false});
+      }catch{
+        if(previous===undefined)delete settings.accessibilitySupportEnabled;
+        else settings.accessibilitySupportEnabled=previous;
+        dialog.showErrorBox('画面の読み取り','設定を保存できませんでした。次回の起動時に、もう一度この項目を選んでください。');
+      }finally{
+        item.checked=app.isAccessibilitySupportEnabled();item.enabled=true;
+      }
+    }};
 }
 function publicSettings(){return {codexPath:settings.codexPath||'',workDirectory:settings.workDirectory||'',restartRequired};}
 async function saveWorkDirectory(directory){
@@ -373,12 +392,19 @@ else {
   app.whenReady().then(async () => {
     await mkdir(app.getPath('userData'), { recursive: true, mode: 0o700 });
     await readSettings(); installIpc();
+    const supportsScreenReading=['darwin','win32'].includes(process.platform);
+    if(supportsScreenReading&&settings.accessibilitySupportEnabled===true)app.setAccessibilitySupportEnabled(true);
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
       { label: '編集', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
-      { label: '表示', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' }] },
+      { label: '表示', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' },
+        ...(supportsScreenReading?[{type:'separator'},accessibilityMenuItem()]:[])] },
       { label: 'ウィンドウ', submenu: [{ role: 'minimize' }, { role: 'close' }] }
     ]));
+    app.on('accessibility-support-changed',(_event,enabled)=>{
+      const item=Menu.getApplicationMenu()?.getMenuItemById('screen-reading');
+      if(item)item.checked=enabled;
+    });
     const desktopSession = await startBackend();
     await createWindow(desktopSession);
   }).catch(error => {

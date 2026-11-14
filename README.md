@@ -28,7 +28,7 @@ A2ACraft is an MVP in development. The prototype lets you explore a town, talk t
 
 ![Running village prototype with fictional sample data](media/prototype-village.png)
 
-This screenshot shows the frontend with fictional sample data. The repository also contains the A2ACraft 0.4.2 Mac application source.
+This screenshot shows the frontend with fictional sample data. The repository also contains the A2ACraft Mac application source.
 
 ### Mac preview
 
