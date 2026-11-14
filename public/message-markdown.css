@@ -1,0 +1,15 @@
+#chat-view .msg-text.message-markdown,.message-markdown{white-space:normal;overflow-wrap:anywhere;min-width:0}
+.message-markdown>:first-child{margin-top:0}.message-markdown>:last-child{margin-bottom:0}
+.message-markdown p{margin:.55em 0}.message-markdown h1,.message-markdown h2,.message-markdown h3,.message-markdown h4,.message-markdown h5,.message-markdown h6{line-height:1.4;margin:1em 0 .4em;font-weight:650;color:inherit}
+.message-markdown h1{font-size:1.4em}.message-markdown h2{font-size:1.25em}.message-markdown h3{font-size:1.12em}.message-markdown h4,.message-markdown h5,.message-markdown h6{font-size:1em}
+.message-markdown ul,.message-markdown ol{margin:.5em 0;padding-left:1.65em}.message-markdown li{margin:.2em 0}.message-markdown li>p{margin:.2em 0}.message-markdown li>ul,.message-markdown li>ol{margin:.25em 0}
+.message-markdown strong{font-weight:700}.message-markdown em{font-style:italic}.message-markdown del{text-decoration:line-through}
+.message-markdown code{font-family:var(--font-mono,monospace);font-size:.9em;border-radius:4px;background:#09171688;padding:.12em .35em;white-space:pre-wrap;color:#e5eedf}
+.message-markdown pre{max-width:100%;overflow:auto;padding:12px;margin:.7em 0;background:#091716;border:1px solid #37514b;border-radius:7px;line-height:1.5;white-space:pre;tab-size:2;user-select:text}
+.message-markdown pre code{display:block;background:none;padding:0;border-radius:0;white-space:pre;font-size:.9em;overflow-wrap:normal;word-break:normal}
+.message-markdown blockquote{border-left:3px solid #6f9382;margin:.7em 0;padding:.1em 0 .1em .9em;color:#bdcfc3}
+.message-markdown a{color:#b6d9cb;text-decoration:underline;text-underline-offset:.15em}.message-markdown a:hover{color:#e9f5ed}
+.message-markdown hr{border:0;border-top:1px solid #4b675c;margin:1em 0}
+.message-markdown .markdown-table{max-width:100%;overflow:auto;margin:.7em 0}.message-markdown table{border-collapse:collapse;font-size:inherit;line-height:1.55;min-width:50%;max-width:100%}
+.message-markdown th,.message-markdown td{border:1px solid #456153;padding:6px 9px;vertical-align:top;min-width:4em}.message-markdown th{background:#253b31;font-weight:650}.message-markdown .markdown-task{float:left;margin-left:-1.3em}.message-markdown li:has(>.markdown-task){list-style:none}
+.messages:focus-visible{outline:2px solid #a9ccb9;outline-offset:-3px}

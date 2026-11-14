@@ -34,6 +34,7 @@
 <link rel="stylesheet" href="/world-3d.css">
 <link rel="stylesheet" href="/resident-conversation.css">
 <link rel="stylesheet" href="/refined-chat.css">
+<link rel="stylesheet" href="/message-markdown.css">
 </head>
 <body data-motion="full">
 <section id="connect-screen" aria-labelledby="connect-title">
@@ -195,6 +196,7 @@
         <div class="workspace-toolbar">
           <button id="chat-navigation" type="button" class="text-btn" aria-label="すべての機能を開く" aria-haspopup="dialog" aria-controls="workspace-menu" aria-expanded="false">☰</button>
           <strong id="chat-heading">会話</strong><span id="chat-topic" hidden></span><span id="chat-status" role="status"></span>
+          <div id="chat-layout" class="segments" role="group" aria-label="会話の表示レイアウト"><button type="button" data-layout="1" aria-label="1×1表示" title="1つの会話を表示">1×1</button><button type="button" data-layout="2" aria-label="1×2表示" title="2つの会話を並べる">1×2</button><button type="button" data-layout="4" aria-label="2×2表示" title="4つの会話を並べる">2×2</button></div>
           <details id="chat-actions" class="chat-disclosure">
             <summary aria-label="会話のメニュー" title="履歴・共有・新しい会話">⋯</summary>
             <div class="chat-menu-panel" aria-label="会話の操作">
@@ -203,7 +205,6 @@
               <button id="chat-share" type="button" class="outline">この会話を共有</button>
               <button id="context-board-toggle" class="text-btn" aria-expanded="false" aria-controls="context-board-panel">共有メモ <b id="context-pending">0</b></button>
               <label for="mobile-chat">会話を選ぶ <small id="count"></small></label><select id="mobile-chat" aria-label="表示する会話"></select>
-              <div class="segments" aria-label="表示レイアウト"><button type="button" data-layout="1" aria-label="1×1表示">1×1</button><button type="button" data-layout="2" aria-label="1×2表示">1×2</button><button type="button" data-layout="4" aria-label="2×2表示">2×2</button></div>
               <p id="chat-information"></p>
             </div>
           </details>

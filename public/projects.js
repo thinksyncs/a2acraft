@@ -4,6 +4,8 @@ import { createArtifactView } from "./world-artifact-view.js";
 import { createProjectDetail } from "./project-detail.js";
 import { createAgentBoard } from "./agent-board.js";
 import { residentReport, acknowledgeResidentReport, associationSpeech } from "./world-dialogue.js";
+import {renderMessageMarkdown} from './message-markdown.js';
+import {renderConversationDetails} from './conversation-details.js';
 import { placeDistricts } from "./world-geography.js";
 import { projectDemoJourneys } from "./project-demo.js";
 import { facilities, jobLabel } from "./project-buildings.js";
@@ -278,10 +280,9 @@ export function initProjects({
         ? residentReport(chat, p, worldState().visits[id])
         : await api("world/speech", { conversationId: id });
       if (visit !== speechVisit) return;
-      speech.replaceChildren(
-        node("h2", chat.characterName || chat.title),
-        node("p", report.text),
-      );
+      const reportBody = node("div");
+      renderMessageMarkdown(reportBody, report.text);
+      speech.replaceChildren(node("h2", chat.characterName || chat.title), node("small", report.label || "進捗"), reportBody);
       if (journey) {
         const from = projects().find((p) => p.id === journey.from),
           to = projects().find((p) => p.id === journey.to);
@@ -296,10 +297,9 @@ export function initProjects({
           );
       }
       const source = node("details");
-      source.append(
-        node("summary", "この話の出典"),
-        node("p", "会話：" + chat.title + " / 記録：" + report.source),
-      );
+      const exchange = node("div");
+      renderConversationDetails(exchange, chat);
+      source.append(node("summary", "依頼と最新の返答を読む"), node("p", chat.title), exchange);
       speech.append(
         source,
         button(

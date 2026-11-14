@@ -2,6 +2,14 @@ const clean = (value) =>
   String(value || "")
     .replace(/\s+/g, " ")
     .slice(0, 220);
+
+export function conversationMessageText(message) {
+  if (typeof message?.text === 'string' && message.text.trim()) return message.text;
+  const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
+  if (attachments.length) return '添付ファイル: ' + attachments.map((item,index) =>
+    String(item?.name || 'ファイル ' + (index + 1)).replace(/([\\`*_{}\[\]()#+.!|<>-])/g,'\\$1')).join('、');
+  return message?.role === 'user' ? '本文のない依頼' : '';
+}
 const versionOf = (value) => {
   const raw = JSON.stringify(value);
   let hash = 2166136261;
@@ -36,7 +44,7 @@ export function residentReport(chat, project, baseline) {
   const messages = (chat.messages || []).map((message, index) => ({
     ...message, reportSource: message.id || chat.id + ":message:" + index,
   })).filter(
-    (m) => ["user", "assistant"].includes(m.role) && m.text?.trim(),
+    (m) => ["user", "assistant"].includes(m.role) && conversationMessageText(m),
   );
   const previousReports = legacyReports(baseline, messages, job, project);
   const heard = { ...previousReports, ...baseline?.reports };
@@ -104,11 +112,13 @@ export function residentReport(chat, project, baseline) {
       "記録に報告が残っています。" + clean(progress.question) + " " + clean(progress.summary));
   const introduction = !baseline && !job ? messages.filter((m) => m.role === "user").at(-1) : null;
   const ordered = introduction ? [introduction, ...messages.filter((m) => m !== introduction)] : messages;
-  for (const message of ordered)
-    add("message:" + message.reportSource, message.reportSource, [message.role, message.text],
-      message.role === "user"
-        ? "こんな相談から話が始まっています。「" + clean(message.text) + "」"
-        : "会話の記録では、こんな報告がありました。「" + clean(message.text) + "」");
+  for (const message of ordered) {
+    const evidence = [message.role, message.text];
+    if (message.attachments?.length) evidence.push(message.attachments);
+    const report = add("message:" + message.reportSource, message.reportSource,
+      evidence, conversationMessageText(message).trim());
+    report.label = message.role === "user" ? "依頼" : "返答";
+  }
   if (!candidates.length)
     add("introduction:" + chat.id, job?.id || chat.id, [job?.title || chat.title], job
       ? "「" +
@@ -124,6 +134,7 @@ export function residentReport(chat, project, baseline) {
     text: current && candidate !== current ? context + (candidate ? "以前の記録からお伝えします。" : "") + text : text,
     conversationId: chat.id,
     kind: candidate?.kind || "report",
+    label: candidate?.label || (candidate?.kind === "question" ? "確認事項" : "進捗"),
     previousReports,
   };
 }

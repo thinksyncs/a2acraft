@@ -1,10 +1,17 @@
-# A2ACraft 0.4.4 — Mac preview status
+# A2ACraft 0.4.5 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
 
+The next preview renders common Markdown in conversation messages, exposes
+the existing 1×1 / 1×2 / 2×2 layout controls, and preserves the selected layout
+when opening a resident's conversation. Map reports show actual message text,
+with the latest request and response available in the detail view. These changes
+do not change saved conversations or execution permissions. Native visual
+verification will resume when the owner finishes playing the previous build.
+
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 375 passed, zero failures/skips. Coverage includes history imports, connection readiness, effective permission checks, rejecting model turns outside the assigned scope and keyboard-addressable long transcripts |
+| Automated regression tests | 390 passed, zero failures/skips. Coverage includes history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, and detailed map content including attachment-only requests |
 | Codex history import | Native import of 22 conversation records confirmed; visible messages only. Single-file bundles, idempotent updates and safe snapshots are covered by regression tests |
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
 | Packaged Apple Silicon application | Built with the frontend, Codex 0.169.0, icon and third-party notices |

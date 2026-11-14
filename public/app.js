@@ -1,5 +1,6 @@
 import {initContextSharing} from './context-sharing.js';
 import {initAttachments} from './attachments.js';
+import {renderMessageMarkdown} from './message-markdown.js';
 import {initEquipment} from './equipment.js';
 import {initParty} from './party.js';
 import {initCastle} from './castle.js';
@@ -610,7 +611,7 @@ function updatePanel(chat, index) {
     }
     node.querySelector('.msg-label b').textContent = message.role === 'user' ? (message.steer ? 'YOU · STEER' : 'YOU') + (message.contextIds?.length ? ' · CONTEXT ' + message.contextIds.length : '') : activeEncounter?.conversationId===chat.id ? activeEncounter.name+(demo?' · デモ':' · Codex') : 'CODEX';
     const text = node.querySelector('.msg-text');
-    if (text.textContent !== message.text) text.textContent = message.text;
+    renderMessageMarkdown(text, message.text, {openLink:desktop ? url=>desktop.openExternal(url) : undefined,onLinkError:error=>toast(error.message)});
     attachments.renderMessage(node.querySelector('.message-attachments'),message.attachments || []);
     equipment.renderMessage(node,message.skills||[]);
     let partyLabel=node.querySelector('.party-message-label');
@@ -668,10 +669,12 @@ function renderChats() {
     renderedNavigation = navigation;
     if (focusedChat) $((focusedChat.tab ? '.chat-tab' : '.conversation-link') + '[data-select="' + CSS.escape(focusedChat.id) + '"]')?.focus({preventScroll:true});
   }
-  const paneLayout=activeEncounter?1:layout;
+  // A resident opens the same saved workspace; the chosen layout still applies.
+  const paneLayout=layout;
   const selectedIndex = Math.max(0,groupChats.findIndex(chat => chat.id === selected)), count = paneLayout === 1 ? 1 : paneLayout === 2 ? 2 : 4;
   const start = Math.floor(selectedIndex / count) * count, shown = groupChats.slice(start,start + count), grid = $('#grid');
   for (const value of [1,2,4]) grid.classList.toggle('layout-' + value, paneLayout === value);
+  $('#chat-view').classList.toggle('multi-chat',paneLayout>1);
   for (const child of [...grid.children]) if (!shown.some(chat => chat.id === child.dataset.select)) child.remove();
   shown.forEach(chat => { const panel = updatePanel(chat,chats.indexOf(chat)); if (!grid.contains(panel)) grid.append(panel); });
   for (const id of panels.keys()) if (!chats.some(chat => chat.id === id)) panels.delete(id);

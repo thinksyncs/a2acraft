@@ -8,6 +8,8 @@ import {PartyTravel} from './world-travel.js';
 import {sceneBuildingObstacles} from './project-buildings.js';
 import {villageRiverWater,villageBridge} from './world-terrain.js';
 import {residentReport,acknowledgeResidentReport} from './world-dialogue.js';
+import {renderMessageMarkdown} from './message-markdown.js';
+import {renderConversationDetails} from './conversation-details.js';
 import {createWorld3D} from './world-3d.js';
 import {village3DScene,readVillageView,villageFacing,villageEncounterActors,villageEncounterApproach,villageEncounterSightline,villageSpeechPlacement,villageIsland,villageOverviewCamera,villageResidentCamera,villageBiomes,VILLAGE_MIN_ZOOM} from './village-3d-scene.js';
 import {drawIslandWater,clipIslandLand,drawIslandCoast} from './world-island-art.js';
@@ -49,7 +51,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const questSites=make('div',undefined,'village-quest-sites');questSites.setAttribute('aria-label','村にいるパーティ');
  const speech=make('section',undefined,'village-speech');speech.id='village-speech';speech.hidden=true;speech.setAttribute('role','dialog');speech.setAttribute('aria-modal','false');speech.setAttribute('aria-labelledby','village-speech-name');
  const speechName=make('strong');speechName.id='village-speech-name';const speechClose=button('village-speech-close','×',()=>closeSpeech());speechClose.setAttribute('aria-label','吹き出しを閉じる');
- const speechText=make('p');speechText.id='village-speech-text';const speechSource=make('small');speechSource.id='village-speech-source';
+ const speechText=make('div');speechText.id='village-speech-text';const speechSource=make('small');speechSource.id='village-speech-source';
  const speechActions=make('div',undefined,'village-speech-actions');speechActions.append(button('village-speech-chat','話す',()=>{const id=speechId,snapshot=getEncounter();closeSpeech(false,{preserveEncounter:true});if(id)onOpenChat?.(id,snapshot);},'primary'),button('village-speech-detail','詳しく',()=>{const id=speechId;closeSpeech(false);if(id)openResident(id);}));speech.append(speechName,speechClose,speechText,speechSource,speechActions);
  const empty=make('div',undefined,'village-empty');empty.id='village-empty';empty.append(make('strong','最初の村人を迎えましょう'),make('p','このアプリにある過去の会話が、村の住民になります。'));
  empty.append(button('village-import','会話の履歴を開く',()=>onOpenHistory?.(),'primary'));
@@ -119,6 +121,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const close=button('village-detail-close','閉じる',()=>detail.close());detailHeader.append(detailTitle,close);
  const detailChat=make('p',undefined,'village-detail-chat');detailChat.id='village-detail-chat';
  const detailStage=make('p',undefined,'village-detail-stage');detailStage.id='village-detail-stage';
+ const detailContent=make('div');detailContent.id='village-detail-content';
  const openChat=button('village-open-chat','この会話を開く →',()=>{const id=selected;if(!id)return;detail.close();onOpenChat?.(id);},'primary');
  const evidence=make('details',undefined,'village-evidence');evidence.append(make('summary','この建物になった手がかり'));
  const evidenceList=make('ul');evidenceList.id='village-evidence';evidence.append(evidenceList);
@@ -130,7 +133,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const save=button('village-save','村の記録を保存',null,'primary');save.type='submit';
  const error=make('p',undefined,'village-error');error.id='village-error';error.hidden=true;error.setAttribute('role','alert');
  const feedback=make('p',undefined,'village-feedback');feedback.id='village-feedback';feedback.hidden=true;feedback.setAttribute('role','status');
- form.append(formHeading,kindLabel,kind,stageLabel,stage,correctionHelp,save,error,feedback);detail.append(detailHeader,detailChat,detailStage,openChat,evidence,form);document.body.append(detail);
+ form.append(formHeading,kindLabel,kind,stageLabel,stage,correctionHelp,save,error,feedback);detail.append(detailHeader,detailChat,detailStage,openChat,detailContent,evidence,form);document.body.append(detail);
  kind.onchange=()=>{if(kind.value==='resident')stage.value='auto';stage.disabled=kind.value==='resident'||busy;};
  let previousFocus=null;
  function overrides(){return demo?demoOverrides:getState()?.village?.overrides||[];}
@@ -143,6 +146,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const resident=projection.residents.find(item=>item.conversationId===selected);if(!resident){if(detail.open)detail.close();return;}
   const project=projection.projects.find(item=>item.conversationId===selected);
   detailTitle.textContent=resident.name;detailChat.textContent=resident.title;
+  renderConversationDetails(detailContent,getChats().find(chat=>chat.id===selected));
   detailStage.textContent=project?(project.source==='manual'?'自分で指定した進み具合':'会話からの推定')+' · '+project.stageLabel:'この会話は、村で暮らす住民です。';detailStage.dataset.stage=project?.stage||'resident';
   evidence.hidden=!project;evidenceList.replaceChildren(...(project?.evidence||[]).map(item=>make('li',item.text)));
   if(project&&!evidenceList.children.length)evidenceList.append(make('li',project.source==='manual'?'村の見え方を自分で指定しています。':'ソフトづくりの会話として、建物の場所を用意しました。'));
@@ -227,7 +231,10 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(!encounter||encounter.conversationId!==id)return;encounter.status='talking';root.dataset.encounterStatus='talking';
   closeSpeech(false,{preserveEncounter:true});selectedSquadId=null;delete root.dataset.selectedSquad;questPeek.hidden=true;directory.open=false;questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');centerResident(id);
   world3D?.setMode('leader');world3D?.reset();
-  speechId=id;speechAnchor=residentPosition(resident);speech.dataset.conversationId=id;root.dataset.speechResident=id;speechName.textContent=resident.name;const chat=getChats().find(c=>c.id===id),report=residentReport(chat||{id,title:resident.title,messages:[]},null,heard[id]);speechText.textContent=report.text;speechSource.textContent=resident.interestSource==='user'?'この会話で話していたこと':resident.interestSource==='title'?'会話のタイトルから':'この村に残された会話';speechSource.title=resident.interestEvidence||resident.title;speech.hidden=false;heard[id]=acknowledgeResidentReport(heard[id],report);try{mapStorage.setItem('chat-ui-resident-heard'+(demo?'-demo':''),JSON.stringify(heard));}catch{}speechClose.focus({preventScroll:true});draw();
+  speechId=id;speechAnchor=residentPosition(resident);speech.dataset.conversationId=id;root.dataset.speechResident=id;speechName.textContent=resident.name;
+  const chat=getChats().find(c=>c.id===id),report=residentReport(chat||{id,title:resident.title,messages:[]},null,heard[id]);
+  renderMessageMarkdown(speechText,report.text);speechSource.textContent=report.label+' · '+resident.title;speechSource.title=resident.title;
+  speech.hidden=false;heard[id]=acknowledgeResidentReport(heard[id],report);try{mapStorage.setItem('chat-ui-resident-heard'+(demo?'-demo':''),JSON.stringify(heard));}catch{}speechClose.focus({preventScroll:true});draw();
  }
  function projectFor(resident){return gathering.get(resident.conversationId)||null;}
  function topicScore(terms,project){const words=project.topicKeywords||[];return (terms||[]).reduce((score,word)=>score+(words.includes(word)?3:word.length>=2&&words.some(other=>other.length>=2&&(other.includes(word)||word.includes(other)))?1:0),0);}

@@ -91,10 +91,20 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 .village-quest-row>span{font-size:14px;color:#e7cd94}
 .village-quest-row small{font-size:12px;color:#b5c8b3}
 .village-speech,.village-quest-peek{position:absolute;z-index:15;width:min(320px,calc(100% - 24px));padding:16px;border:1px solid #e1d19a;border-radius:12px;background:#f1e5c4;color:#25372b;box-shadow:0 8px 30px #14301a55}
-.village-speech{width:min(288px,calc(100% - 24px));padding:14px;max-height:calc(100% - 16px);overflow:auto;overscroll-behavior:contain}
+.village-speech{width:min(460px,calc(100% - 24px));padding:14px;max-height:calc(100% - 16px);overflow:auto;overscroll-behavior:contain}
 #village-speech-name{display:block;padding-right:40px;font-size:14px;font-weight:600;color:#385134;line-height:1.5}
 #village-speech-close,#village-quest-peek-close{position:absolute;top:4px;right:4px;min-width:44px;min-height:44px;padding:0;border:0;background:transparent;color:#4a5c40;font-size:24px;box-shadow:none}
 #village-speech-text{margin:8px 0;font-size:14px;line-height:1.6;font-weight:500;overflow-wrap:anywhere}
+#village-speech-text{max-height:min(46vh,420px);overflow:auto;overscroll-behavior:contain;scrollbar-color:#8d9473 transparent}
+#village-speech .message-markdown a{color:#24513e}
+#village-speech .message-markdown a:hover{color:#123d2b}
+#village-speech .message-markdown blockquote{color:#43513c;border-color:#748066}
+#village-speech .message-markdown th{background:#d8ccaa;color:#25372b}
+#village-speech .message-markdown th,#village-speech .message-markdown td{border-color:#8f9b7b}
+#village-detail-content{margin:16px 22px 24px}
+.map-conversation-details{font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.map-conversation-details>section+section{margin-top:20px;padding-top:14px;border-top:1px solid #7d917544}
+.map-conversation-details h3{font-size:14px;margin:0 0 8px;color:inherit}
 #village-speech-source{display:block;color:#617051;font-size:12px;line-height:1.5}
 .village-speech-actions{position:relative;z-index:1;display:flex;gap:8px;margin-top:14px}
 .history-village .village-speech-actions button{flex:1;padding:8px 10px;background:#e7d7af;color:#2a412f;border-color:#b5b385;box-shadow:none}

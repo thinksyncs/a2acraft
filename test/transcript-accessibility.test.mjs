@@ -43,6 +43,8 @@ function fixture(){
     active:chat=>['starting','running','stopping'].includes(chat.status),
     statusLabels:{failed:'エラー',completed:'完了'},
     attachments:{renderMessage(){}},equipment:{renderMessage(){},renderPane(){}},party:{renderPane(){}},renderAgentDelegation(){},
+    renderMessageMarkdown(element,source){element.textContent=source;},
+    desktop:null,toast(){},
     createPanel(){throw Error('The existing transcript must be retained');}});
   vm.runInContext(source.slice(start,end),context);
   return {context,document,element,list,panel};
