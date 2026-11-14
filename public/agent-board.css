@@ -1,0 +1,93 @@
+.agent-board {
+  width: min(720px, calc(100vw - 24px));
+  padding: 24px;
+}
+.agent-board header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #b8a87666;
+  padding-bottom: 18px;
+}
+.agent-board header small {
+  grid-column: 1 / -1;
+  color: #e6cb87;
+  letter-spacing: 0.12em;
+}
+.agent-board header h2 {
+  margin: 0;
+}
+.agent-board label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 18px 0;
+}
+.agent-board select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+  color: inherit;
+  background: #15252a;
+  border: 1px solid #758c84;
+  border-radius: 6px;
+  padding: 8px;
+}
+.agent-board-status {
+  color: #b5c5bf;
+  font-size: 0.9rem;
+}
+.agent-board-entries {
+  display: grid;
+  gap: 16px;
+}
+.agent-board-note {
+  padding: 20px;
+  background: #182c30;
+  border-left: 3px solid #d8bb75;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.agent-board-note[data-kind="blocker"] {
+  border-color: #e6937d;
+}
+.agent-board-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  color: #bdcfc6;
+  font-size: 0.85rem;
+}
+.agent-board-kind {
+  color: #f5d591;
+  font-weight: 700;
+}
+.agent-board-note h3 {
+  font-size: 1.15rem;
+  margin: 14px 0 10px;
+}
+.agent-board-note p {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+.agent-board-note small,
+.agent-board-note time {
+  display: block;
+  color: #b5c5bf;
+  margin-bottom: 8px;
+}
+.agent-board button {
+  min-height: 44px;
+}
+@media (max-width: 540px) {
+  .agent-board {
+    padding: 16px;
+  }
+  .agent-board-note {
+    padding: 16px;
+  }
+}

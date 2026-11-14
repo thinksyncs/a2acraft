@@ -1,0 +1,358 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="tavern" viewBox="0 0 64 64">
+      <path d="M10 20h32v36H10Z" fill="#9c7658" stroke="#e8c77e" stroke-width="3"/>
+      <path d="M42 27h12v20H42" fill="none" stroke="#e8c77e" stroke-width="5"/>
+      <path d="M16 29v20m10-20v20m10-20v20" stroke="#624e46" stroke-width="3"/>
+      <path d="M10 20c-6-9 5-16 11-10 2-12 16-11 19 0 9-4 15 8 5 13H10Z" fill="#e9e3cd" stroke="#b9c9bf" stroke-width="2"/>
+    </symbol>
+    <symbol id="crown" viewBox="0 0 64 64">
+      <path d="m7 17 14 11L32 9l11 19 14-11-6 33H13Z" fill="#e8c77e" stroke="#a2824b" stroke-width="2"/>
+      <path d="M14 43h36v9H14Z" fill="#e8c77e" stroke="#a2824b" stroke-width="2"/>
+      <path d="m32 30 5 6-5 6-5-6Z" fill="#b58bd3"/>
+    </symbol>
+    <symbol id="sword" viewBox="0 0 64 64">
+      <path d="m23 36 24-26 9-2-2 9-25 25Z" fill="#bcebe7" stroke="#4b777e" stroke-width="2"/>
+      <path d="m29 36 21-23" fill="none" stroke="#fff5d4" stroke-width="2"/>
+      <path d="m17 30 18 17-5 5-18-17Z" fill="#e8c77e" stroke="#886c3e" stroke-width="2"/>
+      <path d="m19 41-9 10 4 4 10-10" fill="#8f6db4" stroke="#514267" stroke-width="2"/>
+      <path d="m7 50 8 7-4 4-8-7Z" fill="#e8c77e"/>
+      <path d="m43 5 1-4m13 26 5-1" stroke="#e6a3ff" stroke-width="2"/>
+    </symbol>
+    <symbol id="hammer" viewBox="0 0 64 64">
+      <path d="m37 25-8-7-23 35 7 6Z" fill="#a67d59" stroke="#674c3b" stroke-width="2"/>
+      <path d="m21 11 11-8 25 23-10 12Z" fill="#9ccdd3" stroke="#4b777e" stroke-width="2"/>
+      <path d="m21 11 26 27-7 4-26-25Z" fill="#6d91a4" stroke="#4b777e" stroke-width="2"/>
+      <path d="m30 10 20 18m-30 9-4 6m16-22 8 7" stroke="#e8c77e" stroke-width="3"/>
+    </symbol>
+    <symbol id="bow" viewBox="0 0 64 64">
+      <path d="M18 5c36 10 36 44 0 54" fill="none" stroke="#75506c" stroke-width="8"/>
+      <path d="M18 5c36 10 36 44 0 54" fill="none" stroke="#e8c77e" stroke-width="4"/>
+      <path d="m18 5 12 27-12 27" fill="none" stroke="#bcebe7" stroke-width="2"/>
+      <path d="M8 32h47m-8-7 9 7-9 7" fill="none" stroke="#a3ffcf" stroke-width="3" stroke-linecap="square"/>
+      <path d="m12 27 5 5-5 5m-6-10 5 5-5 5" fill="none" stroke="#e6a3ff" stroke-width="2"/>
+    </symbol>
+    <symbol id="toolkit" viewBox="0 0 64 64">
+      <path d="M22 20v-8h20v8" fill="none" stroke="#e8c77e" stroke-width="5"/>
+      <path d="M7 22h50v33H7Z" fill="#547c7a" stroke="#a2d8c7" stroke-width="2"/>
+      <path d="M7 22h50v14H7Z" fill="#77aaa0" stroke="#a2d8c7" stroke-width="2"/>
+      <path d="M28 31h8v12h-8Z" fill="#e8c77e"/>
+      <path d="M15 45h7m21 0h6" stroke="#bcebe7" stroke-width="3"/>
+    </symbol>
+    <symbol id="quill" viewBox="0 0 64 64">
+      <path d="M12 57h34v-9H12Z" fill="#65527e" stroke="#c3a9d9" stroke-width="2"/>
+      <path d="M23 46C18 15 41 6 57 6c0 24-9 41-34 40Z" fill="#a2d8c7" stroke="#4b777e" stroke-width="2"/>
+      <path d="m19 54 30-39M31 35l-1-13m7 6 11-1m-8-4V12" stroke="#fff5d4" stroke-width="2" fill="none"/>
+    </symbol>
+    <symbol id="staff" viewBox="0 0 64 64">
+      <path d="m29 31-13 28 7 3 13-28" fill="#9c7658" stroke="#604c42" stroke-width="2"/>
+      <path d="m26 24 7 12 10-6-7-9" fill="#e8c77e"/>
+      <path d="m40 3 12 12-13 15-12-14Z" fill="#be97e1" stroke="#e4d2f2" stroke-width="2"/>
+      <path d="m40 3-1 27m-12-14 25-1" stroke="#e4d2f2" fill="none"/>
+      <path d="M15 8v10m-5-5h10m35 24v8m-4-4h8" stroke="#a3ffcf" stroke-width="2"/>
+    </symbol>
+    <symbol id="book" viewBox="0 0 64 64">
+      <path d="M7 13c9-5 17-4 25 2 8-6 16-7 25-2v41c-9-5-17-4-25 2-8-6-16-7-25-2Z" fill="#76628f" stroke="#c3a9d9" stroke-width="2"/>
+      <path d="M11 10c8-3 15-2 21 3 6-5 13-6 21-3v37c-8-3-15-2-21 3-6-5-13-6-21-3Z" fill="#e7dbc0" stroke="#a89477" stroke-width="2"/>
+      <path d="M32 13v37" stroke="#a89477" stroke-width="2"/>
+      <path d="m16 22 10 1m-10 7 10 1m12-8 9-1m-9 9 9-1" stroke="#77658c" stroke-width="2"/>
+      <path d="m23 35 2 4 4 2-4 2-2 4-2-4-4-2 4-2Z" fill="#667f73"/>
+    </symbol>
+    <symbol id="shield" viewBox="0 0 64 64">
+      <path d="M8 12 32 5l24 7v21c0 13-13 23-24 28C21 56 8 46 8 33Z" fill="#587f83" stroke="#bcebe7" stroke-width="3"/>
+      <path d="m32 12 17 5v16c0 10-9 18-17 22-8-4-17-12-17-22V17Z" fill="#35475e"/>
+      <path d="m32 18 4 10 11 4-11 4-4 12-4-12-11-4 11-4Z" fill="#e8c77e"/>
+    </symbol>
+    <symbol id="route-spear" viewBox="0 0 64 64">
+      <path d="m14 57 26-35" stroke="#b4946c" stroke-width="7"/>
+      <path d="m34 23 15-18 3 19-12 6Z" fill="#bcebe7" stroke="#4b777e" stroke-width="2"/>
+      <path d="M7 12h14v12h12v15h21" fill="none" stroke="#e8c77e" stroke-width="3"/>
+      <path d="m49 34 6 5-6 5" fill="none" stroke="#e8c77e" stroke-width="3"/>
+      <circle cx="7" cy="12" r="4" fill="#b595d5"/>
+    </symbol>
+    <symbol id="lantern" viewBox="0 0 64 64">
+      <path d="M24 16V9a8 8 0 0 1 16 0v7M21 20l-5 31h32l-5-31Z" fill="none" stroke="#e8c77e" stroke-width="4"/>
+      <path d="M19 15h26v8H19Zm-6 36h38v7H13Z" fill="#547e88" stroke="#bcebe7" stroke-width="2"/>
+      <path d="M25 25h14l4 22H21Z" fill="#715c8e"/>
+      <path d="m32 27 5 10-5 8-5-8Z" fill="#ffe3a2"/>
+      <path d="m6 25 6 3m40 0 6-3M4 42h7m42 0h7" stroke="#e8c77e" stroke-width="2"/>
+    </symbol>
+    <symbol id="banner" viewBox="0 0 64 64">
+      <path d="M15 6v53" stroke="#e8c77e" stroke-width="5"/>
+      <path d="M18 10h37l-8 14 8 14H18Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <path d="m33 15 10 3v7l-10 8-9-8v-7Z" fill="#35475e"/>
+      <path d="m28 23 4 4 7-8" fill="none" stroke="#e8c77e" stroke-width="3"/>
+      <path d="M7 59h16" stroke="#a2d8c7" stroke-width="4"/>
+    </symbol>
+    <symbol id="magnifier" viewBox="0 0 64 64">
+      <path d="m37 38 18 18" stroke="#b4946c" stroke-width="11"/>
+      <circle cx="26" cy="25" r="19" fill="#547e88" stroke="#bcebe7" stroke-width="4"/>
+      <circle cx="26" cy="25" r="13" fill="#35475e"/>
+      <path d="m25 15 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#e8c77e"/>
+    </symbol>
+    <symbol id="balance" viewBox="0 0 64 64">
+      <path d="M32 8v46M12 20l40-7M22 56h20" stroke="#e8c77e" stroke-width="4"/>
+      <path d="m13 21-9 20h18Zm38-7-9 20h18Z" fill="none" stroke="#a2d8c7" stroke-width="2"/>
+      <path d="M3 41h20c-1 13-19 13-20 0Zm38-7h20c-1 13-19 13-20 0Z" fill="#7866b2" stroke="#c3a9d9" stroke-width="2"/>
+      <circle cx="32" cy="9" r="5" fill="#bcebe7"/>
+    </symbol>
+    <symbol id="wrench" viewBox="0 0 64 64">
+      <path d="M49 6c-14-5-27 8-21 21L7 48a7 7 0 0 0 10 10l21-21c14 6 27-7 21-21l-12 12-11-3-2-11Z" fill="#8fafb7" stroke="#bcebe7" stroke-width="3"/>
+      <circle cx="13" cy="52" r="3" fill="#35475e"/>
+    </symbol>
+    <symbol id="fortress" viewBox="0 0 64 64">
+      <path d="M6 13h9v8h9V9h16v12h9v-8h9v44H6Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <path d="M25 57V43a7 7 0 0 1 14 0v14" fill="#35475e" stroke="#e8c77e" stroke-width="2"/>
+      <path d="M12 30h6v9h-6Zm34 0h6v9h-6ZM28 18h8v10h-8Z" fill="#e8c77e"/>
+      <path d="M4 57h56" stroke="#a2d8c7" stroke-width="4"/>
+    </symbol>
+    <symbol id="crossed-blades" viewBox="0 0 64 64">
+      <path d="M9 6 40 33l-8 9L6 12Zm46 0L24 33l8 9 26-30Z" fill="#bcebe7" stroke="#4b777e" stroke-width="2"/>
+      <path d="m23 34 24 21m-6-21L17 55" stroke="#b595d5" stroke-width="7"/>
+      <path d="m28 45 15-15m-7 15L21 30" stroke="#e8c77e" stroke-width="5"/>
+    </symbol>
+    <symbol id="compass" viewBox="0 0 64 64">
+      <path d="M26 7V3h12v4" fill="none" stroke="#e8c77e" stroke-width="3"/>
+      <circle cx="32" cy="34" r="25" fill="#35475e" stroke="#e8c77e" stroke-width="3"/>
+      <path d="m43 17-6 22-16 12 6-22Z" fill="#b595d5" stroke="#e4d2f2" stroke-width="2"/>
+      <path d="m27 29 10 10-16 12Z" fill="#a2d8c7"/>
+      <path d="M32 12v5m0 34v5M10 34h5m34 0h5" stroke="#e8c77e" stroke-width="2"/>
+    </symbol>
+    <symbol id="target" viewBox="0 0 64 64">
+      <circle cx="28" cy="34" r="24" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <circle cx="28" cy="34" r="15" fill="#35475e" stroke="#e8c77e" stroke-width="3"/>
+      <circle cx="28" cy="34" r="5" fill="#b595d5"/>
+      <path d="m28 34 25-25m-5 1 3-7 2 6 7 2-7 3" fill="none" stroke="#a3ffcf" stroke-width="3"/>
+    </symbol>
+    <symbol id="sieve" viewBox="0 0 64 64">
+      <path d="M5 10h54L39 35v17l-14 8V35Z" fill="#547e88" stroke="#bcebe7" stroke-width="3"/>
+      <path d="M15 18h34M20 24h24M26 30h12m-13-12 5 12m9-12-5 12" stroke="#e8c77e" stroke-width="2"/>
+      <path d="M20 4h4m11 0h4M6 55h5m39-5h6" stroke="#b595d5" stroke-width="3"/>
+    </symbol>
+    <symbol id="seal" viewBox="0 0 64 64">
+      <path d="m15 38-7 21 15-5 8 5 5-21m-1 0 10 21 5-8 10 4-11-21" fill="#7866b2" stroke="#c3a9d9" stroke-width="2"/>
+      <path d="m32 4 8 5 10 1 1 10 5 8-5 8-1 10-10 1-8 5-8-5-10-1-1-10-5-8 5-8 1-10 10-1Z" fill="#e8c77e" stroke="#a2824b" stroke-width="2"/>
+      <path d="m21 27 8 8 14-17" fill="none" stroke="#547e88" stroke-width="5"/>
+    </symbol>
+    <symbol id="check-hammer" viewBox="0 0 64 64">
+      <path d="m28 27 9 8-20 24-8-7Z" fill="#b4946c" stroke="#674c3b" stroke-width="2"/>
+      <path d="m11 17 15-12 25 21-14 16Z" fill="#698f9e" stroke="#bcebe7" stroke-width="3"/>
+      <path d="m24 21 6 6 10-13" fill="none" stroke="#e8c77e" stroke-width="4"/>
+      <path d="m45 47 5 5 9-12" fill="none" stroke="#a3ffcf" stroke-width="3"/>
+    </symbol>
+    <symbol id="report-scroll" viewBox="0 0 64 64">
+      <path d="M15 8h33v40H20c-11 0-13 12-4 12h30c12 0 14-13 3-13V8c0-8 12-8 12 2v5H48" fill="#e7dbc0" stroke="#a89477" stroke-width="2"/>
+      <path d="M22 19h18m-18 8h18m-18 8h12" stroke="#77658c" stroke-width="3"/>
+      <path d="m39 33 5 9-5 9-5-9Z" fill="#698f9e"/>
+    </symbol>
+    <symbol id="abacus" viewBox="0 0 64 64">
+      <path d="M7 9h50v47H7Z" fill="#35475e" stroke="#b4946c" stroke-width="5"/>
+      <path d="M11 21h42M11 33h42M11 45h42" stroke="#bcebe7" stroke-width="2"/>
+      <path d="M16 16h6v10h-6Zm10 0h6v10h-6Zm10 12h6v10h-6Zm10 0h6v10h-6ZM16 40h6v10h-6Zm20 0h6v10h-6Z" fill="#e8c77e"/>
+    </symbol>
+    <symbol id="easel" viewBox="0 0 64 64">
+      <path d="M31 4v52M20 43l-9 17m33-17 9 17" stroke="#b4946c" stroke-width="5"/>
+      <path d="M7 10h50v35H7Z" fill="#e7dbc0" stroke="#a89477" stroke-width="2"/>
+      <path d="M16 35V23h6v12Zm13 0V17h6v18Zm13 0V27h6v8Z" fill="#698f9e"/>
+      <path d="M4 45h56" stroke="#e8c77e" stroke-width="4"/>
+    </symbol>
+    <symbol id="palette" viewBox="0 0 64 64">
+      <path d="M31 5C-1 5-4 54 26 59c14 2 6-15 17-17 25-4 20-37-12-37Z" fill="#b4946c" stroke="#e8c77e" stroke-width="2"/>
+      <circle cx="19" cy="20" r="5" fill="#a2d8c7"/><circle cx="34" cy="15" r="5" fill="#b595d5"/><circle cx="47" cy="24" r="5" fill="#edc38c"/><circle cx="14" cy="36" r="5" fill="#7897b8"/>
+      <path d="m27 44 27-34 5 4-25 35Z" fill="#e7dbc0" stroke="#77658c" stroke-width="2"/>
+    </symbol>
+    <symbol id="map" viewBox="0 0 64 64">
+      <path d="m4 13 18-7 20 7 18-7v45l-18 7-20-7-18 7Z" fill="#e7dbc0" stroke="#a89477" stroke-width="2"/>
+      <path d="M22 6v45m20-38v45" stroke="#a89477" stroke-width="2"/>
+      <path d="m10 40 10-12 13 8 16-17" fill="none" stroke="#698f9e" stroke-width="3" stroke-dasharray="4 3"/>
+      <path d="m45 16 9 9m0-9-9 9" stroke="#b55f70" stroke-width="3"/>
+    </symbol>
+    <symbol id="stencil" viewBox="0 0 64 64">
+      <path d="M8 8h48v48H8Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <path d="M18 19h11v11H18Zm23-1 7 12H34Zm-20 24a6 6 0 1 0 0 1Z" fill="#35475e" stroke="#e8c77e" stroke-width="2"/>
+      <path d="m32 47 20-26 6 5-20 26Z" fill="#b4946c" stroke="#e8c77e" stroke-width="2"/>
+    </symbol>
+    <symbol id="anvil" viewBox="0 0 64 64">
+      <path d="M5 19h55c-2 12-13 14-21 14v12l12 9H14l12-9V33H15Z" fill="#698f9e" stroke="#bcebe7" stroke-width="3"/>
+      <path d="M25 13h17v6H25ZM11 56h43" stroke="#e8c77e" stroke-width="4"/>
+      <path d="m48 3 3 6 7 2-7 2-3 6-2-6-7-2 7-2Z" fill="#e8c77e"/>
+    </symbol>
+    <symbol id="key" viewBox="0 0 64 64">
+      <circle cx="20" cy="20" r="14" fill="#e8c77e" stroke="#a2824b" stroke-width="3"/>
+      <circle cx="20" cy="20" r="6" fill="#35475e"/>
+      <path d="m29 27 29 28-7 7-8-8-5 5-6-6 5-5-15-14Z" fill="#e8c77e" stroke="#a2824b" stroke-width="2"/>
+    </symbol>
+    <symbol id="gear" viewBox="0 0 64 64">
+      <path d="m26 4 12 0 2 9 7 3 8-4 6 10-7 6v8l7 6-6 10-8-4-7 3-2 9H26l-2-9-7-3-8 4-6-10 7-6v-8l-7-6 6-10 8 4 7-3Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <circle cx="32" cy="32" r="12" fill="#35475e" stroke="#e8c77e" stroke-width="3"/>
+    </symbol>
+    <symbol id="egg" viewBox="0 0 64 64">
+      <path d="M32 4C18 4 7 29 9 43c3 22 43 22 46 0C57 29 46 4 32 4Z" fill="#e7dbc0" stroke="#a89477" stroke-width="2"/>
+      <path d="m11 33 10 6 10-8 11 8 12-6" fill="none" stroke="#b595d5" stroke-width="4"/>
+      <path d="m23 16 6-5m13 38 5-5" stroke="#a2d8c7" stroke-width="5"/>
+    </symbol>
+    <symbol id="brush" viewBox="0 0 64 64">
+      <path d="m25 34 23-29 8 6-24 28Z" fill="#b4946c" stroke="#e8c77e" stroke-width="2"/>
+      <path d="m20 29 17 14-6 7-17-14Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <path d="M16 36C4 40 14 51 3 58c21 3 30-6 27-13Z" fill="#b595d5" stroke="#e4d2f2" stroke-width="2"/>
+    </symbol>
+    <symbol id="paw" viewBox="0 0 64 64">
+      <path d="M19 37c-23 23 9 24 13 17 4 7 36 6 13-17-7-9-19-9-26 0Z" fill="#b4946c" stroke="#e8c77e" stroke-width="2"/>
+      <ellipse cx="12" cy="25" rx="7" ry="10" fill="#b595d5"/><ellipse cx="26" cy="16" rx="7" ry="11" fill="#a2d8c7"/><ellipse cx="42" cy="16" rx="7" ry="11" fill="#a2d8c7"/><ellipse cx="55" cy="27" rx="6" ry="10" fill="#b595d5"/>
+    </symbol>
+    <symbol id="lens" viewBox="0 0 64 64">
+      <path d="M3 33C17 8 47 8 61 33 47 58 17 58 3 33Z" fill="#547e88" stroke="#bcebe7" stroke-width="3"/>
+      <circle cx="32" cy="33" r="14" fill="#35475e" stroke="#e8c77e" stroke-width="3"/>
+      <circle cx="32" cy="33" r="6" fill="#b595d5"/><circle cx="36" cy="28" r="3" fill="#e7dbc0"/>
+    </symbol>
+    <symbol id="broom" viewBox="0 0 64 64">
+      <path d="M47 5 27 37" stroke="#b4946c" stroke-width="6"/>
+      <path d="m21 28 16 10-5 21-28-18Z" fill="#e8c77e" stroke="#a2824b" stroke-width="2"/>
+      <path d="m19 35-8 9m14-5-8 10m14-6-8 10" stroke="#b4946c" stroke-width="2"/>
+      <path d="m20 29 18 11" stroke="#b595d5" stroke-width="6"/>
+    </symbol>
+    <symbol id="hourglass" viewBox="0 0 64 64">
+      <path d="M17 10c0 14 4 17 15 22-11 5-15 8-15 22h30c0-14-4-17-15-22 11-5 15-8 15-22Z" fill="#35475e" stroke="#bcebe7" stroke-width="2"/>
+      <path d="m23 18 9 10 9-10Zm-3 33 12-13 12 13Z" fill="#e8c77e"/>
+      <path d="M12 7h40M12 57h40" stroke="#b4946c" stroke-width="6"/>
+    </symbol>
+    <symbol id="spear" viewBox="0 0 64 64">
+      <path d="m10 58 31-36" stroke="#b4946c" stroke-width="6"/>
+      <path d="m33 22 22-19-5 28-10-3Z" fill="#bcebe7" stroke="#4b777e" stroke-width="2"/>
+      <path d="m32 27 12 10" stroke="#e8c77e" stroke-width="4"/>
+    </symbol>
+    <symbol id="axe" viewBox="0 0 64 64">
+      <path d="m14 59 28-52" stroke="#b4946c" stroke-width="7"/>
+      <path d="M38 10C23 3 8 11 6 27l25 9 12-15 10 12 8-11-15-10Z" fill="#8fafb7" stroke="#bcebe7" stroke-width="2"/>
+      <path d="m33 17 12 6" stroke="#e8c77e" stroke-width="4"/>
+    </symbol>
+    <symbol id="dagger" viewBox="0 0 64 64">
+      <path d="m20 37 28-29 9-3-3 10-26 31Z" fill="#bcebe7" stroke="#4b777e" stroke-width="2"/>
+      <path d="m10 31 25 22m-14-9L8 58" stroke="#e8c77e" stroke-width="6"/>
+      <path d="m13 51 8-8" stroke="#b595d5" stroke-width="7"/>
+    </symbol>
+    <symbol id="mace" viewBox="0 0 64 64">
+      <path d="m13 57 24-29" stroke="#b4946c" stroke-width="8"/>
+      <path d="m38 5 9 6 11 1-1 11 5 9-10 6-6 9-9-6-11-1 1-11-5-9 10-6Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <circle cx="42" cy="26" r="8" fill="#e8c77e"/>
+    </symbol>
+    <symbol id="crossbow" viewBox="0 0 64 64">
+      <path d="m12 57 32-38" stroke="#b4946c" stroke-width="8"/>
+      <path d="M8 13c25-5 44 11 46 36" fill="none" stroke="#e8c77e" stroke-width="6"/>
+      <path d="m8 13 17 29 29 7" fill="none" stroke="#bcebe7" stroke-width="2"/>
+      <path d="m28 38 28-31m-10 4 10-4-2 11" fill="none" stroke="#a3ffcf" stroke-width="3"/>
+    </symbol>
+    <symbol id="flail" viewBox="0 0 64 64">
+      <path d="m8 58 14-27" stroke="#b4946c" stroke-width="9"/>
+      <path d="M24 31C7-1 49-6 46 20" fill="none" stroke="#e8c77e" stroke-width="4" stroke-dasharray="5 2"/>
+      <path d="m44 19 6 7 10 1-3 10 5 9-10 4-5 9-8-6-11 1-1-10-6-8 8-7 3-10Z" fill="#698f9e" stroke="#bcebe7" stroke-width="2"/>
+      <circle cx="43" cy="39" r="6" fill="#b595d5"/>
+    </symbol>
+    <symbol id="sickle" viewBox="0 0 64 64">
+      <path d="m12 59 23-33" stroke="#b4946c" stroke-width="8"/>
+      <path d="M31 31C23 5 45 0 59 9 47 4 38 13 41 24 44 34 54 37 59 31 56 48 36 47 31 31Z" fill="#bcebe7" stroke="#4b777e" stroke-width="2"/>
+      <path d="m24 33 14 9" stroke="#e8c77e" stroke-width="4"/>
+    </symbol>
+    <symbol id="orb" viewBox="0 0 64 64">
+      <circle cx="32" cy="27" r="22" fill="#7866b2" stroke="#e4d2f2" stroke-width="2"/>
+      <path d="M18 42h28l8 15H10Z" fill="#547e88" stroke="#e8c77e" stroke-width="2"/>
+      <path d="m32 10 4 11 11 5-11 5-4 10-4-10-11-5 11-5Z" fill="#a2d8c7"/>
+      <circle cx="21" cy="16" r="3" fill="#e7dbc0"/>
+    </symbol>
+    <symbol id="rune-scroll" viewBox="0 0 64 64">
+      <path d="M11 10h42v44H11Z" fill="#e7dbc0" stroke="#a89477" stroke-width="2"/>
+      <path d="M8 6h48v9H8Zm0 44h48v9H8Z" fill="#7866b2" stroke="#c3a9d9" stroke-width="2"/>
+      <path d="m32 20 12 12-12 12-12-12Zm0 0v24m-12-12h24" fill="none" stroke="#698f9e" stroke-width="3"/>
+    </symbol>
+    <symbol id="hero" viewBox="0 0 64 80">
+      <g transform="scale(2)" shape-rendering="crispEdges">
+        <path fill="#243537" opacity=".35" d="M9 37h14v2H9zM7 36h18v1H7z"/>
+        <path fill="#3d3545" d="M10 20h12v2h3v11h-2v3H9v-3H7V22h3z"/>
+        <path fill="#98474a" d="M8 24h4v10H8zm12-2h4v12h-5V22z"/>
+        <path fill="#ce6a58" d="M8 23h3v8H8zm14 0h2v8h-2z"/>
+        <path fill="#353a4a" d="M10 30h12v5h-1v3h-5v-3h-1v3H9v-3h1z"/>
+        <path fill="#586c86" d="M11 31h4v4h-4zm7 0h3v4h-3z"/>
+        <path fill="#57423c" d="M9 35h6v3H8v-2h1zm9 0h5v1h1v2h-6z"/>
+        <path fill="#99754f" d="M9 35h5v1H9zm10 0h3v1h-3z"/>
+        <path fill="#384b62" d="M10 20h12v2h3v8h-3v3H10v-3H7v-8h3z"/>
+        <path fill="#4c8199" d="M11 23h10v8H11z"/>
+        <path fill="#78afbb" d="M11 23h3v6h-3zm3 0h6v2h-6z"/>
+        <path fill="#aac1bb" d="M8 22h5v3H7v-2h1zm12 0h4v1h1v2h-5z"/>
+        <path fill="#e1d9b5" d="M8 22h4v1H8zm13 0h3v1h-3z"/>
+        <path fill="#a97557" d="M6 26h4v6H6zm16 0h4v6h-4z"/>
+        <path fill="#e1b187" d="M6 26h3v4H6zm17 0h3v4h-3z"/>
+        <path fill="#74513e" d="M10 29h12v3H10z"/><path fill="#d9ae63" d="M14 29h4v3h-4z"/><path fill="#f5dc93" d="M15 29h2v1h-2z"/>
+        <path fill="#343947" d="M10 4h12v2h3v3h1v11h-3v3H9v-3H7V9h1V6h2z"/>
+        <path fill="#637f94" d="M10 5h11v1h3v4h1v7h-3v-3H9v3H8v-7h1V7h1z"/>
+        <path fill="#8eafb9" d="M11 5h9v2h3v4H10V7h1z"/><path fill="#c5d6c7" d="M12 6h7v1h-7zm-2 3h12v2H10z"/>
+        <path fill="#d8b166" d="M8 12h17v2H8z"/><path fill="#f4dc9d" d="M11 12h9v1h-9z"/>
+        <path fill="#825342" d="M10 14h13v7h-2v3H11v-2H9v-7h1z"/>
+        <path fill="#e7b78b" d="M11 15h11v6h-2v2h-8v-2h-1z"/><path fill="#f4cf9d" d="M11 15h8v4h-8z"/>
+        <path fill="#3e363a" d="M10 14h4v2h-2v1h-2zm10 0h3v3h-2v-1h-1zM12 18h2v2h-2zm7 0h2v2h-2z"/>
+        <path fill="#b77b62" d="M15 22h3v1h-3z"/>
+        <path fill="#9b4750" d="M17 2h5v2h2v2h-6V4h-1z"/><path fill="#dc7866" d="M18 2h3v2h-3z"/>
+      </g>
+    </symbol>
+    <symbol id="priest" viewBox="0 0 64 80">
+      <g transform="scale(2)" shape-rendering="crispEdges">
+        <path fill="#243537" opacity=".35" d="M9 37h14v2H9zM7 36h18v1H7z"/>
+        <path fill="#374d64" d="M11 21h10v1h3v4h2v9H6v-9h2v-4h3z"/>
+        <path fill="#bdc7bd" d="M10 22h12v4h2v9H8v-9h2z"/>
+        <path fill="#f1e7bd" d="M10 22h10v3h2v9H9v-9h1z"/><path fill="#fff2d2" d="M11 24h3v9h-3z"/>
+        <path fill="#718caa" d="M8 24h3v10H8zm13 0h3v10h-3z"/>
+        <path fill="#e6ddbb" d="M7 26h3v6H6v-4h1zm15 0h3v2h1v4h-4z"/>
+        <path fill="#a97b61" d="M6 32h4v3H6zm16 0h4v3h-4z"/><path fill="#e3b890" d="M6 32h3v2H6zm17 0h3v2h-3z"/>
+        <path fill="#567390" d="M11 22h3v2h4v-2h3v3h-2v10h-6V25h-2z"/>
+        <path fill="#b89655" d="M15 25h2v10h-2zM12 34h8v2h-8z"/><path fill="#ebcd7c" d="M15 26h2v2h-2z"/>
+        <path fill="#585049" d="M9 36h6v2H8v-1h1zm9 0h5v1h1v1h-6z"/><path fill="#95836c" d="M9 36h4v1H9zm10 0h3v1h-3z"/>
+        <path fill="#3c526a" d="M11 2h10v2h3v3h1v13h-2v3H9v-3H7V7h1V4h3z"/>
+        <path fill="#b6c4bd" d="M11 3h10v2h2v3h1v13h-3v2H11v-2H8V8h1V5h2z"/>
+        <path fill="#efe8c5" d="M12 3h8v2h2v3h1v8H9V8h1V5h2z"/><path fill="#fff5d9" d="M12 4h5v3h-5zM10 8h3v6h-3z"/>
+        <path fill="#c1a365" d="M15 6h2v3h3v2h-3v3h-2v-3h-3V9h3z"/><path fill="#f2d68b" d="M15 6h1v3h-1zm-3 3h7v1h-7z"/>
+        <path fill="#6c655e" d="M10 15h13v6h-2v3H11v-2h-1z"/>
+        <path fill="#b78a66" d="M10 16h12v5h-2v2h-8v-2h-2z"/><path fill="#ebc298" d="M11 16h10v5h-2v2h-6v-2h-2z"/><path fill="#f6d8af" d="M11 16h7v3h-7z"/>
+        <path fill="#3d3c42" d="M12 18h2v2h-2zm6 0h2v2h-2z"/><path fill="#bc8d72" d="M15 22h3v1h-3z"/>
+        <path fill="#7d96aa" d="M8 14h2v8h2v2H9v-3H8zm14 0h2v7h-1v3h-3v-2h2z"/>
+      </g>
+    </symbol>
+    <symbol id="mage" viewBox="0 0 64 80">
+      <g transform="scale(2)" shape-rendering="crispEdges">
+        <path fill="#243537" opacity=".35" d="M8 37h16v2H8zM6 36h20v1H6z"/>
+        <path fill="#383449" d="M11 21h10v2h3v3h2v10H6V26h2v-3h3z"/>
+        <path fill="#624e83" d="M10 23h12v3h2v9H8v-9h2z"/><path fill="#8d6fa6" d="M11 23h5v11H9v-9h2z"/>
+        <path fill="#a48ac2" d="M11 24h3v8h-3zM8 26h2v5H8zm14 0h2v5h-2z"/>
+        <path fill="#745647" d="M6 31h4v3H6zm16 0h4v3h-4z"/><path fill="#d5a87b" d="M6 31h3v2H6zm17 0h3v2h-3z"/>
+        <path fill="#c0a267" d="M13 23h7v2h-2v10h-3V25h-2zM8 34h16v2H8z"/><path fill="#efd494" d="M14 23h5v1h-5zM16 26h1v2h-1z"/>
+        <path fill="#4a3d39" d="M9 36h6v2H8v-1h1zm9 0h5v1h1v1h-6z"/><path fill="#956d4e" d="M9 36h4v1H9zm10 0h3v1h-3z"/>
+        <path fill="#4f3c40" d="M10 14h13v8h-3v2h-8v-2h-2z"/>
+        <path fill="#bb8b5e" d="M10 16h12v5h-2v2h-8v-2h-2z"/><path fill="#e7ba89" d="M11 17h10v4h-2v2h-6v-2h-2z"/>
+        <path fill="#332f3d" d="M12 18h2v2h-2zm6 0h2v2h-2z"/><path fill="#ad775d" d="M15 22h3v1h-3z"/>
+        <path fill="#b7915a" d="M9 16h2v6h2v2H9zm12 0h2v8h-3v-2h1z"/><path fill="#e0b776" d="M9 17h1v5H9zm13 0h1v5h-1z"/>
+        <path fill="#3c3451" d="M16 1h7v2h-2v3h1v3h2v4h3v2h2v3H4v-3h2v-2h3v-3h2V7h2V4h3z"/>
+        <path fill="#6d548e" d="M16 2h5v1h-2v3h2v4h2v4H10v-3h2V8h2V5h2z"/>
+        <path fill="#9679af" d="M16 3h2v3h-2v3h-2v3h-3v-2h2V7h1V5h2z"/><path fill="#b39bc8" d="M16 3h2v2h-2zm-3 5h1v2h-1z"/>
+        <path fill="#ad8356" d="M9 12h15v3H9z"/><path fill="#e0bc76" d="M10 12h11v2H10z"/><path fill="#f4dba0" d="M17 12h2v2h-2z"/>
+        <path fill="#70568f" d="M6 15h21v2H6z"/><path fill="#9d81b4" d="M7 15h16v1H7z"/><path fill="#4b3e65" d="M5 17h23v1H5z"/>
+      </g>
+    </symbol>
+    <symbol id="martial-artist" viewBox="0 0 64 80">
+      <g transform="scale(2)" shape-rendering="crispEdges">
+        <path fill="#243537" opacity=".35" d="M9 37h14v2H9zM7 36h18v1H7z"/>
+        <path fill="#3b4248" d="M10 21h12v2h3v9h-3v4h-4v-3h-3v3H9v-4H7v-9h3z"/>
+        <path fill="#647777" d="M10 30h12v5h-4v-3h-3v3h-5z"/><path fill="#8da19b" d="M11 31h3v3h-3zm8 0h2v3h-2z"/>
+        <path fill="#4b5355" d="M9 35h6v3H8v-1h1zm9 0h5v2h1v1h-6z"/><path fill="#a5b9ad" d="M9 35h5v1H9zm10 0h3v1h-3z"/>
+        <path fill="#ae805e" d="M8 23h3v7H6v-5h2zm13 0h3v2h2v5h-5z"/><path fill="#e3b58b" d="M8 23h2v5H7v-3h1zm14 0h2v2h1v3h-3z"/>
+        <path fill="#d5caa4" d="M11 22h10v9H10v-7h1z"/><path fill="#f0deb0" d="M11 23h7v6h-7z"/>
+        <path fill="#477d84" d="M10 22h3v2h2v2h2v-2h2v-2h3v3h-2v2h-2v3h-4v-3h-2v-2h-2z"/><path fill="#78b3ab" d="M11 23h1v2h2v2h1v1h-1v-1h-2v-2h-1zM20 23h1v2h-1z"/>
+        <path fill="#b9b5a0" d="M6 28h4v5H6zm16 0h4v5h-4z"/><path fill="#f0e8c8" d="M6 28h3v3H6zm17 0h3v3h-3z"/><path fill="#d9c9a3" d="M6 30h4v1H6zm16 0h4v1h-4z"/>
+        <path fill="#8a4650" d="M10 30h12v3H10zM17 32h3v4h-2v-2h-1z"/><path fill="#ce7162" d="M10 30h11v1H10zM17 32h2v2h-2z"/>
+        <path fill="#342f38" d="M11 3h10v2h3v3h2v11h-3v4H10v-2H8V10H7V7h2V5h2z"/>
+        <path fill="#574044" d="M11 4h9v1h3v4h2v6H9V9H8V7h3z"/>
+        <path fill="#7e5650" d="M12 5h6v2h4v3h-4V8h-6zM9 8h2v4H9z"/><path fill="#9d6f59" d="M12 5h4v1h-4zM10 8h1v2h-1z"/>
+        <path fill="#aa7455" d="M10 14h13v7h-2v3H11v-2H9v-6h1z"/><path fill="#e5b486" d="M11 15h11v6h-2v2h-8v-2h-1z"/><path fill="#f2c99b" d="M11 15h7v4h-7z"/>
+        <path fill="#3d3339" d="M10 14h3v2h-3zm9 0h4v2h-2v1h-2zM12 18h2v2h-2zm7 0h2v2h-2z"/><path fill="#b97b61" d="M15 22h3v1h-3z"/>
+        <path fill="#8a414b" d="M8 12h17v3H8zM24 13h5v2h-1v4h-2v-3h-2z"/><path fill="#d47164" d="M9 12h15v2H9zm16 2h3v1h-3z"/><path fill="#f3a27d" d="M10 12h8v1h-8z"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>

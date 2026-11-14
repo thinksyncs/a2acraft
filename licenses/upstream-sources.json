@@ -1,0 +1,76 @@
+{
+  "codex-LICENSE.txt": {
+    "source": "https://github.com/openai/codex/blob/rust-v0.169.0/LICENSE"
+  },
+  "codex-NOTICE.txt": {
+    "source": "https://github.com/openai/codex/blob/rust-v0.169.0/NOTICE"
+  },
+  "boost-LICENSE_1_0.txt": {
+    "source": "https://github.com/boostorg/boost/blob/boost-1.90.0/LICENSE_1_0.txt"
+  },
+  "ripgrep-COPYING.txt": {
+    "source": "https://github.com/BurntSushi/ripgrep/blob/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f/COPYING"
+  },
+  "ripgrep-LICENSE-MIT.txt": {
+    "source": "https://github.com/BurntSushi/ripgrep/blob/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f/LICENSE-MIT"
+  },
+  "ripgrep-UNLICENSE.txt": {
+    "source": "https://github.com/BurntSushi/ripgrep/blob/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f/UNLICENSE"
+  },
+  "libaom-LICENSE.txt": {
+    "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz",
+    "archive_member": "libaom-3.12.1/LICENSE"
+  },
+  "libaom-PATENTS.txt": {
+    "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz",
+    "archive_member": "libaom-3.12.1/PATENTS"
+  },
+  "libaom-AUTHORS.txt": {
+    "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz",
+    "archive_member": "libaom-3.12.1/AUTHORS"
+  },
+  "libwpd-COPYING.MPL.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/libwpd-0.10.3.tar.gz",
+    "archive_member": "libwpd-0.10.3/COPYING.MPL"
+  },
+  "librevenge-COPYING.MPL.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/librevenge-0.0.6.tar.gz",
+    "archive_member": "librevenge-0.0.6/COPYING.MPL"
+  },
+  "xberg-THIRD_PARTY_LICENSES.md": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/THIRD_PARTY_LICENSES.md"
+  },
+  "libwpd-PROVENANCE.md": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/PROVENANCE.md"
+  },
+  "leptonica-LICENSE.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-tesseract/licenses/leptonica-LICENSE"
+  },
+  "tesseract-LICENSE.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-tesseract/licenses/tesseract-LICENSE"
+  },
+  "native-pdf-LICENSE.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/LICENSE"
+  },
+  "fontdb-LICENSE.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/src/vendor/fontdb/LICENSE"
+  },
+  "DejaVu-LICENSE.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/src/fonts/assets/LICENSE-DejaVu"
+  },
+  "fallback-fonts-LICENSE.txt": {
+    "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/src/fonts/assets/LICENSE-fallback-fonts"
+  },
+  "libde265-COPYING.txt": {
+    "source": "https://github.com/strukturag/libde265/blob/v1.0.16/COPYING"
+  },
+  "libheif-COPYING.txt": {
+    "source": "https://github.com/strukturag/libheif/blob/v1.23.0/COPYING"
+  },
+  "onnxruntime-LICENSE.txt": {
+    "source": "https://github.com/microsoft/onnxruntime/blob/v1.24.2/LICENSE"
+  },
+  "onnxruntime-ThirdPartyNotices.txt": {
+    "source": "https://github.com/microsoft/onnxruntime/blob/v1.24.2/ThirdPartyNotices.txt"
+  }
+}

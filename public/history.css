@@ -1,0 +1,40 @@
+.history-dialog{width:min(680px,calc(100vw - 32px));max-height:calc(100dvh - 40px);padding:22px;border:1px solid var(--mint,#a5fff1);border-radius:12px;background:#101923;color:var(--text,#d3e6ed);box-shadow:0 18px 70px #0009;overflow:auto}
+.history-dialog::backdrop{background:#03080dbb}
+.history-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.history-heading h2{margin:0;font-size:20px}
+.history-help,.history-metadata,.history-status{font-size:12px;line-height:1.7;color:#a8bbc9}
+.history-dialog label{display:block;margin-bottom:7px;font-size:13px}
+.history-dialog input{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #496174;border-radius:6px;background:#09111a;color:inherit;font:inherit}
+.history-dialog input:focus-visible,.history-entry:focus-visible{outline:2px solid #a5fff1;outline-offset:3px}
+.history-list{display:grid;gap:10px}
+.history-entry{display:grid;gap:7px;width:100%;padding:14px;text-align:left;border:1px solid #3b5264;border-radius:7px;background:#142231;color:inherit;cursor:pointer;overflow-wrap:anywhere;font:inherit}
+.history-entry:hover,.history-entry[aria-current=true]{border-color:#a5fff1;background:#1b3040}
+.history-entry strong{font-size:14px}
+.history-preview{font-size:13px;line-height:1.7;color:#d3e0e9;white-space:pre-wrap}
+.history-empty{margin:12px 0;font-size:13px;line-height:1.8}
+.history-error{font-size:13px;color:#ffadba;white-space:pre-line;overflow-wrap:anywhere}
+.history-migration{margin:16px 0 20px;padding:12px;border:1px solid #496174;border-radius:7px}
+.history-migration summary{cursor:pointer;font-size:13px;font-weight:700;line-height:1.7}
+.history-migration summary:focus-visible,.history-migration button:focus-visible{outline:2px solid #a5fff1;outline-offset:3px}
+.history-migration fieldset{margin:12px 0 0;padding:0;border:0;min-width:0}
+.history-migration legend{padding:0;font-size:13px;font-weight:700}
+.history-migration-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.history-migration-actions button{max-width:100%;white-space:normal;line-height:1.7;font-size:12px}
+.history-migration .history-checkbox,.history-codex-row{display:flex;align-items:flex-start;gap:10px;line-height:1.6}
+.history-migration input[type=checkbox]{width:16px;height:16px;flex:none;margin:3px 0 0;padding:0;accent-color:#a5fff1}
+.history-codex-list{display:grid;gap:8px;max-height:290px;overflow:auto}
+.history-dialog .history-codex-row{margin:0;padding:10px;border:1px solid #3b5264;border-radius:6px;overflow-wrap:anywhere;cursor:pointer}
+.history-codex-row:has(input:checked){border-color:#a5fff1;background:#1b3040}
+.history-codex-row:has(input:disabled){opacity:.65}
+.history-codex-row span{display:grid;gap:3px;min-width:0}
+.history-codex-row strong{font-size:12px}
+.history-codex-row small{font-size:11px;color:#a8bbc9;white-space:pre-wrap}
+.history-migration code{font-size:11px;overflow-wrap:anywhere}
+.history-migration input[type=file]{font-size:12px;max-width:100%}
+.history-migration-warnings{padding-left:20px;font-size:12px;line-height:1.7;color:#e9ca89;overflow-wrap:anywhere}
+.history-migration [hidden]{display:none!important}
+#history-retry-save{margin:0 0 14px;font-size:12px}
+.connect-history{display:block;margin:18px auto 0}
+.toolbar-right [data-history-open]{max-width:none;width:auto;font-size:10px;padding:5px 9px}
+.toolbar-right [data-history-open]::before{content:none}
+@media(max-width:600px){.history-dialog{padding:16px}.history-entry{padding:12px}.history-metadata{font-size:11px}}

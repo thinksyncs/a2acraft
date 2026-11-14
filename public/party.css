@@ -1,0 +1,72 @@
+.side-nav [data-view=tavern]{grid-column:1/-1}
+.main:has(#tavern-view:not([hidden])) .quota-strip{display:none}
+.party-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
+.party-heading h2{font-size:25px;margin:9px 0;display:flex;align-items:center;gap:12px}
+.party-heading h2 .equipment-icon{width:37px;height:37px}
+.party-heading p{font-size:13px;color:var(--muted);margin:0;line-height:1.7}
+#party-mode{font:10px var(--font-mono);color:var(--purple);flex-shrink:0}
+.party-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.party-preparation,.party-progress{min-width:0}
+#party-configuration{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:16px;min-width:0;margin:0}
+#party-configuration legend{font-size:15px;padding:0 7px;color:var(--cyan)}
+.party-label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px}
+#party-name{width:100%;padding:8px 10px;color:var(--text);background:#101e28;border:1px solid var(--line);border-radius:5px;min-height:36px}
+#party-members{margin:14px 0;display:flex;flex-direction:column;gap:11px}
+.party-member{padding:12px;border:1px solid var(--line);border-radius:7px;background:#111d27;min-width:0}
+.party-member.is-member{border-color:#5b9089;background:#16302d44}
+.party-member.is-leader{border-color:#d2b473}
+.party-member-top{display:flex;align-items:center;gap:9px;min-width:0}
+.party-member-top .party-avatar{position:relative;flex-shrink:0;width:35px;height:43px}
+.party-avatar .equipment-icon{width:31px;height:39px}
+.party-avatar .party-held{position:absolute;right:-7px;bottom:4px;width:22px;height:22px}
+.party-member-title{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
+.party-member-top .text-btn{font-size:11px;padding:4px 7px;min-height:28px}
+.party-member-gear{display:flex;gap:5px;margin:6px 0 8px 41px;align-items:center;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.party-member-gear .equipment-icon{width:20px;height:20px}
+.party-member-controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px}
+.party-member-controls label{display:inline-flex;align-items:center;gap:5px;min-height:30px}
+.party-member-controls input{accent-color:var(--cyan)}
+.party-member-controls .party-position{margin-left:auto;color:var(--muted);font-size:11px}
+.party-role-line{display:flex;align-items:center;gap:7px;margin-top:7px;min-width:0}
+.party-role-line>label{font-size:11px;color:var(--muted);flex-shrink:0}
+.party-role-line input{min-width:0;flex:1;padding:7px;background:#0b1720;color:var(--text);border:1px solid var(--line);border-radius:4px;font:12px var(--font-ui)}
+.party-role-line button{min-width:29px;min-height:30px;padding:3px;font-size:15px}
+.party-order-label{font-size:11px;color:var(--muted);margin:13px 0 7px}
+#party-order{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin:0 0 14px;font-size:12px;line-height:1.7}
+#party-order span{color:var(--cyan);overflow-wrap:anywhere}
+#party-order .party-leader-label{color:var(--amber)}
+.party-quest-form{margin-top:17px;padding:16px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+#party-quest{display:block;resize:vertical;width:100%;height:100px;min-height:85px;padding:10px;font-size:13px;background:#0b1720;color:var(--text);border:1px solid var(--line);border-radius:5px;line-height:1.7}
+#party-model-caption{font:11px var(--font-mono);color:var(--muted);overflow-wrap:anywhere}
+#party-start{min-height:39px;font-size:13px}
+.party-progress{border:1px solid var(--line);border-radius:9px;padding:16px;background:var(--panel)}
+.party-progress-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.party-progress h3{font-size:16px;margin:0}
+#party-status{font-size:12px;color:var(--mint)}
+#party-quest-summary{font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;color:var(--muted)}
+#party-controls{display:flex;gap:7px;flex-wrap:wrap}
+#party-controls button{font-size:12px;min-height:36px}
+#party-error,#party-run-error{padding:11px;border:1px solid #ff879750;border-radius:5px;color:var(--red);white-space:pre-wrap;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
+#party-notice{font-size:12px;line-height:1.6;color:var(--mint)}
+#party-notice:empty{display:none}
+#party-steps{list-style:none;margin:17px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.party-step{padding:11px 12px;border-left:3px solid var(--line);background:#101b25;min-width:0}
+.party-step.is-running{border-left-color:var(--cyan)}
+.party-step.is-completed{border-left-color:var(--mint)}
+.party-step.is-failed,.party-step.is-interrupted,.party-step.is-blocked{border-left-color:var(--red)}
+.party-step-heading{display:flex;align-items:center;gap:7px;font-size:13px;flex-wrap:wrap}
+.party-step-heading strong{font-weight:600;overflow-wrap:anywhere}
+.party-step-heading>span{font-size:11px;color:var(--muted)}
+.party-step-heading .party-step-state{margin-left:auto;color:var(--cyan)}
+.party-step p{font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+.party-step details{margin-top:9px;font-size:12px}
+.party-step summary{color:var(--muted)}
+.party-step pre,#party-final-text{white-space:pre-wrap;overflow-wrap:anywhere;font:12px var(--font-ui);line-height:1.8;max-width:100%}
+.party-step button{margin-top:8px;font-size:11px;min-height:29px}
+#party-final{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.party-message-label{color:var(--amber);font-size:11px;margin:4px 0 8px;overflow-wrap:anywhere}
+.party-pane-badge{font-size:10px;color:var(--amber);padding:3px 5px;white-space:nowrap;max-width:42%;overflow:hidden;text-overflow:ellipsis}
+.party-pane-badge:empty{display:none}
+@media(max-width:1050px){.party-layout{grid-template-columns:minmax(0,1fr)}.party-heading{align-items:flex-start}.party-progress{margin-bottom:10px}}
+@media(max-width:900px){.side-nav [data-view=tavern]{grid-column:auto}}
+@media(max-width:650px){.party-heading{flex-direction:column;gap:8px}.party-heading h2{font-size:22px}.party-heading p{font-size:12px}#party-configuration,.party-quest-form,.party-progress{padding:12px}.party-member{padding:10px}.party-member-controls{gap:8px}.party-member-title{font-size:13px}.party-pane-badge{font-size:9px}.party-role-line input{font-size:13px}.party-role-line button{min-width:33px;min-height:33px}.party-member-controls label{min-height:36px}#party-quest{font-size:14px}}

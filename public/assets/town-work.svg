@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <defs>
+    <g id="desk-base">
+      <path fill="#304532" d="M3 12h42v16H3z"/>
+      <path fill="#5c4230" d="M7 21h5v10H7zm29 0h5v10h-5z"/>
+      <path fill="#855d3b" d="M3 9h42v15H3z"/>
+      <path fill="#bb8b51" d="M3 7h42v13H3z"/>
+      <path fill="#e0b978" d="M5 7h38v3H5z"/>
+      <path fill="#9b6e40" d="M6 16h36v2H6z"/>
+      <path fill="#c69b61" d="M8 24h2v5H8zm29 0h2v5h-2z"/>
+    </g>
+    <symbol id="book-desk" viewBox="0 0 48 32">
+      <use href="#desk-base"/>
+      <path fill="#4c3f66" d="M13 4h10v2h2V4h10v12H25v2h-2v-2H13z"/>
+      <path fill="#ede0b7" d="M14 3h8v2h2v10h-2v-1h-8zm11 2h2V3h7v11h-7v1h-2z"/>
+      <path fill="#bcaa7c" d="M23 5h2v10h-2zM16 6h5v1h-5zm0 3h5v1h-5zm12-3h4v1h-4zm0 3h4v1h-4z"/>
+      <path fill="#6b8b87" d="M6 4h5v11H6z"/><path fill="#aec6a4" d="M7 5h3v2H7z"/>
+    </symbol>
+    <symbol id="workbench" viewBox="0 0 48 32">
+      <use href="#desk-base"/>
+      <path fill="#6e6553" d="M13 4h18v13H13z"/>
+      <path fill="#efe0ad" d="M14 3h16v12H14z"/>
+      <path fill="#8e9c92" d="M17 6h10v1H17zm0 3h7v1h-7zm0 3h9v1h-9z"/>
+      <path fill="#42565d" d="M34 11h6v6h-6z"/><path fill="#728c93" d="M35 10h4v3h-4z"/>
+      <path fill="#c5d4c2" d="M39 1h4v4h-2v4h-2v4h-2V6h2z"/>
+      <path fill="#ebecd1" d="M40 2h2v3h-2z"/>
+    </symbol>
+    <symbol id="review-desk" viewBox="0 0 48 32">
+      <use href="#desk-base"/>
+      <path fill="#576e63" d="M9 4h18v14H9z"/>
+      <path fill="#ede0b7" d="M11 3h14v13H11z"/>
+      <path fill="#93ad83" d="M13 6h2v1h-2zm0 3h2v1h-2zm0 3h2v1h-2z"/>
+      <path fill="#948d70" d="M17 6h6v1h-6zm0 3h6v1h-6zm0 3h4v1h-4z"/>
+      <path fill="#8a6056" d="M32 7h9v9h-9z"/><path fill="#d8b681" d="M33 6h7v7h-7z"/>
+      <path fill="#5c8c6a" d="M34 9h2v2h-2zm2 2h2V8h2v5h-4z"/>
+    </symbol>
+    <symbol id="summary-desk" viewBox="0 0 48 32">
+      <use href="#desk-base"/>
+      <path fill="#91806a" d="M7 7h12v10H7zM29 5h12v11H29z"/>
+      <path fill="#ead7a7" d="M8 6h10v3H8zm0 5h10v3H8zM30 4h10v3H30zm0 5h10v3H30z"/>
+      <path fill="#7d4d59" d="M19 3h11v14H19z"/>
+      <path fill="#b3706f" d="M21 3h8v12h-8z"/>
+      <path fill="#e6c984" d="M23 6h4v3h-4zm0 5h4v1h-4z"/>
+      <path fill="#d4b896" d="M20 16h9v2h-9z"/>
+    </symbol>
+    <symbol id="book" viewBox="0 0 24 24">
+      <path fill="#334b42" d="M1 5h8l3 2 3-2h8v15h-8l-3 2-3-2H1z"/>
+      <path fill="#75618d" d="M2 4h7l3 2 3-2h7v15h-7l-3 2-3-2H2z"/>
+      <path fill="#f0dfb2" d="M3 3h6v1h2v14H9v-1H3zm10 1h2V3h6v14h-6v1h-2z"/>
+      <path fill="#b09d78" d="M11 5h2v14h-2zM5 6h4v1H5zm0 3h4v1H5zm0 3h4v1H5zm10-6h4v1h-4zm0 3h4v1h-4zm0 3h4v1h-4z"/>
+    </symbol>
+    <symbol id="quill" viewBox="0 0 24 24">
+      <path fill="#334b42" d="M3 16h10v7H3zM16 1h7v8h-3v4h-3v4h-4V9h3z"/>
+      <path fill="#496a76" d="M4 15h8v6H4z"/><path fill="#86aeb0" d="M6 14h4v3H6z"/>
+      <path fill="#d3e3cc" d="M17 2h5v6h-3v4h-3v4h-2V9h3z"/>
+      <path fill="#f5edcf" d="M18 3h3v4h-3z"/>
+      <path fill="#acac83" d="M17 7h2v3h-2zm-2 3h2v3h-2zm-2 3h2v3h-2zm-2 3h2v3h-2z"/>
+    </symbol>
+    <symbol id="scroll" viewBox="0 0 24 24">
+      <path fill="#334b42" d="M3 2h17v3h2v15h-3v3H2v-5h3V7H3z"/>
+      <path fill="#c3a271" d="M3 1h16v4h-2v14H5V5H3z"/>
+      <path fill="#f2dfac" d="M7 3h12v16H7z"/>
+      <path fill="#dfc08a" d="M3 2h4v3H3zm0 16h16v3H3z"/>
+      <path fill="#f9e9be" d="M3 18h3v2H3zm4-15h10v2H7z"/>
+      <path fill="#9d8b6d" d="M9 7h8v1H9zm0 3h6v1H9zm0 3h8v1H9z"/>
+    </symbol>
+    <symbol id="report" viewBox="0 0 24 24">
+      <path fill="#334b42" d="M3 1h18v22H3z"/>
+      <path fill="#87505c" d="M4 1h16v20H4z"/><path fill="#b36f73" d="M7 2h12v17H7z"/>
+      <path fill="#d9c59e" d="M5 19h14v2H5z"/><path fill="#f3dfb1" d="M6 19h13v1H6z"/>
+      <path fill="#e6cb87" d="M10 5h6v2h-6zm0 4h6v1h-6zm1 4h4v4h-4z"/>
+      <path fill="#f6e7b6" d="M12 12h2v2h-2z"/>
+    </symbol>
+    <symbol id="envelope" viewBox="0 0 24 24">
+      <path fill="#334b42" d="M1 5h22v15H1z"/>
+      <path fill="#d7bb89" d="M2 4h20v14H2z"/>
+      <path fill="#f0dfb1" d="M3 5h18v11H3z"/>
+      <path fill="#b29570" d="M3 5h3v2H3zm3 2h3v2H6zm3 2h6v2H9zm6-2h3v2h-3zm3-2h3v2h-3z"/>
+      <path fill="#cba872" d="M3 14h3v2H3zm3-2h3v2H6zm9 0h3v2h-3zm3 2h3v2h-3z"/>
+      <path fill="#9273a5" d="M10 10h4v4h-4z"/>
+    </symbol>
+    <symbol id="question" viewBox="0 0 24 24">
+      <path fill="#334b42" d="M4 1h16v2h2v16h-2v2H4v-2H2V3h2z"/>
+      <path fill="#a55b49" d="M5 2h14v2h2v14h-2v2H5v-2H3V4h2z"/>
+      <path fill="#edba80" d="M6 4h12v2h1v10h-1v2H6v-2H5V6h1z"/>
+      <path fill="#633c32" d="M10 5h4v8h-4zm0 10h4v3h-4z"/>
+      <path fill="#ffe0a0" d="M11 5h1v7h-1z"/>
+    </symbol>
+  </defs>
+</svg>

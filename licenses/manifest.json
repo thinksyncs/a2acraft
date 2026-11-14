@@ -1,0 +1,381 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "path": "node_modules/electron/package.json",
+      "name": "electron",
+      "version": "44.5.1"
+    },
+    {
+      "path": "node_modules/@xberg-io/xberg/package.json",
+      "name": "@xberg-io/xberg",
+      "version": "1.3.7"
+    },
+    {
+      "path": "node_modules/@xberg-io/xberg-darwin-arm64/package.json",
+      "name": "@xberg-io/xberg-darwin-arm64",
+      "version": "1.3.7"
+    },
+    {
+      "path": "node_modules/@xterm/xterm/package.json",
+      "name": "@xterm/xterm",
+      "version": "6.0.0"
+    },
+    {
+      "path": "node_modules/@xterm/addon-fit/package.json",
+      "name": "@xterm/addon-fit",
+      "version": "0.11.0"
+    },
+    {
+      "path": "node_modules/node-pty/package.json",
+      "name": "node-pty",
+      "version": "1.1.0"
+    },
+    {
+      "path": "node_modules/node-addon-api/package.json",
+      "name": "node-addon-api",
+      "version": "7.1.1"
+    },
+    {
+      "path": "node_modules/@openai/codex/package.json",
+      "name": "@openai/codex",
+      "version": "0.169.0"
+    },
+    {
+      "path": "node_modules/@openai/codex-darwin-arm64/package.json",
+      "name": "@openai/codex",
+      "version": "0.169.0-darwin-arm64"
+    }
+  ],
+  "nativeComponents": [
+    {
+      "name": "libde265",
+      "version": "1.0.16",
+      "source": "https://github.com/strukturag/libde265/releases/download/v1.0.16/libde265-1.0.16.tar.gz"
+    },
+    {
+      "name": "libaom",
+      "version": "3.12.1",
+      "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz"
+    },
+    {
+      "name": "libheif",
+      "version": "1.23.0",
+      "source": "https://github.com/strukturag/libheif/releases/download/v1.23.0/libheif-1.23.0.tar.gz"
+    },
+    {
+      "name": "ONNX Runtime",
+      "version": "1.24.2",
+      "source": "https://github.com/microsoft/onnxruntime/tree/v1.24.2"
+    },
+    {
+      "name": "libwpd",
+      "version": "0.10.3",
+      "source": "https://github.com/xberg-io/xberg/tree/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor"
+    },
+    {
+      "name": "librevenge",
+      "version": "0.0.6",
+      "source": "https://github.com/xberg-io/xberg/tree/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor"
+    },
+    {
+      "name": "Boost headers",
+      "version": "1.90.0",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/PROVENANCE.md"
+    },
+    {
+      "name": "ripgrep",
+      "version": "15.2.0",
+      "source": "https://github.com/BurntSushi/ripgrep/tree/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f"
+    },
+    {
+      "name": "Codex voice runtime",
+      "version": "0.169.0 package",
+      "source": "codex-voice-sources.json and codex-voice-manifest.json retain individual upstream versions and hashes"
+    }
+  ],
+  "notices": [
+    {
+      "input": "licenses/upstream/DejaVu-LICENSE.txt",
+      "output": "DejaVu-LICENSE.txt",
+      "sha256": "a56b293d91356f5cad310a5f65c2da8ef459e1b23dd3f662228d5f23b8bb9946",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/src/fonts/assets/LICENSE-DejaVu"
+    },
+    {
+      "input": "licenses/upstream/boost-LICENSE_1_0.txt",
+      "output": "boost-LICENSE_1_0.txt",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "source": "https://github.com/boostorg/boost/blob/boost-1.90.0/LICENSE_1_0.txt"
+    },
+    {
+      "input": "licenses/upstream/codex-LICENSE.txt",
+      "output": "codex-LICENSE.txt",
+      "sha256": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+      "source": "https://github.com/openai/codex/blob/rust-v0.169.0/LICENSE"
+    },
+    {
+      "input": "licenses/upstream/codex-NOTICE.txt",
+      "output": "codex-NOTICE.txt",
+      "sha256": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",
+      "source": "https://github.com/openai/codex/blob/rust-v0.169.0/NOTICE"
+    },
+    {
+      "input": "licenses/upstream/fallback-fonts-LICENSE.txt",
+      "output": "fallback-fonts-LICENSE.txt",
+      "sha256": "5adcc08a77145a2569fd056e6cb7133420fa04b2a7ef35ccab6bdad9c097cc69",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/src/fonts/assets/LICENSE-fallback-fonts"
+    },
+    {
+      "input": "licenses/upstream/fontdb-LICENSE.txt",
+      "output": "fontdb-LICENSE.txt",
+      "sha256": "59a1fdac3bd550043599bd159fd70f09a1108c2b09e3751d39b11e1ff8e51f00",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/src/vendor/fontdb/LICENSE"
+    },
+    {
+      "input": "licenses/upstream/leptonica-LICENSE.txt",
+      "output": "leptonica-LICENSE.txt",
+      "sha256": "4d3065116f182e29760af0c901d5dbb2e1e16c42765dfc24e69b26805e2acb1e",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-tesseract/licenses/leptonica-LICENSE"
+    },
+    {
+      "input": "licenses/upstream/libaom-AUTHORS.txt",
+      "output": "libaom-AUTHORS.txt",
+      "sha256": "b1314d8a827bb8ce2da5bd9a0991e227a53b86a6b208442e60a09a4ece7e6543",
+      "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz",
+      "archive_member": "libaom-3.12.1/AUTHORS"
+    },
+    {
+      "input": "licenses/upstream/libaom-LICENSE.txt",
+      "output": "libaom-LICENSE.txt",
+      "sha256": "4764a286d8b2faeaf42f4418e7d7a28d58fc8fd4d00a3d0a7f44b0a4099de7f2",
+      "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz",
+      "archive_member": "libaom-3.12.1/LICENSE"
+    },
+    {
+      "input": "licenses/upstream/libaom-PATENTS.txt",
+      "output": "libaom-PATENTS.txt",
+      "sha256": "661fb8e504744e95587b556b94a58343448300606a41bea8c7a9b97125696e61",
+      "source": "https://storage.googleapis.com/aom-releases/libaom-3.12.1.tar.gz",
+      "archive_member": "libaom-3.12.1/PATENTS"
+    },
+    {
+      "input": "licenses/upstream/libde265-COPYING.txt",
+      "output": "libde265-COPYING.txt",
+      "sha256": "02cc1585a20677992e0ba578fa692635dc193735f2691dc81de924b51c4e8020",
+      "source": "https://github.com/strukturag/libde265/blob/v1.0.16/COPYING"
+    },
+    {
+      "input": "licenses/upstream/libheif-COPYING.txt",
+      "output": "libheif-COPYING.txt",
+      "sha256": "fa81ce652315b013359d6e8e4744335f31a50c7c192907176d3632f78a3b4596",
+      "source": "https://github.com/strukturag/libheif/blob/v1.23.0/COPYING"
+    },
+    {
+      "input": "licenses/upstream/librevenge-COPYING.MPL.txt",
+      "output": "librevenge-COPYING.MPL.txt",
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/librevenge-0.0.6.tar.gz",
+      "archive_member": "librevenge-0.0.6/COPYING.MPL"
+    },
+    {
+      "input": "licenses/upstream/libwpd-COPYING.MPL.txt",
+      "output": "libwpd-COPYING.MPL.txt",
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/libwpd-0.10.3.tar.gz",
+      "archive_member": "libwpd-0.10.3/COPYING.MPL"
+    },
+    {
+      "input": "licenses/upstream/libwpd-PROVENANCE.md",
+      "output": "libwpd-PROVENANCE.md",
+      "sha256": "9ffb46c358801a79c6d36bc3a7a78ff11786e253c01c7e9d90e91e05a7d5ba6f",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-libwpd/vendor/PROVENANCE.md"
+    },
+    {
+      "input": "licenses/upstream/native-pdf-LICENSE.txt",
+      "output": "native-pdf-LICENSE.txt",
+      "sha256": "53a1cc12386879bf54a47304ff6b1fe62ccad897f43fb5212dbd10c09f4ea082",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-native-pdf/LICENSE"
+    },
+    {
+      "input": "licenses/upstream/onnxruntime-LICENSE.txt",
+      "output": "onnxruntime-LICENSE.txt",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+      "source": "https://github.com/microsoft/onnxruntime/blob/v1.24.2/LICENSE"
+    },
+    {
+      "input": "licenses/upstream/onnxruntime-ThirdPartyNotices.txt",
+      "output": "onnxruntime-ThirdPartyNotices.txt",
+      "sha256": "0e07b95f3a8d6230037707c5c4a2b554d12c4cb67369669ac255635528ffcee2",
+      "source": "https://github.com/microsoft/onnxruntime/blob/v1.24.2/ThirdPartyNotices.txt"
+    },
+    {
+      "input": "licenses/upstream/ripgrep-COPYING.txt",
+      "output": "ripgrep-COPYING.txt",
+      "sha256": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+      "source": "https://github.com/BurntSushi/ripgrep/blob/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f/COPYING"
+    },
+    {
+      "input": "licenses/upstream/ripgrep-LICENSE-MIT.txt",
+      "output": "ripgrep-LICENSE-MIT.txt",
+      "sha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f",
+      "source": "https://github.com/BurntSushi/ripgrep/blob/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f/LICENSE-MIT"
+    },
+    {
+      "input": "licenses/upstream/ripgrep-UNLICENSE.txt",
+      "output": "ripgrep-UNLICENSE.txt",
+      "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c",
+      "source": "https://github.com/BurntSushi/ripgrep/blob/e89fff89ac9af12e8d4ce9d5fd07beb408ca730f/UNLICENSE"
+    },
+    {
+      "input": "licenses/upstream/tesseract-LICENSE.txt",
+      "output": "tesseract-LICENSE.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/crates/xberg-tesseract/licenses/tesseract-LICENSE"
+    },
+    {
+      "input": "licenses/upstream/xberg-THIRD_PARTY_LICENSES.md",
+      "output": "xberg-THIRD_PARTY_LICENSES.md",
+      "sha256": "430ab87c43b7c885c5801fa101e24eb80fa65e019ecf2d34501f34c8d15dcbaa",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/THIRD_PARTY_LICENSES.md"
+    },
+    {
+      "input": "node_modules/electron/dist/LICENSE",
+      "output": "electron-LICENSE.txt",
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d",
+      "source": "https://github.com/electron/electron/blob/v44.5.1/LICENSE"
+    },
+    {
+      "input": "node_modules/electron/dist/LICENSES.chromium.html",
+      "output": "electron-LICENSES.chromium.html",
+      "sha256": "a62dabd1c6ef1327365b2a3fdffb806222684a746dcb8f4afd1c1f690eba5535",
+      "source": "https://github.com/electron/electron/releases/tag/v44.5.1"
+    },
+    {
+      "input": "node_modules/@xberg-io/xberg/LICENSE",
+      "output": "xberg-LICENSE.txt",
+      "sha256": "081ff9e2978a771dc90f475aa5130871d85debdf120683cbb860b41662641272",
+      "source": "https://github.com/xberg-io/xberg/blob/cf114034593096670ffc3975dcc062eea57df9cb/LICENSE"
+    },
+    {
+      "input": "node_modules/@xterm/xterm/LICENSE",
+      "output": "xterm-LICENSE.txt",
+      "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
+      "source": "https://www.npmjs.com/package/@xterm/xterm/v/6.0.0"
+    },
+    {
+      "input": "node_modules/@xterm/addon-fit/LICENSE",
+      "output": "xterm-addon-fit-LICENSE.txt",
+      "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f",
+      "source": "https://www.npmjs.com/package/@xterm/addon-fit/v/0.11.0"
+    },
+    {
+      "input": "node_modules/node-pty/LICENSE",
+      "output": "node-pty-LICENSE.txt",
+      "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+      "source": "https://www.npmjs.com/package/node-pty/v/1.1.0"
+    },
+    {
+      "input": "node_modules/node-pty/deps/winpty/LICENSE",
+      "output": "winpty-LICENSE.txt",
+      "sha256": "c39e428064b4f3e4fe81a975bf0fd3b845922b431bc4d9a7ffc8bfb091981836",
+      "source": "https://www.npmjs.com/package/node-pty/v/1.1.0"
+    },
+    {
+      "input": "node_modules/node-addon-api/LICENSE.md",
+      "output": "node-addon-api-LICENSE.md",
+      "sha256": "89024017b88a9f2b763f79b941a4f2db3b4428edfcacdc0b23866b2da633ad0c",
+      "source": "https://www.npmjs.com/package/node-addon-api"
+    },
+    {
+      "input": "NOTICE.md",
+      "output": "A2ACraft-NOTICE.md",
+      "sha256": "e10be0549975b1a87692e67796e79bb306e84ddb2aecf104b1d8fdc38a9daa71",
+      "source": "https://github.com/thinksyncs/a2acraft"
+    },
+    {
+      "input": "public/fonts/noto-sans-jp-LICENSE.txt",
+      "output": "noto-sans-jp-LICENSE.txt",
+      "sha256": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3",
+      "source": "Bundled font license distributed with the corresponding font under backend/public/fonts/"
+    },
+    {
+      "input": "public/fonts/orbitron-LICENSE.txt",
+      "output": "orbitron-LICENSE.txt",
+      "sha256": "075b0137b7a19be521031442001478342ebafc1923f01092b8dc51afc4341041",
+      "source": "Bundled font license distributed with the corresponding font under backend/public/fonts/"
+    },
+    {
+      "input": "public/fonts/rajdhani-LICENSE.txt",
+      "output": "rajdhani-LICENSE.txt",
+      "sha256": "078e327eb00525214cdce9780cfdf156141f137f1a095bec9798f470703d7d2d",
+      "source": "Bundled font license distributed with the corresponding font under backend/public/fonts/"
+    },
+    {
+      "input": "public/fonts/share-tech-mono-LICENSE.txt",
+      "output": "share-tech-mono-LICENSE.txt",
+      "sha256": "9909bc951ab73dcf212a1675aab327ffafa853c2b8e8d11a066b1bcc57afeefb",
+      "source": "Bundled font license distributed with the corresponding font under backend/public/fonts/"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/NOTICE.md",
+      "output": "codex-voice-NOTICE.md",
+      "sha256": "40097a1799441051aa0b6645cdc819cceb19be73cdd265eb602aa2b15e0b1f48",
+      "source": "Official @openai/codex@0.169.0-darwin-arm64 distribution; source commit d32063f96c2dff1dc96af839b3952abb6acfeda4"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/sources.json",
+      "output": "codex-voice-sources.json",
+      "sha256": "5613f37012effc3e28cdad52a7c88b9098aaaf7aae43f3cb7199f55ffbb15908",
+      "source": "Official @openai/codex@0.169.0-darwin-arm64 distribution; source commit d32063f96c2dff1dc96af839b3952abb6acfeda4"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/manifest.json",
+      "output": "codex-voice-manifest.json",
+      "sha256": "de47c1e0b9145db978ef68e4daa1c65dd84a9e99dc3c9428408bda019ffa8cff",
+      "source": "Official @openai/codex@0.169.0-darwin-arm64 distribution; source commit d32063f96c2dff1dc96af839b3952abb6acfeda4"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/LGPL-2.1.txt",
+      "output": "codex-voice-LGPL-2.1.txt",
+      "sha256": "ad2eec519ebd4b5df86ea84dff24ae3bfa2edea846a703b58902dd221ae375db",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/LGPL-2.1.txt"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/Opus.txt",
+      "output": "codex-voice-Opus.txt",
+      "sha256": "01e1167d54a096d123cf6dfbbeb19587278845c6481d2d66d545669846079551",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/Opus.txt"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/PCRE2.md",
+      "output": "codex-voice-PCRE2.md",
+      "sha256": "197d8a73ffee0d6b09adba2f9c677b5f5aede24edf89258a68e48248d010d811",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/PCRE2.md"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/libffi.txt",
+      "output": "codex-voice-libffi.txt",
+      "sha256": "17b64dc60f3b6897a60f971e288b973f655c2edcdf08b25f3c3dd5549857881c",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/libffi.txt"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/proxy-libintl.txt",
+      "output": "codex-voice-proxy-libintl.txt",
+      "sha256": "d245807f90032872d1438d741ed21e2490e1175dc8aa3afa5ddb6c8e529b58e5",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/proxy-libintl.txt"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/sljit.txt",
+      "output": "codex-voice-sljit.txt",
+      "sha256": "5f216505c0f6ea3273caec89e766eef93cdeb7bbb0c429f9360116d7c938feeb",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/sljit.txt"
+    },
+    {
+      "input": "node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-resources/voice/licenses/zlib.txt",
+      "output": "codex-voice-zlib.txt",
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+      "source": "https://github.com/openai/codex/blob/d32063f96c2dff1dc96af839b3952abb6acfeda4/third_party/voice/licenses/zlib.txt"
+    }
+  ],
+  "coverage": "Preserves Electron-provided aggregate notices, runtime npm/font notices, official Codex and voice notices, ripgrep notices, and identified Xberg native-library notices. Compiled Rust crate-level attribution completeness remains a general-release review item."
+}

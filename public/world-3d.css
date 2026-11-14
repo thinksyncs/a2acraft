@@ -1,0 +1,24 @@
+/* The pixel-art map stays primary. A quarter-width window shows its leader's view. */
+.world-3d-inset {position:absolute;top:12px;right:12px;z-index:6;width:25%;box-sizing:border-box;overflow:hidden;border:2px solid #e3ddc6;border-radius:5px;background:#101c28;box-shadow:0 2px 0 #091019,0 6px 20px #0005;isolation:isolate}
+.world-3d-inset-header {display:flex;align-items:center;justify-content:space-between;gap:4px;height:32px;padding:0 4px 0 9px;box-sizing:border-box;background:#101c28;color:#f7eed6;border-bottom:1px solid #e3ddc66b}
+.world-3d-inset-header strong {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;line-height:1.3}
+.history-village .world-3d-inset-close,.world-3d-inset-close {display:grid;place-items:center;flex:0 0 28px;width:28px;min-width:28px;height:28px;min-height:28px;padding:0;margin:0;border:0;border-radius:3px;background:transparent;color:#f7eed6;box-shadow:none;font:20px/1 sans-serif;cursor:pointer}
+.history-village .world-3d-inset-close:hover,.world-3d-inset-close:hover {background:#364653}
+.project-map-frame canvas.world-3d-inset-canvas,.village-map-frame canvas.world-3d-inset-canvas {position:relative;inset:auto;z-index:0;display:block;width:100%;height:auto;aspect-ratio:4/3;image-rendering:auto;touch-action:none;cursor:grab}
+.world-3d-inset-canvas:focus-visible,.world-3d-inset-close:focus-visible,.world-3d-inset-toggle:focus-visible {outline:2px solid #ffe7a3;outline-offset:-3px}
+.world-3d-inset[hidden],.world-3d-inset-toggle[hidden],.world-3d-error[hidden] {display:none!important}
+.world-3d-inset-toggle {min-height:44px;border:1px solid #d0c6a5;border-radius:5px;background:#162b30;color:#f7eed6;padding:8px 12px;cursor:pointer}
+.world-3d-error {font-size:13px;line-height:1.6;padding:8px 12px;border:1px solid #c7a364;border-radius:6px;background:#332e21;color:#ffe8b7}
+.world-3d-help {font-size:13px;line-height:1.6;color:#bbc9c4;margin:6px 0}
+.history-village .world-3d-inset {top:76px}
+.village-leader-toggle {position:absolute;z-index:6;top:76px;right:12px}
+.village-inset-error {position:absolute;z-index:6;top:118px;right:12px;width:25%;min-width:180px;max-width:calc(100% - 24px);box-sizing:border-box;margin:0}
+@media(max-width:600px) {
+ .world-3d-inset {top:8px;right:8px}
+ .world-3d-inset-header {height:28px;padding-left:5px;gap:0}
+ .world-3d-inset-header strong {font-size:0}
+ .world-3d-inset-header strong::after {content:'目線';font-size:11px}
+ .history-village .world-3d-inset-close,.world-3d-inset-close {flex-basis:24px;width:24px;min-width:24px;height:24px;min-height:24px;font-size:18px}
+ .village-leader-toggle {right:8px}
+ .world-3d-inset-toggle {font-size:12px;padding:8px}
+}

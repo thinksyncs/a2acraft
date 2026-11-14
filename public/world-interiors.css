@@ -1,0 +1,252 @@
+.world-room {
+  width: min(780px, calc(100vw - 24px));
+  padding: 22px;
+}
+.world-room h2 {
+  padding-right: 120px;
+}
+.world-room-exit {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+.world-room-stage {
+  height: 310px;
+  position: relative;
+  overflow: hidden;
+  margin: 20px -22px 0;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 35px, #151d2390 35px 38px),
+    repeating-linear-gradient(90deg, #555b51 0 70px, #454e48 70px 140px);
+  border-top: 32px solid #333f3d;
+  box-shadow: inset 0 30px 55px #071317aa;
+}
+.world-room-stage[data-room="tavern"] {
+  background-color: #64452d;
+  background-blend-mode: luminosity;
+  border-color: #563e2c;
+}
+.world-room-stage[data-room="castle"] {
+  background: linear-gradient(90deg, #56615b 30%, #785049 30% 70%, #56615b 70%);
+  border-color: #929786;
+}
+.world-room-stage[data-room="weapon"] {
+  border-color: #695a40;
+}
+.project-dialog button.world-room-host {
+  position: absolute;
+  top: 10px;
+  left: calc(50% - 66px);
+  width: 132px;
+  padding: 0;
+  display: grid;
+  justify-items: center;
+  background: #17272244;
+  border: 1px solid #dec38466;
+}
+.world-room-host canvas {
+  width: 72px;
+  height: 96px;
+  image-rendering: pixelated;
+}
+.world-room-host span {
+  font-size: 16px;
+  padding: 4px;
+  color: #ffedb5;
+}
+.world-room-party {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.world-room-party canvas {
+  width: 64px;
+  height: 85px;
+  image-rendering: pixelated;
+}
+.world-room-speech {
+  border: 1px solid #c6b989;
+  background: #101e22;
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-size: 17px;
+}
+.world-room-actions {
+  display: grid;
+  gap: 12px;
+}
+.world-room-actions[hidden] {
+  display: none;
+}
+.world-room-actions button {
+  min-height: 48px;
+}
+.world-artifact-output {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 50vh;
+  overflow: auto;
+  background: #101d21;
+  padding: 18px;
+}
+.world-artifact pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.world-artifact-link {
+  display: inline-block;
+  min-height: 44px;
+  color: #ffe4a2;
+  padding: 12px;
+}
+.world-artifact form {
+  display: flex;
+  gap: 8px;
+}
+.world-travel-menu {
+  max-width: 900px;
+  margin: 10px auto;
+}
+.world-travel-menu summary {
+  min-height: 44px;
+  cursor: pointer;
+}
+.world-travel-menu button {
+  min-height: 44px;
+  margin: 5px;
+  background: #233a32;
+  color: #efe6ca;
+  border: 1px solid #81917b;
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+.project-dialog input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  margin-right: 10px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.project-dialog details {
+  margin: 16px 0;
+}
+.project-dialog summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.project-dialog select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 8px 0;
+  background: #102126;
+  color: #efe6ca;
+  border: 1px solid #829482;
+  padding: 8px;
+}
+.project-map-controls {
+  flex-wrap: wrap;
+}
+.project-facility {
+  border-color: #f2d59b;
+  color: #ffe7ab;
+}
+.project-job.selected {
+  border-left: 3px solid #e2c583;
+  padding-left: 16px;
+  background: #d5bc7822;
+}
+#project-speech {
+  border-radius: 20px 20px 20px 4px;
+  border-color: #e6c58d;
+  box-shadow: 0 18px 60px #0009;
+}
+@media (max-width: 600px) {
+  .world-room {
+    padding: 16px;
+  }
+  .world-room h2 {
+    font-size: 22px;
+  }
+  .world-room-stage {
+    margin-inline: -16px;
+    height: 260px;
+  }
+  .world-room-host canvas {
+    width: 60px;
+    height: 80px;
+  }
+  .world-room-speech {
+    font-size: 16px;
+  }
+}
+
+.world-room-scenery {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.project-dialog button.world-room-host {
+  background: transparent;
+  border: 0;
+}
+.project-dialog button.world-room-host:hover {
+  background: #fff1ba18;
+}
+.world-room-host span {
+  background: #142621d9;
+  border: 1px solid #c5aa7077;
+  border-radius: 4px;
+}
+
+.world-journey-status {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  bottom: 8px;
+  max-width: calc(100% - 24px);
+  padding: 8px 14px;
+  border-radius: 5px;
+  background: #152920ed;
+  color: #f5e6bc;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+#project-speech {
+  position: fixed;
+  inset: auto 24px 90px auto;
+  margin: 0;
+  width: min(480px, calc(100vw - 32px));
+  max-height: 55dvh;
+  z-index: 10;
+}
+@media (max-width: 600px) {
+  #project-speech {
+    right: 16px;
+    bottom: 80px;
+    max-height: 48dvh;
+  }
+}
+
+.project-attention small {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  background: #2e3326;
+  color: #fff0bf;
+  padding: 1px 5px;
+  border-radius: 3px;
+}

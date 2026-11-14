@@ -1,0 +1,216 @@
+/* A quiet, readable home for the next adventure. The full workbench remains
+   available through the town navigation, without changing its other views. */
+body[data-view="town"]:not([data-town-tools="open"]){
+  --font-ui:'Noto Sans JP',system-ui,sans-serif;
+  background:#0d1921;
+  overflow:hidden;
+}
+body[data-view="town"]:not([data-town-tools="open"])::before,
+body[data-view="town"]:not([data-town-tools="open"]) .app::after,
+body[data-view="town"]:not([data-town-tools="open"]) .main::before{display:none}
+body[data-view="town"]:not([data-town-tools="open"]) .app{
+  grid-template-columns:minmax(0,1fr);
+  height:100dvh;
+  min-height:0;
+}
+body[data-view="town"]:not([data-town-tools="open"]) .main{
+  background:
+    radial-gradient(ellipse at 12% 0%,#29423966,transparent 52%),
+    radial-gradient(ellipse at 100% 80%,#23415340,transparent 55%),
+    linear-gradient(155deg,#152a29,#0d1921 70%);
+}
+body[data-view="town"]:not([data-town-tools="open"]) .sidebar,
+body[data-view="town"]:not([data-town-tools="open"]) .deck-header,
+body[data-view="town"]:not([data-town-tools="open"]) .page-heading,
+body[data-view="town"]:not([data-town-tools="open"]) #workspace-tabs,
+body[data-view="town"]:not([data-town-tools="open"]) #town-hud,
+body[data-view="town"]:not([data-town-tools="open"]) #demo-banner,
+body[data-view="town"]:not([data-town-tools="open"]) .town-heading,
+body[data-view="town"]:not([data-town-tools="open"]) .main>footer{display:none}
+body[data-view="town"]:not([data-town-tools="open"]) .main>main{
+  width:min(100%,1200px);
+  margin-inline:auto;
+  padding:0 24px 20px;
+}
+body[data-view="town"]:not([data-town-tools="open"]) #town-view{
+  padding:0 0 16px;
+  gap:16px;
+  scrollbar-width:thin;
+  scrollbar-color:#6a8170 transparent;
+}
+/* A selected town is its own destination. Let the map fill the viewport,
+   instead of stopping halfway through the preceding adventure when scrolling. */
+body[data-view="town"]:has(#adventure-home[aria-current="page"]) :is(#history-village,#town-facilities){display:none}
+#town-facilities{flex:none;margin:12px 0 20px;padding:0 16px 16px;border:1px solid #637b6d;border-radius:12px;background:#142b31}
+#town-facilities>summary{cursor:pointer;padding:14px 0;min-height:52px;font:600 16px/1.5 var(--font-ui);color:#f1ddb1}
+#town-facilities>summary:focus-visible{outline:3px solid #f1d497;outline-offset:3px}
+#town-facilities .town-map{width:100%;aspect-ratio:16/9;min-height:200px;flex:none}
+#town-facilities .town-map-note{margin-top:14px}
+body[data-view="town"]:not([data-town-tools="open"]):has(#adventure-town-nav[aria-current="page"]) #adventure-world{display:none}
+body[data-view="town"]:not([data-town-tools="open"]):has(#adventure-town-nav[aria-current="page"]) #town-view>.town-map{
+  flex:1 0 auto;
+  min-height:360px;
+}
+body[data-view="town"]:not([data-town-tools="open"]) #notice{
+  margin:0 0 12px;
+  padding:10px 14px;
+  font-size:15px;
+  line-height:1.6;
+}
+#town-navigation{
+  flex:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px 24px;
+  width:100%;
+  min-height:80px;
+  padding:16px 0;
+  color:#edf3e7;
+  font-family:'Noto Sans JP',system-ui,sans-serif;
+}
+#town-navigation .town-navigation-brand,
+#town-navigation>strong{
+  display:block;
+  flex:none;
+  margin:0;
+  font-size:24px;
+  font-weight:700;
+  line-height:1.25;
+  color:#fff0cb;
+  letter-spacing:0;
+}
+#town-navigation .town-navigation-brand{position:relative;padding-left:50px}
+#town-navigation .town-navigation-brand::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:6px;
+  width:36px;
+  height:36px;
+  border:1px solid #a98d55;
+  border-radius:50%;
+  background:radial-gradient(circle,#ecd49a16,transparent 70%);
+  box-shadow:0 0 0 4px #b49c6020,inset 0 0 0 4px #0c202744;
+}
+#town-navigation .town-navigation-brand::after{
+  content:"";
+  position:absolute;
+  left:7px;
+  top:13px;
+  width:24px;
+  height:24px;
+  background:linear-gradient(135deg,#fff0bc,#bd9654);
+  clip-path:polygon(50% 0,61% 36%,85% 15%,64% 39%,100% 50%,64% 61%,85% 85%,61% 64%,50% 100%,39% 64%,15% 85%,36% 61%,0 50%,36% 39%,15% 15%,39% 36%);
+}
+#town-navigation .town-navigation-brand strong{display:block;font:inherit}
+#town-navigation .town-navigation-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+#town-navigation button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-height:44px;
+  min-width:64px;
+  padding:9px 16px;
+  border:1px solid #526e6b;
+  border-radius:8px;
+  background:linear-gradient(#243c3b,#1a302f);
+  color:#edf2e8;
+  font:500 16px/1.5 'Noto Sans JP',system-ui,sans-serif;
+  white-space:nowrap;
+  box-shadow:inset 0 1px #ffffff08,0 2px 3px #00000014;
+}
+#town-navigation button:hover{background:linear-gradient(#334f47,#283e38);border-color:#d5be86;color:#fff3cf}
+#town-navigation button:active{background:#162a27;box-shadow:inset 0 2px 4px #00000030}
+#town-navigation button:focus-visible{outline:3px solid #f1d497;outline-offset:3px}
+#town-navigation button[aria-current="page"],
+#town-navigation button[aria-pressed="true"]{background:linear-gradient(#5e563b,#453e2c);border-color:#d8bc78;color:#fff2cf;box-shadow:inset 0 1px #fff1bd30,0 2px 6px #00000024}
+#town-navigation #town-tools-toggle{color:#d2e0d4;background:transparent}
+#town-connection-status{
+  display:block;
+  font:500 14px/1.5 'Noto Sans JP',system-ui,sans-serif;
+  color:#b6cdbd;
+}
+body[data-view="town"][data-town-tools="open"] #town-navigation{min-height:64px;padding:8px 0;gap:10px}
+body[data-view="town"][data-town-tools="open"] #town-navigation .town-navigation-brand{font-size:20px}
+
+/* Keep window management and a draggable title area in desktop builds. */
+body.desktop-app[data-view="town"]:not([data-town-tools="open"]) .deck-header{
+  display:flex;
+  height:36px;
+  min-height:36px;
+  padding:0 12px;
+  justify-content:flex-end;
+  border:0;
+  background:#101e23;
+  -webkit-app-region:drag;
+}
+body.desktop-app[data-view="town"]:not([data-town-tools="open"]) .deck-header .header-tools,
+body.desktop-app[data-view="town"]:not([data-town-tools="open"]) .header-right>:not(.window-controls){display:none}
+body.desktop-app[data-view="town"]:not([data-town-tools="open"]) .deck-header .window-controls{
+  display:flex;
+  margin:0;
+  -webkit-app-region:no-drag;
+}
+body.desktop-app[data-view="town"]:not([data-town-tools="open"]) .deck-header .window-controls button{width:44px;height:36px;font-size:20px}
+body.desktop-app[data-view="town"][data-platform="darwin"]:not([data-town-tools="open"]) .deck-header .window-controls{display:none}
+
+/* Building buttons remain large targets; only the labels grow. The requested
+   small walking characters keep their existing dimensions. */
+body[data-view="town"] .town-place strong{
+  padding:4px 10px;
+  bottom:-14px;
+  font-size:15px;
+  line-height:1.5;
+  color:#fff4d2;
+}
+body[data-view="town"] .town-board{width:64px;height:68px}
+body[data-view="town"] .town-board>svg{width:54px;height:54px}
+body[data-view="town"] .town-board strong{font-size:14px;padding:2px 6px;line-height:1.4}
+body[data-view="town"] .town-board>span{font-size:12px;min-width:20px}
+body[data-view="town"] .town-map-note{font-size:14px;line-height:1.7;color:#bfd0c2}
+body[data-view="town"] .town-party-empty #town-traveler-name{font-size:15px;line-height:1.7}
+body[data-view="town"] .town-party-empty button{min-height:44px;font-size:16px;padding:9px 14px}
+body[data-view="town"] #toast{font-size:16px;line-height:1.6;bottom:20px;max-width:min(600px,calc(100vw - 32px));padding:14px 18px}
+
+@media(max-width:700px){
+  body[data-view="town"]:not([data-town-tools="open"]) .main>main{padding:0 12px 12px}
+  body[data-view="town"]:not([data-town-tools="open"]):has(#adventure-town-nav[aria-current="page"]) #town-view>.town-map{
+    flex:0 0 auto;
+    min-height:190px;
+    aspect-ratio:16/9;
+  }
+  body[data-view="town"]:not([data-town-tools="open"]):has(#adventure-town-nav[aria-current="page"]) .town-map:has(.town-party-empty){overflow:visible;margin-bottom:148px}
+  body[data-view="town"]:not([data-town-tools="open"]):has(#adventure-town-nav[aria-current="page"]) .town-party-empty{
+    top:calc(100% + 24px);
+    transform:translateX(-50%);
+    display:grid;
+    grid-template-columns:12px minmax(0,1fr);
+    gap:10px;
+    width:100%;
+    border-style:solid;
+    border-radius:8px;
+  }
+  body[data-view="town"]:not([data-town-tools="open"]):has(#adventure-town-nav[aria-current="page"]) .town-party-empty button{grid-column:1/-1}
+  #town-navigation{flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:0;padding:8px 0}
+  #town-navigation .town-navigation-brand,#town-navigation>strong{font-size:24px}
+  #town-navigation .town-navigation-actions{width:100%;display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:4px}
+  #town-navigation button{min-width:0;min-height:44px;padding:9px 8px;font-size:15px}
+  #town-navigation #town-tools-toggle{font-size:14px;padding-inline:8px}
+  #town-connection-status{font-size:14px}
+  body[data-view="town"] .town-place strong{font-size:14px;padding:3px 7px;bottom:-12px}
+  body[data-view="town"] .town-map-note{font-size:14px}
+  body[data-view="town"] .town-party-empty{width:calc(100% - 32px);padding:10px;gap:8px}
+  body[data-view="town"] .town-party-empty #town-traveler-name{font-size:14px;max-width:100%}
+}
+@media(max-width:360px){
+  #town-navigation .town-navigation-actions{grid-template-columns:1fr 1fr 1fr}
+  #town-navigation #town-tools-toggle{grid-column:1/-1}
+}

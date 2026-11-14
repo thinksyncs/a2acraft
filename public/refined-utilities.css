@@ -1,0 +1,190 @@
+/* Readable workrooms that share the adventure's calm palette. */
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view){
+  --panel:#142b30;--line:#58716a;--muted:#bdcec4;--text:#edf2e8;--cyan:#eed399;--mint:#d9dfbf;
+  font-family:'Noto Sans JP',system-ui,sans-serif;font-size:16px;line-height:1.7;color:var(--text);min-width:0;
+  scrollbar-width:thin;scrollbar-color:#71877b transparent;
+}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view){padding:12px 0 28px;flex:1}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.section-head,.module-heading){margin:0 0 22px;padding:0;align-items:flex-start;gap:18px}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.section-head,.module-heading) h2{margin:0 0 8px;font-size:30px;line-height:1.4;color:#fff0c5;letter-spacing:0}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.section-head,.module-heading) .eyebrow{font:500 12px/1.6 'Noto Sans JP',system-ui,sans-serif;letter-spacing:.08em;color:#a9bfb3;margin-bottom:7px}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(p,li,label,summary,.module-note,.activity-time,.activity-status,.setting-row,.setting-row b,.teams-target,.teams-message-text,.todo-step){font-size:16px;line-height:1.75;overflow-wrap:anywhere}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(p,.module-note){color:#bdcec4}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(button,.outline,.primary,.danger,a.outline){min-height:44px;padding:10px 16px;font:600 16px/1.5 'Noto Sans JP',system-ui,sans-serif;white-space:normal;border-radius:8px;box-shadow:none;gap:8px;text-decoration:none}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(button,.outline){border-color:#708a7e;background:#19343a;color:#e1e9db}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) button.primary{min-height:52px;font-size:18px;background:#e9cd8e;border-color:#e9cd8e;color:#152824;box-shadow:0 2px 0 #8a794b}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) button:hover:not(:disabled){background:#2a4843;border-color:#d5be86;color:#fff1ce}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) .primary:hover:not(:disabled){background:#ffe4a5;color:#152824}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) .danger{border-color:#b98273;color:#ffcfb9;background:#422e2b}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(button:disabled,a[aria-disabled=true]){opacity:.5;box-shadow:none}
+:is(#usage-view,#settings-view,#terminal-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(button,a,input,textarea,select,summary):focus-visible{outline:3px solid #f1d497;outline-offset:3px}
+:is(#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(input:not([type=checkbox]),select,textarea){font:16px/1.6 'Noto Sans JP',system-ui,sans-serif;color:#edf2e8;background:#0d2028;border:1px solid #819b8d;border-radius:8px;padding:10px 12px;min-height:46px;max-width:100%;min-width:0}
+:is(#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(input,select,textarea)::placeholder{font:16px/1.6 'Noto Sans JP',system-ui,sans-serif;color:#9eb6a9}
+:is(#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) textarea{min-height:120px;height:120px;max-height:none;resize:vertical}
+:is(#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:20px;flex:none;accent-color:#d9bd7e}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.info-card,.activity-card,.todo-detail,.media-viewer,.backlog-issue,.teams-message,.teams-login-pending,.teams-review,.teams-uncertain){padding:24px;border:1px solid #58716a;border-radius:12px;background:linear-gradient(135deg,#19343a,#122a30);box-shadow:0 5px 18px #00000014;min-width:0}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(h3,.info-card h3,.activity-card h3,.media-viewer h3){font-size:21px;line-height:1.5;color:#f7e5b9;margin:0 0 14px;overflow-wrap:anywhere}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(h4,.backlog-issue h4){font-size:18px;line-height:1.6;color:#e9e4ce;overflow-wrap:anywhere}
+:is(#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.activity-actions,.module-actions,.setting-buttons){gap:10px 12px}
+:is(#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) .module-error{border-color:#b98273;color:#ffcfb9;background:#422e2b;font-size:16px;padding:14px 18px;border-radius:8px}
+:is(#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.activity-demo,.module-note[role=status]):not(:empty){padding:12px 16px;border:1px solid #8b875e;background:#363b2b;border-radius:8px;color:#ecdfba}
+:is(#settings-view,#todos-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.module-form,.activity-form){gap:12px;max-width:none}
+:is(#settings-view,#todos-view,#schedules-view,#backlog-view,#teams-view) .module-checkbox{min-height:44px;align-items:flex-start;gap:12px;padding:7px 0}
+:is(#settings-view,#todos-view,#schedules-view,#backlog-view,#teams-view) .module-checkbox input{margin-top:4px}
+:is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) summary{cursor:pointer;min-height:44px;padding:8px 0;color:#e6d6b3}
+
+/* Account details are a readable connection panel, separate from optional integrations. */
+#settings-view .settings-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;margin:0}
+#settings-view .info-card{margin:0 0 20px}
+#settings-view .settings-grid>.info-card:first-child{display:flex;flex-direction:column}
+#settings-view .settings-grid>.info-card:first-child>.setting-title{order:-4}
+#settings-view #account-label{order:-3}
+#settings-view .settings-grid>.info-card:first-child>.setting-buttons{order:-2;margin:4px 0 20px}
+#settings-view #login-link{order:-1}
+#settings-view .module-form{padding:0;border:0;background:none;box-shadow:none}
+#settings-view .module-settings{max-width:100%}
+#settings-view .module-settings form{max-width:760px}
+#settings-view .setting-row{gap:20px;align-items:flex-start;padding:16px 0}
+#settings-view .setting-row b{text-align:right;min-width:0;overflow-wrap:anywhere;color:#eef0df}
+#settings-view .setting-title{margin-bottom:8px}
+#settings-view .setting-title h3{margin:0}
+#settings-view .pill{font-size:14px;line-height:1.5;padding:4px 8px;color:#f0dbab;border-color:#96865d;background:#3c422e}
+#settings-view :is(.login-link,.plain-link){font-size:16px;line-height:1.7;min-height:44px;padding:8px 0;color:#f1d497}
+#settings-view .desktop-path{font-size:15px;line-height:1.7;padding:14px;background:#0d2028}
+#settings-view .desktop-version{font-size:14px;color:#b4c6ba}
+#usage-detail .quota-windows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;padding:24px;border:1px solid #58716a;border-radius:12px;background:#142b30;margin:0 0 24px}
+#usage-detail .quota-window{min-width:0}
+#usage-detail .quota-label{font-size:16px;color:#c9d8cc;margin-bottom:14px;line-height:1.7}
+#usage-detail .quota-label strong{font-size:38px;color:#f1d497;line-height:1.25}
+#usage-detail .quota-label strong small{font:500 14px/1.5 'Noto Sans JP',system-ui,sans-serif;color:#bdcec4}
+#usage-detail .quota-window:only-child{grid-column:1/-1}
+#usage-detail .quota-reset{font-size:15px;line-height:1.7;margin-top:14px;color:#bdcec4;white-space:normal}
+#usage-detail .bar{height:10px;border-radius:5px;overflow:hidden}
+#usage-view .info-card{margin:0}
+
+/* Tasks and media keep the chosen item and its editable content distinct. */
+#todos-view .todo-layout,#image-view .media-layout{grid-template-columns:minmax(220px,.65fr) minmax(0,1.35fr);gap:24px}
+:is(#todos-view,#image-view) :is(.todo-list-item,.media-list-item){padding:16px;gap:7px;border-radius:10px;text-align:left;background:#142b30;border-color:#58716a}
+:is(#todos-view,#image-view) :is(.todo-list-item,.media-list-item)[aria-pressed=true]{border-color:#d7bd7e;background:#344336;box-shadow:inset 3px 0 #e9cd8e}
+:is(#todos-view,#image-view) :is(.todo-list-item,.media-list-item) strong{font-size:18px;line-height:1.6}
+:is(#todos-view,#image-view) :is(.todo-list-item,.media-list-item) span{font-size:14px;line-height:1.7;color:#bdcec4}
+#todos-view .todo-detail legend{font-size:20px;line-height:1.5;color:#f7e5b9;margin-bottom:20px}
+#todos-view .todo-detail fieldset{gap:10px}
+#todos-view .todo-history-entry pre,#backlog-view .backlog-issue pre{font:16px/1.8 'Noto Sans JP',system-ui,sans-serif;max-height:360px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+#todos-view .todo-media-item{min-height:44px;gap:12px}
+#media-drop{padding:22px;border-color:#9b9873;background:#172f32;border-radius:12px;margin-bottom:24px}
+#media-drop label{font-size:18px;color:#f2e2bd;font-weight:700;margin-bottom:12px}
+#media-input{font-size:16px;min-height:44px;width:100%}
+#media-input::file-selector-button{font:600 16px/1.5 'Noto Sans JP',system-ui,sans-serif;min-height:44px;margin-right:12px;padding:8px 14px;border:1px solid #b59e69;border-radius:8px;background:#3d4734;color:#f3e6c6;cursor:pointer}
+#media-stage{min-height:240px;max-height:420px;border:1px solid #58716a;border-radius:8px;background:#0b1d24;font-size:16px;margin-top:14px}
+#media-list{max-height:600px}
+#media-zoom{font-size:16px;min-height:44px}
+#image-view .module-actions label{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* Activity records remain spacious even when long titles or errors arrive. */
+#inbox-view .activity-filter{font-size:16px;gap:14px;margin-bottom:20px}
+#inbox-view .activity-filter select{min-width:170px;max-width:100%}
+#inbox-view .activity-list{gap:16px}
+#inbox-view .inbox-item.is-unread{border-left:4px solid #e9cd8e}
+#inbox-view .activity-card{margin:0}
+#inbox-view .activity-item-heading{gap:12px 24px}
+#inbox-view .activity-time{font-size:14px;color:#b3c6b8}
+#inbox-view .activity-actions{margin-top:16px}
+#reports-view .report-controls{gap:14px;margin-bottom:22px;align-items:flex-end}
+#reports-view .report-controls label{font-size:16px;gap:8px}
+#reports-view .report-layout{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:22px}
+#reports-view .report-event{padding:16px 0}
+#reports-view .report-event strong{font-size:16px;line-height:1.7}
+#reports-view .report-event p{font-size:16px;max-height:200px}
+#report-markdown{height:390px;min-height:240px;font:16px/1.8 'Noto Sans JP',system-ui,sans-serif;margin:12px 0 18px;padding:16px;background:#0d2028}
+#reports-view .report-editor label{font-size:16px;color:#e4e8da}
+#reports-view #report-saved-list button{font-size:16px;padding:10px 16px}
+#schedules-view{display:flex;flex-direction:column;gap:0}
+#schedules-view> *{flex-shrink:0}
+#schedules-view>.schedule-layout{order:1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-bottom:24px}
+#schedules-view>.automation-settings{order:2}
+#schedules-view .schedule-layout>section{min-width:0}
+#schedules-view .automation-settings>label{font-size:16px;line-height:1.8}
+#schedules-view .activity-form label{font-size:16px;line-height:1.6;gap:8px}
+#schedules-view .schedule-item{margin-bottom:16px}
+#schedules-view .schedule-rearm-confirm{font-size:16px;line-height:1.8;gap:12px}
+#schedules-view .schedule-content p{max-height:260px}
+#schedules-view .schedule-attempt{font-size:14px}
+#schedules-view .schedule-run-error{color:#ffcfb9;border-color:#b98273}
+#schedule-timezone{max-width:360px}
+
+/* Optional connections retain their explicit review and error states. */
+#teams-view .teams-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+#teams-view .teams-layout label{font-size:16px;line-height:1.7;margin:16px 0 8px}
+#teams-view :is(.teams-message-text,.teams-target){font-size:16px;line-height:1.8}
+#teams-view .teams-review{border-color:#bca975;background:#293b32}
+#teams-view .teams-uncertain{border-color:#c49e62;background:#3b3325}
+#teams-view .teams-draft-choice span{font-size:14px;line-height:1.7}
+#teams-view .teams-draft-choice.is-selected{border-color:#d7bd7e;box-shadow:inset 3px 0 #e9cd8e}
+#backlog-view .module-form{border:1px solid #58716a;border-radius:12px;padding:24px;background:#142b30}
+#backlog-view .backlog-issue{max-width:none;margin:16px 0}
+#terminal-view{margin-top:0;gap:12px}
+#terminal-view .terminal-toolbar{padding:12px 0;gap:16px;flex-wrap:wrap}
+#terminal-view .terminal-toolbar strong{font:700 24px/1.5 'Noto Sans JP',system-ui,sans-serif;color:#f7e5b9}
+#terminal-status{font:15px/1.6 'Noto Sans JP',system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere;color:#bdcec4}
+#terminal-view .terminal-actions{gap:10px;flex-wrap:wrap}
+#terminal-container{border-color:#708a7e;border-radius:12px;background:#0b1d24;padding:16px;min-height:240px}
+#terminal-view .footnote{font-size:14px;line-height:1.7;min-height:32px;white-space:normal}
+
+/* The opening connection card uses the same visual language. */
+#connect-screen{background:radial-gradient(ellipse at 15% 0%,#29423988,transparent 55%),linear-gradient(145deg,#152a29,#0d1921);font-family:'Noto Sans JP',system-ui,sans-serif}
+#connect-screen .connect-card{width:min(100%,500px);padding:32px;border:1px solid #6c8375;border-radius:16px;background:linear-gradient(135deg,#1c373c,#122630);box-shadow:0 18px 50px #0003}
+#connect-screen .connect-mark{font-size:40px;color:#e9cd8e;margin-bottom:12px;text-shadow:none}
+#connect-screen .eyebrow{font:500 12px/1.6 'Noto Sans JP',system-ui,sans-serif;letter-spacing:.08em;color:#b6c9bc}
+#connect-screen h1{font:700 32px/1.4 'Noto Sans JP',system-ui,sans-serif;color:#fff0c5;margin:10px 0}
+#connect-screen :is(p,.login-link){font-size:16px;line-height:1.75;color:#c8d7cd}
+#connect-screen :is(button,a.login-link){min-height:44px;font:600 16px/1.5 'Noto Sans JP',system-ui,sans-serif;padding:10px 16px;border-radius:8px;white-space:normal}
+#connect-screen #start-connect{min-height:52px;font-size:18px;background:#e9cd8e;border-color:#e9cd8e;color:#152824;box-shadow:0 2px 0 #8a794b}
+#connect-screen #start-connect-label{font:inherit}
+#connect-screen #connect-error{color:#ffd4be;border-color:#b98273;background:#422e2b;padding:14px}
+#connect-screen .connect-history{background:#173039;border-color:#708a7e;color:#e1e9db}
+#connect-screen :is(button,a):focus-visible{outline:3px solid #f1d497;outline-offset:3px}
+#connect-screen .connect-window-controls button{min-height:36px;padding:0;border-radius:0}
+
+@media(max-width:900px){
+ #settings-view .settings-grid,#todos-view .todo-layout,#image-view .media-layout,#reports-view .report-layout,#schedules-view>.schedule-layout,#teams-view .teams-layout{grid-template-columns:minmax(0,1fr)}
+ #reports-view .report-editor{order:-1}
+ #image-view .media-viewer{order:-1}
+ #todos-view #todo-list:has(>.module-note:only-child){order:1}
+ #todos-view #todo-list,#image-view #media-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ #media-list{max-height:240px}
+}
+@media(max-width:600px){
+ :is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view){padding-top:8px}
+ :is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.section-head,.module-heading){margin-bottom:18px;gap:12px;flex-wrap:wrap}
+ :is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.section-head,.module-heading) h2{font-size:26px}
+ :is(#usage-view,#settings-view,#todos-view,#image-view,#inbox-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.info-card,.activity-card,.todo-detail,.media-viewer,.backlog-issue,.teams-message,.teams-login-pending,.teams-review,.teams-uncertain){padding:18px;border-radius:10px}
+ :is(#settings-view,#todos-view,#image-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.module-actions,.activity-actions,.setting-buttons){align-items:stretch;gap:10px}
+ :is(#settings-view,#todos-view,#image-view,#reports-view,#schedules-view,#backlog-view,#teams-view) :is(.module-actions,.activity-actions,.setting-buttons)>button{flex:1 1 140px}
+ #settings-view .setting-row{gap:12px;flex-wrap:wrap}
+ #settings-view .setting-row b{flex:1 1 100%;text-align:left}
+ #settings-view .setting-buttons{flex-direction:column}
+ #settings-view .setting-buttons>button{flex:0 0 auto}
+ #usage-detail .quota-windows{grid-template-columns:minmax(0,1fr);padding:20px;gap:24px}
+ #usage-detail .quota-label strong{font-size:34px}
+ #todos-view #todo-list,#image-view #media-list{grid-template-columns:minmax(0,1fr)}
+ #todos-view .module-pair,#schedules-view .schedule-model-fields{grid-template-columns:minmax(0,1fr)}
+ #media-drop{padding:18px;margin-bottom:20px}
+ #media-input{padding:8px;overflow:hidden}
+ #media-input::file-selector-button{display:block;margin-bottom:8px;max-width:100%}
+ #media-stage{min-height:200px;max-height:340px;padding:8px}
+ #inbox-view .activity-item-heading{flex-direction:column;gap:4px}
+ #inbox-view .activity-filter{align-items:flex-start;flex-wrap:wrap}
+ #inbox-view .module-heading>.activity-actions{width:100%}
+ #inbox-view .module-heading>.activity-actions>button{flex:1}
+ #reports-view .report-controls{align-items:stretch;gap:12px}
+ #reports-view .report-controls label{flex:1 1 100%;min-width:0}
+ #reports-view .report-controls button{flex:1 1 140px}
+ #report-markdown{height:300px;padding:12px}
+ #terminal-view .terminal-toolbar{flex-direction:column;align-items:stretch;padding:8px 0}
+ #terminal-view .terminal-actions>button{flex:1 1 120px}
+ #terminal-container{padding:10px;min-height:200px}
+ #terminal-view .footnote{align-items:flex-start;flex-direction:column;gap:4px}
+ #connect-screen{padding:48px 16px 20px}
+ #connect-screen .connect-card{padding:24px 20px}
+}

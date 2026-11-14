@@ -1,0 +1,60 @@
+/* Shared navigation and quiet surfaces for the rest of the town. */
+:root{--font-ui:'Noto Sans JP',system-ui,sans-serif;--text:#edf1e8;--muted:#b4c9c2;--cyan:#e9cd8e;--panel:#142b31;--line:#526e6b;--radius:12px}
+body{background:#0d1921}
+body[data-view]:not([data-town-tools="open"])::before,
+body[data-view]:not([data-town-tools="open"]) .app::after,
+body[data-view]:not([data-town-tools="open"]) .main::before{display:none}
+body[data-view]:not([data-town-tools="open"]) .app{grid-template-columns:minmax(0,1fr);min-height:0;height:100dvh}
+body[data-view]:not([data-town-tools="open"]) .main{background:radial-gradient(ellipse at 12% 0%,#29423966,transparent 52%),linear-gradient(155deg,#152a29,#0d1921 70%)}
+body[data-view]:not([data-town-tools="open"]) :where(.sidebar,.deck-header,.page-heading,#workspace-tabs,#town-hud,.quota-strip,#demo-banner),
+body[data-view]:not([data-town-tools="open"]) .main>footer{display:none}
+body[data-view]:not([data-town-tools="open"]) #workspace-tabs,
+body[data-view]:not([data-town-tools="open"]) #town-hud,
+body[data-view]:not([data-town-tools="open"]) #demo-banner{display:none}
+body[data-view]:not([data-view="town"]):not([data-town-tools="open"]) .main>main{width:min(100%,1320px);margin-inline:auto;padding:0 24px 16px}
+body[data-view]:not([data-town-tools="open"]) #notice{flex:none;margin:0 0 12px;padding:12px 16px;font-size:15px;line-height:1.6;border-radius:8px}
+body[data-view]:not([data-town-tools="open"]) .detail-page{margin:0;min-width:0;scrollbar-color:#6a8170 transparent;scrollbar-width:thin}
+#town-navigation-title:focus{outline:none}
+body.desktop-app[data-view]:not([data-town-tools="open"]) .deck-header{display:flex;height:36px;min-height:36px;padding:0 12px;justify-content:flex-end;border:0;background:#101e23;-webkit-app-region:drag}
+body.desktop-app[data-view]:not([data-town-tools="open"]) .deck-header .header-tools,
+body.desktop-app[data-view]:not([data-town-tools="open"]) .header-right>:not(.window-controls){display:none}
+body.desktop-app[data-view]:not([data-town-tools="open"]) .deck-header .window-controls{display:flex;margin:0;-webkit-app-region:no-drag}
+body.desktop-app[data-view]:not([data-town-tools="open"]) .deck-header .window-controls button{width:44px;height:36px;font-size:20px}
+body.desktop-app[data-view][data-platform="darwin"]:not([data-town-tools="open"]) .deck-header .window-controls{display:none}
+
+#workspace-menu{width:min(940px,calc(100vw - 40px));max-height:calc(100dvh - 40px);padding:0;border:1px solid #81977a;border-radius:16px;background:#142b31;color:#edf1e8;box-shadow:0 24px 80px #0008;font:16px/1.6 var(--font-ui);overflow:auto;overscroll-behavior:contain}
+#workspace-menu::backdrop{background:#061217c9;backdrop-filter:blur(4px)}
+.workspace-menu-heading{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 28px;background:#1a3439;border-bottom:1px solid #526e6b}
+.workspace-menu-heading p{margin:0 0 4px;color:#c4d4c9;font-size:14px}
+.workspace-menu-heading h2{margin:0;color:#fff0cb;font-size:26px;line-height:1.4}
+#workspace-menu-close,#workbench-toggle{min-height:44px;padding:10px 16px;font:16px/1.5 var(--font-ui);white-space:normal;border:1px solid #81977a;border-radius:8px;background:#10252d;color:#e8eee2}
+#workspace-menu-close{flex:none}
+.workspace-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:24px 28px}
+.workspace-menu-grid button{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;min-width:0;min-height:80px;padding:14px 16px;text-align:left;border:1px solid #526e6b;border-radius:10px;background:#1b3639;color:#f1eee2;font-family:var(--font-ui);white-space:normal}
+.workspace-menu-grid strong{font-size:18px;line-height:1.5;color:#f5dfac}
+.workspace-menu-grid span{font-size:14px;line-height:1.5;color:#c2d2c8;overflow-wrap:anywhere}
+.workspace-menu-grid button:hover{background:#29443e;border-color:#e9cd8e}
+.workspace-menu-grid button.active{border-color:#e9cd8e;background:#3d4933}
+#workspace-menu button:focus-visible{outline:3px solid #f5d797;outline-offset:3px}
+.workspace-menu-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #526e6b;padding:18px 28px;background:#10252d}
+.workspace-menu-footer p{margin:0;font-size:14px;color:#c2d2c8}
+#toast{font-size:16px;line-height:1.6;max-width:min(600px,calc(100vw - 32px));padding:14px 18px}
+:is(.town-character-dialog,.town-wagon-dialog,.town-board-dialog){border-radius:14px;border-color:#81977a;background:#142b31;padding:24px}
+:is(.town-character-dialog,.town-wagon-dialog,.town-board-dialog) :is(p,label,summary){font-size:16px;line-height:1.7}
+:is(.town-character-dialog,.town-wagon-dialog,.town-board-dialog) button{min-height:44px;font-size:16px;padding:10px 14px;white-space:normal}
+body[data-town-tools="open"] .module-row button{min-height:44px}
+body[data-town-tools="open"] .module-row :is(h1,b){font-size:15px}
+body[data-town-tools="open"] .side-nav button{font-size:14px;min-height:44px}
+
+@media(max-width:700px){
+ body[data-view]:not([data-view="town"]):not([data-town-tools="open"]) .main>main{padding:0 12px 12px}
+ #workspace-menu{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);border-radius:12px}
+ .workspace-menu-heading{padding:16px;gap:10px}
+ .workspace-menu-heading h2{font-size:22px}
+ #workspace-menu-close{padding-inline:12px}
+ .workspace-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px}
+ .workspace-menu-grid button{padding:12px;min-height:88px}
+ .workspace-menu-grid strong{font-size:16px}
+ .workspace-menu-grid span{font-size:14px}
+ .workspace-menu-footer{flex-direction:column;align-items:stretch;padding:16px;gap:10px}
+}

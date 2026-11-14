@@ -1,0 +1,147 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { initVillage } from "../public/village.js";
+import { villageIsland, village3DScene } from "../public/village-3d-scene.js";
+import { villageRiverWater, villageBridge } from "../public/world-terrain.js";
+import { VILLAGE_WORLD } from "../public/village-world.js";
+import { islandRouteWalkable } from "../public/world-island-travel.js";
+
+// Run the actual controller, animation and canvas drawing, without a browser,
+// external services or WebGL. The gold shadows locate the rendered party.
+function fixture(t, { saved, demo = false, building = false, visible = true } = {}) {
+  const frames = new Map(), storage = new Map(), navigations = [];
+  let nextFrame = 0, now = 0, view, root;
+  class Element {
+    constructor(tag = "div") {
+      this.tagName = tag; this.dataset = {}; this.style = { setProperty() {} };
+      this.children = []; this.listeners = new Map(); this.attributes = new Map();
+      this.classList = { add() {}, toggle() {} }; this.value = ""; this.open = false;
+      this.clientWidth = 1000; this.clientHeight = 640; this.shadows = [];
+      this.context = new Proxy({canvas:this,
+        measureText:text=>({width:String(text).length*6}),
+        getTransform:()=>({a:1,b:0,c:0,d:1,e:0,f:0}),
+        ellipse:(x,y)=>{if(this.context.fillStyle==="#e7c77d55")this.shadows.push({x,y:y-1});},
+        fillRect:(x,y,w,h)=>{if(x===0&&y===0&&w===1000&&h===640)this.shadows=[];},
+      }, {get:(target,key)=>key in target ? target[key] : ()=>{}});
+    }
+    getContext() { return this.context; }
+    getBoundingClientRect() { return {width:1000,height:640,left:0,top:0,right:1000,bottom:640}; }
+    append(...items) { for (const item of items) { item.parentElement=this; this.children.push(item); } }
+    add(item) { this.append(item); }
+    replaceChildren(...items) { this.children=[]; this.append(...items); }
+    setAttribute(key,value) { this.attributes.set(key,value); }
+    getAttribute(key) { return this.attributes.get(key)??null; }
+    addEventListener(type,listener) { const rows=this.listeners.get(type)||[];rows.push(listener);this.listeners.set(type,rows); }
+    dispatch(type,properties={}) {
+      const event={target:this,preventDefault(){},stopImmediatePropagation(){},...properties};
+      this["on"+type]?.(event);for(const listener of this.listeners.get(type)||[])listener(event);
+    }
+    click() { this.dispatch("click"); }
+    focus() { document.activeElement=this; }
+    contains(node) { return node===this||this.children.some(child=>child.contains?.(node)); }
+    matches(selector) { return selector[0]==="#" ? this.id===selector.slice(1) : selector===this.tagName; }
+    querySelectorAll(selector) { return this.children.flatMap(child=>[...(child.matches?.(selector)?[child]:[]),...(child.querySelectorAll?.(selector)||[])]); }
+    querySelector(selector) { return this.querySelectorAll(selector)[0]||null; }
+    remove() { if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(node=>node!==this); }
+    scrollIntoView() {}
+  }
+  const body = new Element("body");
+  const globals = {
+    location:{search:""}, devicePixelRatio:1,
+    document:{body,hidden:false,activeElement:null,createElement:tag=>new Element(tag),
+      createElementNS:(_,tag)=>new Element(tag),querySelector:selector=>body.querySelector(selector),
+      addEventListener(){},removeEventListener(){}},
+    localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
+    matchMedia:()=>({matches:false,addEventListener(){},removeEventListener(){}}),
+    Option:class extends Element { constructor(label,value){super("option");this.textContent=label;this.value=value;} },
+    ResizeObserver:class {observe(){}disconnect(){}}, MutationObserver:class {observe(){}disconnect(){}},
+    addEventListener(){}, removeEventListener(){},
+    requestAnimationFrame:callback=>{frames.set(++nextFrame,callback);return nextFrame;},
+    cancelAnimationFrame:id=>frames.delete(id),performance:{now:()=>now},
+  };
+  const originals = new Map(Object.keys(globals).map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  for(const [key,value] of Object.entries(globals))Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
+  t.after(()=>{try{view?.dispose();}finally{for(const [key,descriptor] of originals){
+    if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
+  }}});
+  const key=demo?"chat-ui-demo-village-view":"chat-ui-village-view";
+  storage.set(key,JSON.stringify({camera:{x:500,y:320,zoom:1},insetVisible:false,...saved}));
+  const chats=["a","b","c"].map(id=>({id,title:id,characterName:id,messages:[]}));
+  const state={party:{party:{leaderId:"a",members:chats.map(chat=>({conversationId:chat.id,role:"担当"}))}},
+    village:{overrides:building?[{conversationId:"a",kind:"software",stage:"building"}]:[]}};
+  const start=()=>{
+    root=new Element();root.id="history-village";body.replaceChildren(root);
+    view=initVillage({getChats:()=>chats,getState:()=>state,demo,onNavigate:id=>navigations.push(id)});
+    if(visible)view.setVisible(true);return view;
+  };
+  start();
+  return {storage,key,navigations,get view(){return view;},get root(){return root;},
+    element:id=>body.querySelector("#"+id),
+    hero:()=>({x:Number(root.dataset.heroX),y:Number(root.dataset.heroY)}),
+    camera:()=>({x:root.dataset.cameraX,y:root.dataset.cameraY,zoom:root.dataset.zoom}),
+    party:()=>body.querySelector("#village-canvas").shadows.slice(-3),
+    advance(count=1) {for(let i=0;i<count;i++){now+=80;const callbacks=[...frames.values()];frames.clear();for(const callback of callbacks)callback(now);}},
+    reload(record) {view.dispose();if(record)storage.set(key,JSON.stringify(record));return start();},
+  };
+}
+
+test("Cancelling a village walk holds every drawn party member at its current position",t=>{
+  const f=fixture(t);f.element("village-canvas").dispatch("keydown",{key:"d"});f.advance(6);
+  const before=f.party(),leader=f.hero();assert.equal(before.length,3);assert.ok(leader.x>510&&leader.x<550);
+  f.element("village-fit").click();
+  assert.deepEqual(f.party(),before,"cancellation must not redraw the party on its old trail");
+  assert.deepEqual(f.hero(),leader);f.advance(8);assert.deepEqual(f.party(),before);
+});
+
+test("Leaving a village mid-journey keeps the party on return and cancels stale arrivals",async t=>{
+  const f=fixture(t);f.element("village-tavern").click();f.advance(6);
+  const before=f.party(),leader=f.hero();assert.equal(f.root.dataset.travelling,"tavern");
+  f.view.setVisible(false);f.advance(100);f.view.setVisible(true);f.advance(2);
+  assert.deepEqual(f.party(),before);assert.deepEqual(f.hero(),leader);
+  assert.equal(f.root.dataset.travelling,"");await Promise.resolve();assert.deepEqual(f.navigations,[]);
+});
+
+test("Reload restores the party and camera together, including a journey stopped by closing",t=>{
+  const f=fixture(t);f.element("village-tavern").click();f.advance(6);
+  const party=f.party(),hero=f.hero(),camera=f.camera();f.reload();
+  assert.deepEqual(f.hero(),hero);assert.deepEqual(f.party(),party);assert.deepEqual(f.camera(),camera);
+  f.advance(6);assert.deepEqual(f.party(),party,"restoring does not resume an obsolete route or ambient patrol");
+  assert.equal(f.root.dataset.travelling,undefined);
+});
+
+test("Old camera-only village records remain usable and demo progress stays separate",t=>{
+  const f=fixture(t,{demo:true,saved:{camera:{x:620,y:510,zoom:1.25}}});
+  assert.deepEqual(f.hero(),{x:490,y:430});assert.deepEqual(f.camera(),{x:"620.0",y:"510.0",zoom:"1.25"});
+  f.element("village-canvas").dispatch("keydown",{key:"d"});f.advance(6);f.view.setVisible(false);
+  assert.ok(JSON.parse(f.storage.get(f.key)).hero.point.x>510);
+  assert.equal(f.storage.has("chat-ui-village-view"),false);
+});
+
+test("Closing another screen before first visiting the village preserves its saved party",t=>{
+  const point={x:580,y:430};
+  const f=fixture(t,{visible:false,saved:{hero:{point,heading:1}}});
+  f.reload();f.view.setVisible(true);
+  assert.deepEqual(f.hero(),point);assert.deepEqual(f.party(),Array(3).fill(point));
+});
+
+const island=villageIsland(),terrain={water:[
+  ...villageRiverWater(island.bounds.top,VILLAGE_WORLD.top,{x:0,y:0},20),
+  ...villageRiverWater(VILLAGE_WORLD.top,VILLAGE_WORLD.bottom),
+  ...villageRiverWater(VILLAGE_WORLD.bottom,island.bounds.bottom,{x:0,y:0},20)],bridges:[villageBridge]};
+
+test("Reload can restore a dry position on the distant continent",t=>{
+  const point=island.landPatches.map(r=>({x:(r.left+r.right)/2,y:(r.top+r.bottom)/2})).find(point=>
+    Math.hypot(point.x,point.y)>3000&&islandRouteWalkable([point,point],island,terrain));
+  assert.ok(point);const f=fixture(t,{saved:{hero:{point,heading:1.2}}});
+  assert.deepEqual(f.hero(),{x:Number(point.x.toFixed(1)),y:Number(point.y.toFixed(1))});
+  f.advance(4);assert.deepEqual(f.party(),Array(3).fill({x:Math.round(point.x),y:Math.round(point.y)}));
+});
+
+const water=terrain.water.find(r=>r.top>100&&r.top<250);
+const cottage=village3DScene({population:3}).scenery.find(item=>item.kind==='cottage');
+for(const [label,point] of [["sea",{x:1e6,y:1e6}],["river",{x:(water.left+water.right)/2,y:(water.top+water.bottom)/2}],
+  ["building",{x:230,y:170}],["cottage",{x:cottage.x,y:cottage.y-10}],["malformed",{x:"490",y:430}],["missing",null]])
+  test(`Reload rejects a saved party position in ${label}`,t=>{
+    const f=fixture(t,{building:true,saved:{hero:{point}}});assert.deepEqual(f.hero(),{x:490,y:430});
+    assert.deepEqual(f.party(),Array(3).fill({x:490,y:430}));
+  });

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d12">
+  <title>A2ACraft · Toppy · Research Preview</title>
+  <meta name="description" content="A2ACraft by Toppy — AIとの会話・作業・成果を、街として見渡すワークスペース。Research Preview（開発中）。">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/vendor/xterm.css">
+<link rel="stylesheet" href="/attachments.css">
+<link rel="stylesheet" href="/equipment.css">
+<link rel="stylesheet" href="/party.css">
+<link rel="stylesheet" href="/castle.css">
+<link rel="stylesheet" href="/modules.css">
+<link rel="stylesheet" href="/town.css">
+<link rel="stylesheet" href="/town-activity.css">
+<link rel="stylesheet" href="/adventure.css">
+<link rel="stylesheet" href="/town-shell.css">
+<link rel="stylesheet" href="/workspace-tabs.css">
+<link rel="stylesheet" href="/activity.css">
+<link rel="stylesheet" href="/plugins/teams.css">
+<link rel="stylesheet" href="/history.css">
+<link rel="stylesheet" href="/refined-shell.css">
+<link rel="stylesheet" href="/refined-quests.css">
+<link rel="stylesheet" href="/refined-utilities.css">
+<link rel="stylesheet" href="/village.css">
+<link rel="stylesheet" href="/projects.css">
+<link rel="stylesheet" href="/agent-board.css">
+<link rel="stylesheet" href="/agent-delegation-view.css">
+<link rel="stylesheet" href="/world-interiors.css">
+<link rel="stylesheet" href="/app-shell.css">
+<link rel="stylesheet" href="/tavern-app.css">
+<link rel="stylesheet" href="/world-3d.css">
+<link rel="stylesheet" href="/resident-conversation.css">
+<link rel="stylesheet" href="/refined-chat.css">
+</head>
+<body data-motion="full">
+<section id="connect-screen" aria-labelledby="connect-title">
+  <div class="window-controls connect-window-controls" aria-label="ウィンドウ操作"><button data-window-action="minimize" aria-label="最小化">−</button><button data-window-action="maximize" aria-label="最大化">□</button><button data-window-action="close" aria-label="閉じる">×</button></div>
+  <div class="connect-card">
+    <span class="connect-mark" aria-hidden="true">✳</span>
+    <div class="eyebrow">A2ACRAFT · TOPPY</div>
+    <h1 id="connect-title">Connect</h1>
+    <p>AIとの会話・作業・成果を、街として見渡す。<br><small>Research Preview · 開発中</small></p>
+    <div id="connect-practice-badge" class="practice-banner" hidden><strong>練習用の街</strong><span>通常の街とは別のデータを使います。<br>AIの処理には実際のChatGPT利用枠を使います。</span></div>
+    <button id="start-connect" class="primary" disabled><span id="connect-spinner" class="pane-spinner" aria-hidden="true" hidden></span><span id="start-connect-label">Connect</span></button>
+    <p id="connect-status" role="status" aria-live="polite" hidden></p>
+    <p id="connect-error" role="alert" hidden></p>
+    <a id="connect-login-link" class="login-link" target="_blank" rel="noopener noreferrer" hidden>ブラウザでChatGPTにログイン →</a>
+    <button id="open-offline" type="button" class="outline connect-history" disabled>接続せずに開く</button>
+    <button type="button" class="outline connect-history" data-history-open aria-haspopup="dialog" aria-controls="history-dialog">保存した履歴を開く</button>
+    <button id="connect-settings" type="button" class="outline connect-history">接続設定を開く</button>
+  </div>
+</section>
+<div id="workspace" class="app" hidden inert>
+  <aside class="sidebar" aria-label="コマンドサイドバー">
+    <div class="brand"><span class="brand-icon" aria-hidden="true">▦</span><div>A2ACraft<small>TOPPY · RESEARCH PREVIEW</small></div><span class="brand-led" aria-hidden="true"></span></div>
+    <div class="sidebar-scroll">
+      <section class="side-section quick-section" id="backlog-quick" hidden>
+        <div class="side-label">QUICK COMMAND <span class="micro-label">01</span></div>
+        <button class="quick command-select" id="backlog-launch" data-view="backlog"><span><small>EXTERNAL SERVICE · PLUGIN</small><b>Backlog</b></span><span class="command-arrow" aria-hidden="true">▷</span></button>
+      </section>
+      <section class="side-section mission-section">
+        <div class="side-label">MISSION NOW <span class="purple-text micro-label">T+NOW</span></div>
+        <p class="side-subtitle">現在の作業と実行状態</p>
+        <div class="mission-card"><span class="mission-code">DR–01</span><div><strong id="mission-title">Main</strong><span id="mission-state">会話を選択して開始</span></div><span class="mission-play" aria-hidden="true">▷</span></div>
+        <button id="schedules-launch" type="button" class="schedule-card activity-launch" data-view="schedules"><span class="mission-code">SC–02</span><span><strong>Scheduled Tasks <span id="schedule-count" class="count-badge">0</span></strong><small>アプリ内の通知予約</small></span><span aria-hidden="true">▦</span></button>
+      </section>
+      <section class="side-section automation-section">
+        <div class="side-label">AUTOMATION <span class="micro-label">GUARDED<br>DELIVERY</span><span class="ring-marker" aria-hidden="true">⌄</span></div>
+        <button id="automation-launch" type="button" class="automation-card activity-launch" data-view="schedules"><span class="automation-title"><span class="switch-off" data-automation-switch aria-hidden="true"></span><strong>Automation Master</strong><span id="automation-badge" class="offline-badge">OFF</span></span><span class="automation-state" id="automation-state">アプリ内の通知 · OFF</span><span class="activity-launch-note">通知予約とフォローアップの設定<br>クエストは手動で開始します</span></button>
+        <button id="teams-launch" type="button" class="automation-card compact activity-launch" data-view="teams"><span class="automation-title"><span id="teams-launch-switch" class="switch-off" aria-hidden="true"></span><strong>Teams返信</strong></span><span id="teams-launch-state" class="activity-launch-note">OFF · 接続設定から有効にする</span></button>
+        <button id="followup-launch" type="button" class="automation-card compact activity-launch" data-view="schedules"><span class="automation-title"><span class="switch-off" data-followup-switch aria-hidden="true"></span><strong>Auto Followup</strong></span><span class="activity-launch-note"><span id="followup-badge">OFF</span> · 期限超過・中断の確認通知</span></button>
+      </section>
+      <section class="side-section conversation-section">
+        <div class="side-label">CONVERSATIONS <button id="add-side" class="text-btn" aria-label="会話を追加">＋</button></div>
+        <div id="conversation-list"></div>
+      </section>
+      <section class="side-section service-section">
+        <div class="side-label">SERVICE ACCESS <span class="micro-label">LOCAL<br>CONNECTIONS</span></div>
+        <div class="service-card"><span class="service-symbol cyan-text" aria-hidden="true">◎</span><div><strong>CODEX APP SERVER</strong><small id="service-codex">接続を待っています</small></div><span class="service-bars" aria-hidden="true">▥</span></div>
+        <div class="service-card"><span class="service-symbol green-text" aria-hidden="true">⌘</span><div><strong>DESKTOP RUNTIME</strong><small id="service-runtime">BROWSER · LOCALHOST</small></div><span class="service-bars" aria-hidden="true">▥</span></div>
+      </section>
+    </div>
+    <div class="side-bottom">
+      <div class="plan-mini"><span class="dot mint"></span><strong>CODEX PLAN ONLY</strong><span class="shield" title="APIへの自動切替なし">◇</span></div>
+      <div class="side-nav"><button class="nav" data-view="town" aria-label="街マップ"><span aria-hidden="true">⌖</span> 街マップ</button><button class="nav" data-view="tavern" aria-label="酒場とパーティ"><span aria-hidden="true"><svg class="equipment-icon" viewBox="0 0 64 64"><use href="/assets/equipment.svg#tavern"/></svg></span> 酒場とパーティ</button><button class="nav" data-view="equipment" aria-label="装備とお店"><span aria-hidden="true"><svg class="equipment-icon" viewBox="0 0 64 64"><use href="/assets/equipment.svg#sword"/></svg></span> 装備とお店</button><button class="nav" data-view="usage"><span>◴</span> 利用状況</button><button class="nav" data-view="settings"><span>⚙</span> 接続設定</button></div>
+      <div class="connection"><span class="dot" id="connection-dot"></span><span id="connection-text">未接続</span><span>V0.4</span></div>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="deck-header">
+      <div class="header-tools"><button id="sidebar-toggle" data-sidebar-toggle class="header-button sidebar-button" aria-label="サイドバーを切替" aria-expanded="true"><span aria-hidden="true">▥</span> SIDEBAR</button><div class="header-button work-counter"><span aria-hidden="true">◎</span> WORK TASKS <span id="hud-active" class="count-badge">0</span></div><div class="header-button runtime-badge"><span class="dot mint"></span> <span id="hud-clock">LOCAL</span></div></div>
+      <div class="header-right"><div class="model-hud"><span class="micro-label">MODEL / EFFORT</span><strong><span id="hud-model">CODEX</span><span class="hud-separator">·</span><span id="hud-effort">STANDARD</span></strong></div><span id="mode-tag" class="mode-tag">LOCAL · PRIVATE</span><button id="motion-toggle" data-motion-toggle class="icon-btn motion-toggle" aria-label="アニメーションを切替" aria-pressed="true" title="アニメーションを切替"><span aria-hidden="true">〰</span><span data-motion-label>MOTION ON</span></button><button id="settings-shortcut" class="icon-btn" aria-label="接続設定">⚙</button><div class="window-controls" aria-label="ウィンドウ操作"><button data-window-action="minimize" aria-label="最小化">−</button><button data-window-action="maximize" aria-label="最大化">□</button><button data-window-action="close" aria-label="閉じる">×</button></div></div>
+    </header>
+    <main>
+      <div id="view-transition" hidden aria-hidden="true">
+        <svg class="view-vortex" viewBox="0 0 240 240" focusable="false">
+          <defs>
+            <linearGradient id="vortex-wind" x1="0" y1="0" x2="1" y2="1">
+              <stop stop-color="#b7fff1"/><stop offset=".55" stop-color="#78dfe8"/><stop offset="1" stop-color="#ba8fe6" stop-opacity=".25"/>
+            </linearGradient>
+            <path id="vortex-arm" d="M116 110C104 105 86 117 83 132C78 160 106 177 133 169C182 155 201 99 177 57C164 35 141 23 116 23C157 42 174 72 168 102C164 128 144 148 121 149C104 150 96 138 100 125C103 116 111 113 116 116Z"/>
+          </defs>
+          <g class="vortex-winds" fill="url(#vortex-wind)">
+            <use href="#vortex-arm"/><use href="#vortex-arm" transform="rotate(120 120 120)"/><use href="#vortex-arm" transform="rotate(240 120 120)"/>
+          </g>
+          <circle class="vortex-eye" cx="120" cy="120" r="7"/>
+        </svg>
+      </div>
+      <nav id="town-navigation" aria-label="メインメニュー" hidden>
+        <div class="town-navigation-brand"><span class="app-identity" aria-label="A2ACraft by Toppy — 開発中"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 10-8 10-8-10Z"/><path d="m12 7 4 5-4 5-4-5Z"/></svg><span>A2ACraft</span></span><strong id="town-navigation-title" tabindex="-1">冒険</strong><span id="town-connection-status"></span></div>
+        <div class="town-navigation-actions">
+          <button id="adventure-home" type="button" class="outline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 5-2 6 2 5-2v14l-5 2-6-2-5 2Z"/><path d="M9 4v14m6-12v14"/></svg><span>冒険</span></button>
+          <button id="adventure-town-nav" type="button" class="outline" aria-label="街と仲間"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/><path d="M2 21h20"/></svg><span>村</span></button>
+          <button id="town-nav-tavern" type="button" class="outline" data-view="tavern"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M17 4a3 3 0 0 1 0 6m1 4a5 5 0 0 1 3 4v2"/></svg><span>仲間</span></button>
+          <button id="town-nav-chat" type="button" class="outline" data-view="chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4Z"/><path d="M8 8h8m-8 4h5"/></svg><span>会話</span></button>
+          <button id="town-tools-toggle" type="button" class="outline" aria-label="すべての機能" aria-haspopup="dialog" aria-controls="workspace-menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>メニュー</span></button>
+        </div>
+      </nav>
+      <div id="practice-banner" class="practice-banner" hidden><strong>練習用の街</strong><span>通常とは別のデータ · AIの処理には実際のChatGPT利用枠を使います</span></div>
+      <div id="workspace-tabs" aria-label="マップとチャットのタブ"></div>
+      <section class="page-heading">
+        <nav class="module-row" aria-label="ワークスペースモジュール"><button class="module active" data-view="chat"><span aria-hidden="true">✧</span><h1 id="page-title">会話</h1></button><button class="module" data-view="terminal" title="ローカルターミナルを開く"><span aria-hidden="true">›_</span><b>ターミナル</b></button><button class="module" data-view="inbox"><span aria-hidden="true">▤</span><b>お知らせ <small id="inbox-tab-count">0</small></b></button><button class="module" data-view="todos"><span aria-hidden="true">◎</span><b>TODO</b></button><button class="module" data-view="reports"><span aria-hidden="true">▦</span><b>日報</b></button><button class="module image-module" data-view="image"><span aria-hidden="true">▧</span><b>画像と資料</b></button></nav>
+        <p id="page-subtitle" class="sr-only">複数の会話と実行状態をまとめて操作。</p>
+      </section>
+      <section class="quota-strip" aria-label="Codex利用枠"><div class="quota-brand"><span class="plan-mark" aria-hidden="true">✳</span><div><b>CODEX PLAN</b><span id="plan-caption">ChatGPTログイン待ち</span></div></div><div id="quota-windows" class="quota-windows"></div><div class="quota-action"><span id="quota-updated">未取得</span><button class="icon-btn" id="refresh-btn" aria-label="利用枠を更新">↻</button><button class="primary" id="connect-btn">Codexに接続 ↗</button></div></section>
+      <div id="notice" class="notice" role="status"></div>
+      <section id="town-hud" class="town-hud" aria-label="現在地とCodex利用枠" hidden>
+        <div class="town-location-group"><div><small>現在地</small><strong id="town-location">広場</strong></div><button id="town-return" type="button" class="outline" data-view="town">← 広場へ戻る</button></div>
+        <div id="town-wallet" class="town-wallet" data-status="unknown"><svg class="equipment-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="/assets/town.svg#coin"/></svg><div><small>Codex · 残り利用枠</small><strong id="town-balance" role="status" aria-live="polite">—</strong></div><button id="town-refresh" type="button" class="icon-btn" aria-label="利用枠を更新">↻</button></div>
+        <div class="town-wallet-help"><p id="town-wallet-note"></p><details><summary>残量の内訳・表示について</summary><div class="town-wallet-details"><p>正確なトークン残数は提供されていないため、Codex利用枠の残量（%）を表示します。</p><ul id="town-wallet-windows"></ul></div></details></div>
+      </section>
+      <section id="town-view" class="detail-page" aria-labelledby="town-title" hidden>
+        <div class="town-heading"><div><div class="eyebrow">ADVENTURER’S TOWN</div><h2 id="town-title" tabindex="-1">旅人の街</h2><p>依頼を達成して、新しい仲間の技と土地を見つけよう。</p></div><span id="town-party-caption"></span></div>
+        <section id="adventure-world" aria-label="成長と冒険の世界地図"></section>
+        <section id="history-village" aria-label="会話が育てる村"></section>
+        <section id="project-village" aria-label="開発の全体マップ" hidden></section>
+        <details id="town-facilities"><summary>旧パーティの広場・依頼の受注</summary>
+        <div class="town-map" aria-label="武器屋・呪文屋・酒場・お城のある街マップ">
+          <svg class="town-terrain" viewBox="0 0 960 540" preserveAspectRatio="none" aria-hidden="true"><use href="/assets/town.svg#terrain"/></svg>
+          <button class="town-place town-weapon" type="button" data-town-destination="weapon" aria-label="武器屋へ移動"><svg viewBox="0 0 224 164" preserveAspectRatio="none" aria-hidden="true"><use href="/assets/town.svg#weapon-room" width="224" height="164"/></svg><strong>武器屋</strong><small>skillを手に装備する</small></button>
+          <button class="town-place town-spell" type="button" data-town-destination="spell" aria-label="呪文屋へ移動"><svg viewBox="0 0 224 164" preserveAspectRatio="none" aria-hidden="true"><use href="/assets/town.svg#spell-room" width="224" height="164"/></svg><strong>呪文屋</strong><small>知識を呪文にする</small></button>
+          <button class="town-place town-tavern" type="button" data-town-destination="tavern" aria-label="酒場へ移動"><svg viewBox="0 0 224 164" preserveAspectRatio="none" aria-hidden="true"><use href="/assets/town.svg#tavern-room" width="224" height="164"/></svg><strong>酒場</strong><small>仲間と役割を決める</small></button>
+          <button class="town-place town-castle" type="button" data-town-destination="castle" aria-label="お城へ移動"><svg viewBox="0 0 224 164" preserveAspectRatio="none" aria-hidden="true"><use href="/assets/town.svg#castle-room" width="224" height="164"/></svg><strong>お城</strong><small>クエストを受ける</small></button>
+          <button id="town-board-open" class="town-board" type="button" aria-label="街のクエスト掲示板を開く" aria-haspopup="dialog"><svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#59432f" d="M9 8h46v35H9zM15 43h6v18h-6zm28 0h6v18h-6z"/><path fill="#ba945e" d="M6 5h52v6H6zm5 8h42v27H11z"/><path fill="#ead6a5" d="M16 17h13v17H16zm18-2h13v20H34z"/><path fill="#977b4e" d="M19 21h7v2h-7zm0 5h7v2h-7zm18-7h7v2h-7zm0 6h7v2h-7zm0 5h5v2h-5z"/></svg><strong>掲示板</strong><span id="town-board-count" aria-hidden="true">0</span></button>
+          <span class="town-plaza" aria-hidden="true">広場</span>
+          <div id="town-walkfield" aria-label="パーティを誘導する広場" aria-describedby="town-walk-help" tabindex="0">
+            <div id="town-traveler"><svg viewBox="0 0 64 80" aria-hidden="true"><use href="/assets/equipment.svg#hero"/></svg><span id="town-traveler-name">冒険者</span></div>
+          </div>
+        </div>
+        <p id="town-walk-help" class="town-map-note">待機中はクリック・ドラッグで移動。仕事中は担当が自動で動きます。キャラで会話・成果・装備、お城の報告書でまとめを確認できます。</p>
+        </details>
+      </section>
+      <section id="castle-view" class="detail-page" hidden aria-labelledby="castle-title">
+        <div class="castle-heading"><svg viewBox="0 0 140 132" aria-hidden="true"><use href="/assets/town.svg#castle"/></svg><div><div class="eyebrow">CASTLE · QUEST REQUEST</div><h2 id="castle-title">王城のクエスト受付</h2><p>実際の仕事を小さなクエストに分け、成果を確認しながら進める。</p></div></div>
+        <section id="castle-practice-guide" class="castle-practice-guide" aria-labelledby="castle-practice-title" hidden><h3 id="castle-practice-title">経費精算で、ひと通り試す</h3><p>予算120Gから交通費30Gと備品費20Gを計算する練習です。最後のまとめに <strong>支出50G・残金70G</strong> が出ることを確認します。</p><ol><li>下の依頼を確認し、<strong>クエスト案を作る</strong>。</li><li>2件の案を確認して、<strong>この内容でTODOに登録</strong>。</li><li>広場の掲示板で<strong>掲示板を自動巡回</strong>をONにし、集合からリーダーのまとめまで見る。</li></ol><p>処理には実際のChatGPT利用枠を使います。領収書の確認や外部への提出は行いません。</p><div class="castle-actions"><button id="castle-practice-sample" type="button" class="outline">サンプルを入力</button></div><p id="castle-practice-sample-note" class="module-note"></p></section>
+        <section class="castle-work-planner" aria-labelledby="castle-work-title">
+          <h3 id="castle-work-title">仕事をクエストにする</h3>
+          <p class="module-note">やりたいことをひとこと。AIが作業と成果を提案します。</p>
+          <form id="castle-work-form">
+            <label for="castle-work-request">やりたいこと</label>
+            <textarea id="castle-work-request" maxlength="4000" rows="3" required placeholder="例：来週の説明会の告知文と進行表を作りたい"></textarea>
+            <details id="castle-work-options" class="castle-disclosure">
+              <summary>成果を指定する（任意）</summary>
+              <label for="castle-work-artifact">欲しい成果</label>
+              <textarea id="castle-work-artifact" maxlength="600" rows="2" placeholder="例：告知文の下書き、60分の進行表"></textarea>
+              <p class="module-note">空欄なら、依頼に合う成果を提案します。</p>
+            </details>
+            <div class="castle-actions"><button id="castle-work-generate" type="submit" class="primary">クエスト案を作る</button><button id="castle-work-progress" type="button" class="outline" hidden>進行中のクエストを見る →</button></div>
+            <p id="castle-work-readiness" class="module-note" role="status"></p>
+            <p id="castle-work-error" class="module-error" role="alert" hidden></p>
+          </form>
+          <section id="castle-plan-preview" aria-label="クエスト案の確認と編集" hidden>
+            <h4 class="castle-preview-title">このクエストで進めますか？</h4>
+            <p id="castle-plan-context" class="castle-plan-context"></p>
+            <p id="castle-plan-mismatch" class="module-note" hidden>入力中の依頼とは別の案です。新しい案は「クエスト案を作る」から作成できます。</p>
+            <p id="castle-plan-state" class="module-note"></p>
+            <details id="castle-plan-source" class="castle-disclosure"></details>
+            <ol id="castle-plan-steps"></ol>
+            <div class="castle-actions"><button id="castle-plan-register" type="button" class="primary">この内容でTODOに登録</button></div>
+          </section>
+          <p id="castle-plan-notice" class="module-note" role="status"></p>
+          <details id="castle-plan-history" class="castle-disclosure castle-plan-picker" hidden><summary>保存したクエスト案</summary><label for="castle-plan-select">開く案</label><select id="castle-plan-select"><option value="">まだありません</option></select></details>
+        </section>
+        <details id="castle-direct-quest" class="castle-disclosure"><summary>分解せず、パーティに直接依頼する</summary>
+        <div class="castle-layout"><section class="castle-party" aria-label="出発するパーティ"><h3 id="castle-party-name">パーティ未編成</h3><p>保存済みのパーティ · 行動する順番</p><ol id="castle-party-members"></ol><div class="castle-actions"><button id="castle-tavern" type="button" class="outline">酒場で編成する →</button><button id="castle-progress" type="button" class="outline" hidden>冒険の記録を見る →</button></div></section><form id="castle-quest-form" class="castle-request"><label for="castle-quest">パーティに依頼するクエスト</label><textarea id="castle-quest" maxlength="8000" rows="6" placeholder="達成したいことや、仲間に調べてほしいことを書いてください。"></textarea><p id="castle-model-caption"></p><p id="castle-readiness" role="status"></p><p id="castle-error" role="alert" hidden></p><div class="castle-actions"><button id="castle-start" type="submit" class="primary">このクエストを渡して出発 →</button><button id="castle-todos" type="button" class="outline">TODOから依頼を選ぶ →</button></div></form></div>
+        </details>
+      </section>
+      <section id="inbox-view" class="detail-page activity-page" hidden aria-labelledby="inbox-title"></section>
+      <section id="reports-view" class="detail-page activity-page" hidden aria-labelledby="report-title"></section>
+      <section id="schedules-view" class="detail-page activity-page" hidden aria-labelledby="schedule-title-heading"></section>
+      <section id="chat-view">
+        <div class="workspace-toolbar">
+          <button id="chat-navigation" type="button" class="text-btn" aria-label="すべての機能を開く" aria-haspopup="dialog" aria-controls="workspace-menu" aria-expanded="false">☰</button>
+          <strong id="chat-heading">会話</strong><span id="chat-topic" hidden></span><span id="chat-status" role="status"></span>
+          <details id="chat-actions" class="chat-disclosure">
+            <summary aria-label="会話のメニュー" title="履歴・共有・新しい会話">⋯</summary>
+            <div class="chat-menu-panel" aria-label="会話の操作">
+              <button type="button" class="outline" data-history-open aria-haspopup="dialog" aria-controls="history-dialog">履歴を開く</button>
+              <button class="outline" id="add-chat">＋ 新しい会話</button>
+              <button id="chat-share" type="button" class="outline">この会話を共有</button>
+              <button id="context-board-toggle" class="text-btn" aria-expanded="false" aria-controls="context-board-panel">共有メモ <b id="context-pending">0</b></button>
+              <label for="mobile-chat">会話を選ぶ <small id="count"></small></label><select id="mobile-chat" aria-label="表示する会話"></select>
+              <div class="segments" aria-label="表示レイアウト"><button type="button" data-layout="1" aria-label="1×1表示">1×1</button><button type="button" data-layout="2" aria-label="1×2表示">1×2</button><button type="button" data-layout="4" aria-label="2×2表示">2×2</button></div>
+              <p id="chat-information"></p>
+            </div>
+          </details>
+        </div>
+        <section id="context-board-panel" aria-label="共有コンテキストのメッセージボード" hidden><p>共有内容は受信先の次の送信・追加指示に添付します。</p><div id="context-board-list"></div></section>
+        <div id="chat-tabs" class="chat-tabs" role="group" aria-label="会話タブ"></div>
+        <div id="grid" class="chat-grid layout-4"></div>
+        <form id="composer" class="composer">
+          <div class="composer-top">送信先 <b id="target">—</b></div>
+          <div id="attachment-list" class="attachment-list" aria-label="添付ファイル" hidden></div>
+          <input id="attachment-input" type="file" multiple hidden accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.odt,.ods,.odp,.csv,.tsv,.txt,.md">
+          <div class="composer-line">
+            <details id="composer-options" class="chat-disclosure">
+              <summary aria-label="添付・モデル・実行範囲の設定" title="添付・モデル・実行範囲">＋</summary>
+              <div class="chat-menu-panel model-controls">
+                <button type="button" id="attach-btn" class="outline" aria-label="画像や文書を添付">画像・文書を添付</button>
+                <label for="model">モデル</label><select id="model" aria-label="モデル"><option value="">接続後にモデルを取得</option></select>
+                <label for="effort">推論の深さ</label><select id="effort" aria-label="推論の深さ"><option value="medium">標準</option></select>
+                <label for="conversation-mode">実行範囲</label><select id="conversation-mode" aria-label="実行範囲" aria-describedby="conversation-mode-note conversation-mode-error"><option value="chat">相談（読み取りのみ）</option><option value="work">作業（専用フォルダ内）</option></select>
+                <p id="conversation-mode-note">相談ではファイルを変更しません。</p>
+                <p id="conversation-mode-error" role="alert" hidden></p><button id="conversation-mode-retry" type="button" class="outline" hidden>実行範囲の保存を再試行</button>
+                <p id="send-hint">Enter 送信 · Shift+Enter 改行</p>
+              </div>
+            </details>
+            <textarea id="prompt" aria-label="メッセージ" aria-describedby="send-hint" placeholder="メッセージを入力…" rows="1"></textarea>
+            <div class="send-controls"><button type="button" id="stop-btn" class="danger" hidden>停止</button><button type="submit" id="send-btn" class="primary" aria-describedby="send-hint">送信 <span>↑</span></button></div>
+          </div>
+        </form>
+        <div class="footnote"><span>↳ 会話ごとに履歴と下書きを保持</span><span>同時実行 1 · 残枠5%で新規送信を停止</span></div>
+      </section>
+      <section id="todos-view" class="detail-page" hidden aria-labelledby="todo-heading">
+        <div class="module-heading"><div><div class="eyebrow">TODO · PARTY QUEST</div><h2 id="todo-heading">依頼ノート</h2><p>作業を登録し、自分・チャット・パーティへ任せる。</p></div><button type="button" id="todo-new" class="outline">＋ TODOを追加</button></div>
+        <p id="todo-error" class="module-error" role="alert" hidden></p><p id="todo-notice" class="module-note" role="status"></p>
+        <div class="todo-layout"><div id="todo-list" aria-label="TODO一覧"></div><div class="todo-detail"><form id="todo-form"><fieldset id="todo-fields"><legend id="todo-status">新しいTODO</legend><label for="todo-title">タイトル</label><input id="todo-title" maxlength="120" required><label for="todo-description">内容（任意）</label><textarea id="todo-description" maxlength="4000" rows="4"></textarea><div class="module-pair"><label>優先度<select id="todo-priority"><option value="high">高</option><option value="normal" selected>通常</option><option value="low">低</option></select></label><label>期限（任意）<input id="todo-due" type="date"></label></div><label for="todo-criteria">達成条件（任意）</label><textarea id="todo-criteria" maxlength="2000" rows="3"></textarea><label for="todo-assignee">担当</label><select id="todo-assignee"><option value="manual">自分で進める</option><option value="party">酒場のパーティ</option></select><div class="module-note">関連画像（任意・表示用。自動ではCodexへ送りません）</div><div id="todo-media-list"></div></fieldset><div class="module-actions"><button id="todo-save" class="outline" type="submit">保存</button><button id="todo-start" class="primary" type="button">作業を開始</button><button id="todo-done" class="primary" type="button" hidden>完了にする</button><button id="todo-reopen" class="outline" type="button" hidden>手直し・再実行の準備</button><button id="todo-tavern" class="outline" type="button">酒場で編成する →</button></div></form><div id="todo-execution"><div class="module-actions"><button id="todo-pause" class="outline" type="button" hidden>クエストを停止</button><button id="todo-resume" class="primary" type="button" hidden>続きから再開</button><button id="todo-cancel" class="outline" type="button" hidden>この実行を終了</button></div><p id="todo-run-error" class="module-error" hidden></p><p id="todo-policy" class="module-note"></p><div id="todo-history"></div></div></div></div>
+      </section>
+      <section id="image-view" class="detail-page" hidden aria-labelledby="image-heading"><div class="module-heading"><div><div class="eyebrow">IMAGE · ORIGINAL MEDIA</div><h2 id="image-heading">画像と資料</h2><p>画像の入力・表示と、アニメーションの再生。</p></div></div><div id="media-drop"><label for="media-input">画像を選択・ここへドロップ・貼り付け</label><input id="media-input" type="file" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.apng,.svg,image/png,image/jpeg,image/gif,image/webp,image/svg+xml"><p id="media-upload-status" class="module-note" role="status">原本を保存します。1ファイル10 MiBまで。</p></div><p id="media-error" class="module-error" role="alert" hidden></p><div class="media-layout"><div><p id="media-empty" class="module-note">保存した画像がここに並びます。</p><div id="media-list" aria-label="画像一覧"></div></div><div class="media-viewer"><h3 id="media-title">画像を選択</h3><p id="media-metadata" class="module-note"></p><div id="media-stage" class="media-stage" aria-label="画像プレビュー">画像を選択してください。</div><div class="module-actions"><button id="media-play" type="button" class="primary" disabled>再生</button><button id="media-pause" type="button" class="outline" disabled>停止</button><label class="module-note">表示倍率 <select id="media-zoom"><option value="1">全体</option><option value="1.5">150%</option><option value="2">200%</option></select></label><span id="media-playback" class="module-note" role="status"></span></div><div class="module-actions"><a id="media-original" class="outline" download hidden>原本を保存</a><button id="media-attach" class="outline" type="button" hidden>先頭フレームをチャットに添付</button><button id="media-remove" class="outline" type="button" hidden>画像を削除</button></div></div></div></section>
+      <section id="backlog-view" class="detail-page" hidden><div class="section-head"><div class="eyebrow">EXTERNAL SERVICE · PLUGIN</div><h2>Backlog</h2><p>プロジェクトの課題を取得してTODOへ取り込みます。</p></div><div id="backlog-content"></div></section>
+      <section id="teams-view" class="detail-page activity-page" hidden aria-labelledby="teams-heading"><div class="module-heading"><div><div class="eyebrow">TEAMS · REVIEWED REPLY</div><h2 id="teams-heading">Teams返信</h2><p>メッセージを選び、返信案を確認してから送信します。</p></div><button id="teams-configure" type="button" class="outline" data-view="settings">Teamsの接続設定 →</button></div><div id="teams-content"></div></section>
+      <section id="tavern-view" class="detail-page" hidden aria-labelledby="tavern-title">
+        <div class="party-heading"><h2 id="tavern-title" tabindex="-1">酒場</h2><span id="party-mode"></span></div>
+        <div id="party-error" role="alert" hidden></div><p id="party-notice" role="status" aria-live="polite"></p>
+        <div class="party-layout">
+          <section class="tavern-stage" aria-label="あなたのパーティ">
+            <div class="tavern-scene">
+              <div class="tavern-scene-top"><div><span class="tavern-scene-eyebrow">あなたのパーティ</span><h3 id="party-scene-name">旅の仲間</h3></div><button id="party-edit-open" type="button" class="outline" aria-haspopup="dialog">編成</button></div>
+              <div id="party-scene-roster" aria-label="仲間と行動順"></div>
+            </div>
+            <p class="tavern-scene-hint" id="party-scene-hint">仲間を選ぶと、役割を変えられます。</p>
+          </section>
+          <div class="party-preparation">
+            <div id="party-composer" class="party-quest-form"><label class="party-label" for="party-quest">今日は何を進める？</label><textarea id="party-quest" rows="3" maxlength="8000" placeholder="作りたいものや、調べたいことを話してみよう。"></textarea><details class="party-model-details"><summary>実行するモデル</summary><p id="party-model-caption"></p></details><button type="button" class="primary" id="party-start">この仲間で出発 <span aria-hidden="true">↗</span></button><button id="party-view-record" type="button" class="text-btn" hidden>前の成果を見る</button></div>
+          </div>
+          <div class="party-progress"><div class="party-progress-heading"><h3>冒険の記録</h3><span id="party-status">出発前</span></div><p id="party-quest-summary"></p><div id="party-controls"><button type="button" id="party-pause" class="outline" hidden>クエストを停止</button><button type="button" id="party-resume" class="primary" hidden>続きから再開</button><button type="button" id="party-cancel" class="outline" hidden>このクエストを終了</button></div><button type="button" id="party-world-return" class="outline" hidden>世界地図へ戻る →</button><p id="party-run-error" role="status" hidden></p><button id="party-new-quest" type="button" class="primary" hidden>次の依頼へ</button><div id="party-final" hidden><h3>リーダーのまとめ</h3><pre id="party-final-text"></pre><button type="button" id="party-final-chat" class="outline">リーダーの会話を開く →</button></div><ol id="party-steps"></ol></div>
+        </div>
+        <dialog id="party-edit-dialog" aria-labelledby="party-edit-title">
+          <div class="party-edit-heading"><div><h2 id="party-edit-title">仲間と役割</h2><p>役割の順に進め、最後はリーダーがまとめます。</p></div><button id="party-edit-close" type="button" class="outline">閉じる</button></div>
+          <p id="party-edit-error" role="alert" hidden></p>
+          <details id="party-edit" open><summary>仲間と役割を変更する</summary><form id="party-form"><fieldset id="party-configuration"><legend>パーティを組む</legend><label class="party-label" for="party-name">パーティ名</label><input id="party-name" maxlength="80" value="旅の仲間"><div class="party-order-label">行動する順番</div><div id="party-order" aria-label="パーティの行動順"></div><div id="party-members" aria-label="仲間と役割"></div><button type="submit" class="primary" id="party-save">この編成にする</button></fieldset></form></details>
+        </dialog>
+      </section>
+      <section id="equipment-view" class="detail-page" hidden aria-labelledby="equipment-title">
+        <div class="equipment-heading"><div><div class="eyebrow">SKILL EQUIPMENT</div><h2 id="equipment-title">旅のしたく</h2><p>スキルを選び、仲間の力に。使う際の消費目安を比べられます。</p></div><button type="button" class="outline" id="equipment-back">チャットへ戻る →</button></div>
+        <div class="equipment-party"><div class="equipment-character" role="img" aria-label="装備を手に持つ冒険者"><svg class="equipment-hero" viewBox="0 0 64 80" aria-hidden="true"><use href="/assets/equipment.svg#hero"/></svg><div id="equipment-hand" aria-hidden="true"></div><div id="equipment-magic" aria-hidden="true"></div></div><div class="equipment-profile"><label for="equipment-chat">この会話のキャラ</label><select id="equipment-chat" aria-label="装備する会話"></select><div id="equipment-slots" class="equipment-slots"></div></div></div>
+        <div class="equipment-shop-bar"><nav aria-label="お店を選ぶ"><button type="button" class="outline" data-shop="weapon" aria-pressed="true"><svg class="equipment-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="/assets/equipment.svg#sword"/></svg>武器屋</button><button type="button" class="outline" data-shop="tool" aria-pressed="false"><svg class="equipment-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="/assets/equipment.svg#toolkit"/></svg>道具屋</button><button type="button" class="outline" data-shop="spell" aria-pressed="false"><svg class="equipment-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="/assets/equipment.svg#staff"/></svg>呪文屋</button></nav><button type="button" class="text-btn" id="equipment-refresh">品ぞろえを更新 ↻</button></div>
+        <p id="equipment-loading" role="status" hidden>品ぞろえを確認しています…</p><div id="equipment-error" role="alert" hidden></div><p id="equipment-warnings" class="muted" hidden></p>
+        <div class="equipment-shop"><div id="equipment-stock" aria-label="スキルの品ぞろえと消費目安"></div><div id="equipment-detail"><span id="equipment-kind" class="eyebrow">SKILL</span><div id="equipment-preview" aria-hidden="true"></div><h3 id="equipment-name">持っていくskillを選ぶ</h3><p id="equipment-source"></p><div id="equipment-estimate-box" class="equipment-estimate-box" hidden><span id="equipment-token-caption">消費目安 / 1回</span><strong id="equipment-token-estimate"></strong><p id="equipment-token-scope"></p></div><p id="equipment-description"></p><p id="equipment-use-hint"></p><div class="equipment-actions"><button type="button" id="equipment-equip" class="primary" disabled>装備する</button><button type="button" id="equipment-arm" class="outline" hidden>矢をつがえる</button><button type="button" id="equipment-use" class="outline" hidden>チャットで使う →</button></div><p id="equipment-token-note"></p><p id="equipment-status" role="status" aria-live="polite"></p></div></div>
+      </section>
+      <section id="terminal-view" hidden aria-label="ローカルターミナル">
+        <div class="terminal-toolbar"><div><strong>LOCAL TERMINAL</strong><span id="terminal-status" role="status">未起動</span></div><div class="terminal-actions"><button id="terminal-start" class="outline">新しいシェル</button><button id="terminal-interrupt" class="outline" disabled>中断 Ctrl+C</button><button id="terminal-close" class="danger" disabled>終了</button></div></div>
+        <div id="terminal-container"></div>
+        <div class="footnote"><span>手動入力用のローカルシェル · 端末の通常権限で実行</span><span>Chatの履歴・処理はそのまま保持</span></div>
+      </section>
+      <section id="usage-view" class="detail-page" hidden><div class="section-head"><div class="eyebrow">SHARED ALLOWANCE</div><h2>Codex 利用状況</h2><p>このGUIと、同じアカウントのCodex利用で枠を共有します。</p></div><div id="usage-detail"></div><div class="info-card"><h3>利用枠を守る動作</h3><ul><li>送信のたびに最新の残量を確認します。</li><li>いずれかの取得済み枠が残り5%以下なら、新しい処理を開始しません。</li><li>残量不明・認証切れのときは送信を停止します。</li><li>上限到達後は、リセットを待って手動で更新・再送信します。</li></ul><p class="muted">進行中の処理量や、他のCodex画面での同時利用は、このGUIだけでは制限できません。既存の追加クレジット消費を厳密にゼロにする保証はありません。</p></div></section>
+      <section id="settings-view" class="detail-page" hidden><div class="section-head"><div class="eyebrow">CONNECTION SETTINGS</div><h2>ChatGPT アカウント接続</h2><p>Codexへの接続にはAPIキーの登録は不要です。</p></div><div class="settings-grid"><div class="info-card"><div class="setting-title"><span class="plan-mark">✳</span><h3>Codex App Server</h3><span class="pill" id="auth-pill">未接続</span></div><p id="account-label">アカウント未接続</p><div class="setting-row"><span>課金先</span><b>ChatGPT / Codex 利用枠</b></div><div class="setting-row"><span>APIへの自動切替</span><b class="mint-text">無効 · 固定</b></div><div class="setting-row"><span>クレジット追加購入</span><b class="mint-text">実行しない</b></div><div class="setting-row"><span>新規送信の停止ライン</span><b>残り 5%</b></div><div class="setting-buttons"><button class="primary" id="login-btn">ChatGPTでログイン ↗</button><button class="outline" id="logout-btn">ログアウト</button></div><a id="login-link" class="login-link" target="_blank" rel="noopener noreferrer" hidden>ブラウザでログインを続ける →</a></div><div class="info-card"><div class="eyebrow">THIS BUILD</div><h3>自分専用の接続</h3><p>このGUIは実行した端末のlocalhostで動作します。ChatGPTの認証情報はCodexが管理し、ブラウザには渡しません。</p><p>相談は読み取り専用です。会話の「＋」から作業を選ぶと、その会話専用のフォルダ内でファイルを作成・編集できます。</p><p class="muted">Inbox・日報・通知予約はこのアプリ内で使えます。Teamsの返信は接続設定で有効にできます。GitHubへの接続はモデル利用の認証とは別です。</p><a href="/?demo=1&village=sample" class="plain-link">画面確認モードを開く →</a></div></div><div class="info-card module-settings"><h3>プラグイン</h3><form id="backlog-settings-form" class="module-form"><label class="module-checkbox"><input id="backlog-enabled" type="checkbox"> Backlog <span id="backlog-plugin-state">OFF</span></label><label for="backlog-settings-url">接続先URL</label><input id="backlog-settings-url" type="url" placeholder="https://…"><button class="outline" type="submit">プラグイン設定を保存</button><p class="module-note">OFFではモジュールを停止します。設定とローカルTODOは保持します。</p></form></div><div class="info-card module-settings"><h3>Teams返信プラグイン</h3><form id="teams-settings-form" class="module-form"><label class="module-checkbox"><input id="teams-enabled" type="checkbox"> Teams返信 <span id="teams-plugin-state">OFF</span></label><label for="teams-client-id">アプリケーション（クライアント）ID</label><input id="teams-client-id" maxlength="80" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off"><p class="module-note">職場・学校アカウント向けのMicrosoft Entraアプリを指定します。クライアントシークレットは使いません。</p><label for="teams-tenant">テナントIDまたはドメイン</label><input id="teams-tenant" maxlength="253" value="organizations" placeholder="organizations"><label for="teams-target-kind">受信先</label><select id="teams-target-kind"><option value="chat">参加しているチャットから選ぶ</option><option value="channel">チームのチャネル</option></select><div id="teams-channel-settings" class="module-form" hidden><label for="teams-team-id">チームID</label><input id="teams-team-id" maxlength="80" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><label for="teams-channel-id">チャネルID</label><input id="teams-channel-id" maxlength="512" placeholder="19:…@thread.tacv2"></div><button id="teams-settings-save" class="outline" type="submit">Teamsの設定を保存</button><p class="module-note">ONにした後、「Teams返信」でMicrosoftに接続してください。認証トークンは今回の起動中だけ保持します。接続先の変更時は再接続が必要です。OFFでは接続を停止し、保存した下書きは残します。送信には毎回、宛先と本文の確認が必要です。</p></form></div><div id="desktop-settings" class="info-card" hidden><div id="desktop-runtime" class="eyebrow">DESKTOP RUNTIME</div><h3>Codex 実行ファイル</h3><p id="codex-path" class="desktop-path">自動検出</p><div class="setting-buttons"><button id="select-codex-path" class="outline">実行ファイルを選択</button><button id="reset-codex-path" class="outline">同梱版に戻す</button></div><h3>作業フォルダ</h3><p id="work-directory" class="desktop-path">アプリ専用の作業フォルダ</p><p>会話ごとの成果を保存します。管理されたMacで既定の場所が許可されない場合は、利用できる専用フォルダを選んでください。既存の会話とログインは保持します。</p><label for="work-directory-input">専用フォルダのパス</label><input id="work-directory-input" class="desktop-path" placeholder="/absolute/path/to/workspace" autocomplete="off"><div class="setting-buttons"><button id="save-work-directory" class="outline">作業場所を保存</button><button id="select-work-directory" class="outline">フォルダから選択</button></div><p id="desktop-settings-status" role="status" aria-live="polite"></p><div id="desktop-version" class="desktop-version">ELECTRON DESKTOP</div></div></section>
+    </main>
+    <footer><span><span class="footer-pip" aria-hidden="true"></span> A2ACraft by Toppy</span><span>RESEARCH PREVIEW <i>·</i> 開発中</span></footer>
+  </div>
+</div>
+<svg id="context-arrows" aria-hidden="true" hidden></svg>
+<div id="context-transfer-status" role="status" aria-live="polite" hidden></div>
+<dialog id="context-share-dialog"><form method="dialog"><h2>コンテキストを共有</h2><p id="context-share-source"></p><label for="context-share-target">共有先の会話</label><select id="context-share-target"></select><p>会話の表示内容を、共有先の次の指示に添付します。</p><div class="setting-buttons"><button value="cancel" class="outline">キャンセル</button><button id="context-share-confirm" type="button" class="primary">共有する →</button></div></form></dialog>
+<dialog id="workspace-menu" aria-labelledby="workspace-menu-title">
+  <div class="workspace-menu-heading"><div><p>旅の道具と記録</p><h2 id="workspace-menu-title">何をしましょう？</h2></div><button id="workspace-menu-close" type="button" class="outline">閉じる</button></div>
+  <nav class="workspace-menu-grid" aria-label="すべての機能">
+    <button type="button" data-view="town"><strong>街へ戻る</strong><span>地図と仲間を見る</span></button>
+    <button type="button" data-view="chat"><strong>会話</strong><span>仲間に相談する</span></button>
+    <button id="workspace-menu-open-history" type="button" data-history-open aria-haspopup="dialog" aria-controls="history-dialog"><strong>会話の履歴</strong><span>過去の会話・Codexからの移行</span></button>
+    <button type="button" data-view="equipment"><strong>装備とお店</strong><span>仲間のスキルを整える</span></button>
+    <button type="button" data-view="tavern"><strong>酒場とパーティ</strong><span>仲間を選び、依頼を進める</span></button>
+    <button id="workspace-menu-party-map" type="button"><strong>パーティの広場</strong><span>掲示板・作業・お城への報告を見る</span></button>
+    <button id="workspace-menu-village-preview" type="button"><strong>村のデモを見る</strong><span>169人・16棟の街を体験</span></button>
+    <button type="button" data-view="castle"><strong>お城</strong><span>大きな依頼を計画する</span></button>
+    <button type="button" data-view="todos"><strong>依頼ノート</strong><span>TODOと進み具合を確認</span></button>
+    <button type="button" data-view="image"><strong>画像と資料</strong><span>画像を確認・会話に添付</span></button>
+    <button type="button" data-view="inbox"><strong>お知らせ</strong><span>完了や確認が必要なこと</span></button>
+    <button type="button" data-view="reports"><strong>日報</strong><span>一日の記録を振り返る</span></button>
+    <button type="button" data-view="schedules"><strong>予約</strong><span>通知や作業の予定を作る</span></button>
+    <button type="button" data-view="usage"><strong>利用状況</strong><span>Codexの残り利用枠</span></button>
+    <button type="button" data-view="settings"><strong>接続設定</strong><span>アカウント・プラグイン</span></button>
+    <button type="button" data-view="terminal"><strong>ターミナル</strong><span>端末のコマンドを操作</span></button>
+    <button type="button" data-view="backlog"><strong>Backlog</strong><span>課題を取り込む</span></button>
+    <button type="button" data-view="teams"><strong>Teams返信</strong><span>メッセージを確認して返信</span></button>
+  </nav>
+  <div class="workspace-menu-footer"><p>一覧や状態表示をまとめて使うときは</p><button id="workbench-toggle" type="button" class="outline" aria-pressed="false">詳細な作業デスクを表示</button></div>
+</dialog>
+<div id="toast" role="alert" hidden></div>
+<dialog id="history-dialog" class="history-dialog" aria-labelledby="history-title" aria-describedby="history-help">
+  <div class="history-heading"><h2 id="history-title">会話の履歴</h2><button id="history-close" type="button" class="outline">閉じる</button></div>
+  <p id="history-help" class="history-help">このアプリに保存された会話を、新しい順に表示します。開くだけではメッセージを送信しません。</p>
+  <details id="history-migration" class="history-migration">
+    <summary>Codex appから履歴を取り込む</summary>
+    <p class="history-help">ユーザーとアシスタントの会話をコピーします。取り込んだ会話は下の履歴一覧から開けます。画像の原本・ツールの実行記録・設定は移行対象に含まれません。</p>
+    <fieldset id="history-migration-fields">
+      <legend>このPCのCodexから選ぶ</legend>
+      <p class="history-help">chat-uiを起動したPCで、同じCodexの保存先を使う会話を読み込みます。Cloud上では手元のPCの会話は表示されません。</p>
+      <label class="history-checkbox"><input id="history-codex-archived" type="checkbox"> アーカイブ済みの会話を表示</label>
+      <div class="history-migration-actions"><button id="history-codex-load" class="outline" type="button">Codexの会話を読み込む</button><button id="history-codex-more" class="outline" type="button" hidden>さらに読み込む</button></div>
+      <div id="history-codex-list" class="history-codex-list" aria-label="取り込むCodexの会話"></div>
+      <div id="history-codex-selection" class="history-migration-actions" hidden><button id="history-codex-select" class="outline" type="button">先頭20件を選択</button><button id="history-codex-import" class="primary" type="button" disabled>選択した会話を取り込む</button></div>
+      <p class="history-help">元の会話は保持します。取り込み後に送信すると、履歴を引き継いだ別のCodexスレッドを、このアプリの作業フォルダで開始します。エージェントは読み取り専用です。</p>
+      <label for="history-codex-files">別のPCから履歴ファイルを取り込む</label>
+      <p id="history-codex-file-help" class="history-help">Codexを使っていたPCの <code>~/.codex/sessions</code> または <code>~/.codex/archived_sessions</code> にある <code>rollout-*.jsonl</code> を選択してください。複数選択可、1ファイル16 MiBまで。保存先を変更している場合は、その保存先を使います。</p>
+      <input id="history-codex-files" type="file" accept=".jsonl" multiple aria-describedby="history-codex-file-help">
+      <p class="history-help">ファイルからの取り込みは本文のコピーです。続けて送信する際は、その本文を引き継いだ新しい会話を開始します。元の作業環境や添付ファイルは引き継ぎません。本文が20万文字を超える場合は閲覧のみ利用できます。</p>
+    </fieldset>
+    <p id="history-migration-status" class="history-status" role="status" aria-live="polite"></p>
+    <p id="history-migration-error" class="history-error" role="alert" hidden></p>
+    <ul id="history-migration-warnings" class="history-migration-warnings" hidden></ul>
+  </details>
+  <label for="history-search">タイトル・本文・仲間の名前で検索</label>
+  <input id="history-search" type="search" placeholder="会話を検索" autocomplete="off" aria-controls="history-list">
+  <p id="history-status" class="history-status" role="status" aria-live="polite"></p>
+  <p id="history-error" class="history-error" role="alert" hidden></p>
+  <p id="history-save-error" class="history-error" role="alert" hidden></p>
+  <button id="history-retry-save" class="outline" type="button" hidden>履歴の保存を再試行</button>
+  <div id="history-list" class="history-list" aria-label="保存された会話"></div>
+</dialog>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

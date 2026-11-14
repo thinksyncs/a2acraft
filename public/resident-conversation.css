@@ -1,0 +1,28 @@
+#resident-conversation{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;min-height:30px;margin:0;padding:0;border-bottom:1px solid #ffffff10;color:#c4d1c9}
+#resident-conversation[hidden]{display:none}
+#resident-conversation h2{font:600 14px/1.4 var(--font-ui);margin:0 0 4px}
+#resident-conversation p{font:12px/1.5 var(--font-ui);margin:4px 0}
+#resident-conversation small{font:12px/1.5 var(--font-ui);color:#bdd0c5}
+#resident-conversation button,#resident-conversation summary{min-height:30px;padding:5px 6px;border:0;border-radius:5px;background:transparent;color:inherit;font:12px/20px var(--font-ui);cursor:pointer}
+#resident-conversation summary{display:list-item;list-style-position:inside}
+#resident-conversation button:hover,#resident-conversation summary:hover{background:#ffffff0a;color:#f0eedf}
+#resident-conversation button:focus-visible,#resident-conversation summary:focus-visible{outline:2px solid #dfcd8a;outline-offset:-2px}
+#resident-conversation .resident-view-content{position:absolute;z-index:50;top:calc(100% + 4px);right:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;width:min(480px,100%);max-height:min(360px,65dvh);overflow:auto;overscroll-behavior:contain;padding:10px;border:1px solid #65776d;border-radius:9px;background:#1b2c2c;color:#f0eedf;box-shadow:0 10px 32px #0008}
+#resident-conversation details:not([open])>.resident-view-content{display:none}
+#resident-conversation .resident-conversation-copy{grid-column:1/-1}
+#resident-conversation figure{margin:0;min-width:0;border:1px solid #526e6b;border-radius:8px;overflow:hidden;background:#11262b}
+#resident-conversation figcaption{font:12px/1.5 var(--font-ui);padding:6px 8px;color:#fff0cb}
+#resident-conversation canvas{display:block;width:100%;height:110px;pointer-events:none;image-rendering:pixelated}
+#resident-conversation canvas[hidden]{display:none}
+#chat-view.resident-chat-active>#chat-tabs,#chat-view.resident-chat-active>#mobile-chat{display:none}
+#chat-view.resident-chat-active .panel-index{display:none}
+#chat-view.resident-chat-active #project-chat-context>button:first-of-type{display:none}
+#chat-view.resident-chat-active .panel-foot{display:none}
+@media(max-width:700px){
+ #resident-conversation button,#resident-conversation summary{min-height:36px;padding-block:8px}
+ #resident-conversation canvas{height:100px}
+}
+
+.project-residents-menu{margin:10px 0;color:#f0eedf}
+.project-residents-menu summary{cursor:pointer;padding:8px 0}
+.project-residents-menu select{max-width:75%;min-height:42px;padding:8px;margin-right:8px;background:#1a302f;color:#f0eedf;border:1px solid #718b78;border-radius:6px}

@@ -1,0 +1,21 @@
+.agent-delegation{margin:8px 0 0;border:1px solid #48645b;border-radius:7px;background:#182720;color:#dce6db;overflow:hidden}
+.agent-delegation-summary{padding:6px 10px;cursor:pointer;font-size:12px;font-weight:600;line-height:1.5}
+.agent-delegation-summary:focus-visible{outline:2px solid #dfcd8a;outline-offset:-3px}
+.agent-delegation[open]>.agent-delegation-summary{border-bottom:1px solid #3a5147}
+.agent-delegation-body{padding:0 12px 10px}
+.agent-delegation-note,.agent-delegation-parent,.agent-delegation-characters{font-size:11px;line-height:1.65;color:#acbdb0;margin:8px 0;overflow-wrap:anywhere}
+.agent-delegation-sample{padding:8px 10px;border-left:3px solid #d8be79;background:#594c292b;color:#f0daa0;font-size:11px;line-height:1.6}
+.agent-delegation-list{list-style:none;margin:0;padding:0}
+.agent-delegation-agent{margin:10px 0 0 min(calc(var(--agent-depth,0)*12px),48px);padding:10px 12px;border:1px solid #3d5648;border-radius:7px;background:#101e19;overflow-wrap:anywhere}
+.agent-delegation-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:12px}
+.agent-delegation-status{flex-shrink:0;font-size:10px;border:1px solid #687968;border-radius:20px;padding:2px 7px;color:#c7d4c8}
+.agent-delegation-status[data-status=running]{border-color:#c3ad61;color:#f0d982}
+.agent-delegation-status[data-status=completed]{border-color:#7ca47a;color:#b7d9ac}
+.agent-delegation-status[data-status=errored],.agent-delegation-status[data-status=interrupted]{border-color:#b58171;color:#e5b2a1}
+.agent-delegation-role{font-size:11px;color:#c9d4bd;margin:5px 0;white-space:pre-wrap}
+.agent-delegation-agent h4{font-size:11px;margin:12px 0 5px;color:#e4d8ad}
+.agent-delegation-result{white-space:pre-wrap;font-size:14px;line-height:1.6;margin:0;overflow-wrap:anywhere}
+.agent-delegation-usage{display:grid;grid-template-columns:minmax(95px,auto) minmax(0,1fr);gap:4px 10px;font-size:10px;line-height:1.6;margin:10px 0 0}
+.agent-delegation-usage dt{color:#aebcab}.agent-delegation-usage dd{margin:0;color:#cfdbcc;overflow-wrap:anywhere}
+.agent-delegation-help{margin-top:12px;padding-top:8px;border-top:1px solid #3a5147}.agent-delegation-help>summary{cursor:pointer;font-size:11px;color:#c4d1bf;padding:3px 0}.agent-delegation-help>summary:focus-visible{outline:2px solid #dfcd8a;outline-offset:2px}
+@media(max-width:600px){.agent-delegation-body{padding-inline:8px}.agent-delegation-agent{padding:9px;margin-left:min(calc(var(--agent-depth,0)*8px),24px)}.agent-delegation-usage{display:block}.agent-delegation-usage dd{margin:2px 0 7px}}

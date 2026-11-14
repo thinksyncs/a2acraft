@@ -1,0 +1,56 @@
+/* Persistent application chrome: destinations stay put while each room scrolls. */
+body[data-view]:not([data-town-tools="open"]){--app-rail:88px;--app-toolbar:56px;--app-bottom:0px;font-weight:400;background:#11161b}
+body[data-view]:not([data-town-tools="open"]) .main{padding-left:var(--app-rail);background:#141b20}
+body[data-view]:not([data-town-tools="open"]) .main>main{width:100%;max-width:none;margin:0;padding:0 24px 16px}
+body[data-view]:not([data-town-tools="open"]) #town-navigation{height:var(--app-toolbar);min-height:var(--app-toolbar);padding:0;margin:0 0 16px;gap:0;flex-wrap:nowrap;border-bottom:1px solid #ffffff0d}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-brand{padding:0;width:100%;display:flex;align-items:center;gap:20px;font-size:18px;line-height:1.4;min-width:0;color:#edece7}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-brand::before,
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-brand::after{display:none}
+.app-identity{display:inline-flex;align-items:center;gap:8px;color:#a6b0b4;font:500 13px/1.4 var(--font-ui);white-space:nowrap}
+.app-identity svg{width:22px;height:28px;fill:none;stroke:#d0aa6e;stroke-width:1.4}
+body[data-view]:not([data-town-tools="open"]) #town-navigation-title{font-size:18px;line-height:1.4;font-weight:600;white-space:nowrap}
+body[data-view]:not([data-town-tools="open"]) #town-connection-status{margin-left:auto;font-size:13px;font-weight:400;color:#a8b7b9;text-align:right}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions{position:fixed;z-index:35;left:0;top:0;bottom:0;width:var(--app-rail);display:flex;flex-direction:column;justify-content:center;flex-wrap:nowrap;gap:12px;padding:16px 8px;background:#101519;border-right:1px solid #ffffff0b}
+#town-navigation button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button{position:relative;display:flex;flex-direction:column;justify-content:center;gap:7px;flex:none;width:100%;height:70px;min-height:56px;min-width:0;padding:8px 4px;border:0;border-radius:12px;background:transparent;box-shadow:none;color:#8f9b9e;font-size:14px;line-height:1.3;font-weight:500}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button:hover{background:#ffffff08;color:#e8e9e5}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button[aria-current="page"],
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button[aria-expanded="true"]{background:#dcb87912;color:#f0ce90}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button[aria-current="page"]::before{content:"";position:absolute;left:-8px;top:22px;bottom:22px;width:3px;border-radius:0 3px 3px 0;background:#e6bd79}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button:focus-visible{outline:2px solid #e9c78f;outline-offset:0}
+body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button:active{transform:scale(.97)}
+body[data-view]:not([data-town-tools="open"]) :is(#town-view,.detail-page){scroll-padding-bottom:24px}
+body[data-view]:not([data-town-tools="open"]) #toast{bottom:24px;z-index:60;background:#243037;color:#f4f2ea;border:1px solid #ffffff24;box-shadow:0 10px 40px #0006}
+body[data-view]:not([data-town-tools="open"]) #workspace-menu{border-color:#ffffff26;background:#1b242b;box-shadow:0 24px 80px #0009}
+body[data-view]:not([data-town-tools="open"]) .workspace-menu-heading{background:#1b242b;border-bottom-color:#ffffff13}
+body[data-view]:not([data-town-tools="open"]) .workspace-menu-grid button{background:#ffffff04;border-color:transparent;border-radius:10px}
+body[data-view]:not([data-town-tools="open"]) .workspace-menu-grid button:hover{background:#ffffff0b}
+body[data-view]:not([data-town-tools="open"]) .workspace-menu-grid button.active{background:#dcb87912}
+body[data-view]:not([data-town-tools="open"]) .workspace-menu-grid strong{color:#eeece4;font-weight:600}
+body[data-view]:not([data-town-tools="open"]) .workspace-menu-footer{background:#172027;border-top-color:#ffffff13}
+body.desktop-app[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions{top:36px}
+body.desktop-app[data-view]:not([data-town-tools="open"]) .deck-header{background:#101519}
+body[data-town-tools="open"] .app-identity{display:none}
+body[data-town-tools="open"] #town-navigation button svg{width:18px;height:18px}
+
+@media(max-width:700px){
+ body[data-view]:not([data-town-tools="open"]){--app-rail:0px;--app-toolbar:48px;--app-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+ body[data-view]:not([data-town-tools="open"]) .main{padding-left:0;padding-bottom:var(--app-bottom)}
+ body[data-view]:not([data-town-tools="open"]) .main>main{padding:0 12px 8px}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation{margin-bottom:8px}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-brand{gap:10px}
+ body[data-view]:not([data-town-tools="open"]) .app-identity>span{display:none}
+ body[data-view]:not([data-town-tools="open"]) .app-identity svg{width:18px;height:24px}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation-title{font-size:17px}
+ body[data-view]:not([data-town-tools="open"]) #town-connection-status{font-size:12px;letter-spacing:.02em}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions{left:0;right:0;top:auto;bottom:0;width:auto;height:var(--app-bottom);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;padding:0 4px env(safe-area-inset-bottom,0px);border-right:0;border-top:1px solid #ffffff13;background:#121a20f5;backdrop-filter:blur(18px)}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button{height:71px;gap:4px;padding:8px 2px;border-radius:0;font-size:14px}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button[aria-current="page"],
+ body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button[aria-expanded="true"]{background:transparent}
+ body[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions button[aria-current="page"]::before{left:calc(50% - 14px);top:0;bottom:auto;width:28px;height:3px;border-radius:0 0 3px 3px}
+ body[data-view]:not([data-town-tools="open"]) #toast{bottom:calc(var(--app-bottom) + 12px)}
+ body[data-view]:not([data-town-tools="open"]) #workspace-menu{align-self:end;margin:0;width:100%;max-height:calc(100dvh - 48px);border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
+ body[data-view]:not([data-town-tools="open"]) .workspace-menu-heading{border-radius:20px 20px 0 0}
+ body.desktop-app[data-view]:not([data-town-tools="open"]) #town-navigation .town-navigation-actions{top:auto}
+}
+@media(prefers-reduced-motion:reduce){#town-navigation button{transition:none}}
