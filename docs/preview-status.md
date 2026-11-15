@@ -24,7 +24,10 @@ The existing project map retains its separate topic-based relationship model.
 Native 0.4.6 initially timed out during backend module loading; after retry,
 the running application exposed no window to the native control tool. Switching
 to this build is not yet accepted. Its signature and packaged frontend were
-verified separately. In the live browser with explicit fictional sample data, the new island overview,
+verified separately. An isolated empty-data check using the packaged executable
+and backend reached ready in 441 ms, served the UI and all three new geography
+modules, and shut down cleanly without Codex sign-in or a model turn. This does
+not prove native window recovery. In the live browser with explicit fictional sample data, the new island overview,
 neighborhood navigation, a walk to a distant resident, face-to-face dialogue,
 request/response details, opening the conversation and returning to the village
 were observed. No model turn was sent during these display checks.
