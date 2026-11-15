@@ -1,7 +1,7 @@
 import {VILLAGE_PLACES,VILLAGE_WORLD} from './village-world.js';
 import {biomeLandmarks} from './world-biomes.js';
 import {mainAgentLabel} from './village-delegates.js';
-import {drawVillageRoadNetwork, villageRoadRects} from './world-road-art.js';
+import {drawVillageRoadNetwork, drawRoadNetwork, villageRoadRects} from './world-road-art.js';
 import {districtScenery, villageRiverBanks, villageBridge, villageOutskirtsGeometry, villageSurroundingsScenery} from './world-terrain.js';
 export {drawWorldHydrology,drawWorldHydrologyOutlets,drawWorldBridges} from './world-hydrology-art.js';
 
@@ -782,9 +782,11 @@ export function drawVillageConversationFocus(ctx,options){
  ctx.restore();return markers;
 }
 
-export function drawVillageWorld(ctx,{time=0,residents=[],projects=[],population=0,selectedId=null,motion=true,squads=[],protagonist=null,selectedSquadId=null,outskirtsVisible=true,terrainVisible=true,delegates=null}={}){
+export function drawVillageWorld(ctx,{time=0,residents=[],projects=[],population=0,selectedId=null,motion=true,squads=[],protagonist=null,selectedSquadId=null,outskirtsVisible=true,terrainVisible=true,delegates=null,roads=[],clearings=[]}={}){
  ctx.save();ctx.imageSmoothingEnabled=false;
  if(terrainVisible){terrain(ctx,population);if(outskirtsVisible)outskirts(ctx);}
+ drawWorldSettlement(ctx,{clearings},{layer:'ground'});
+ drawRoadNetwork(ctx,roads,{edgeWidth:35,width:25});
  const clock=motion?time:0;
  const groups=Array.isArray(squads)?[...squads]:[];
  if(protagonist&&!groups.some(squad=>squad.id===protagonist.id||protagonist.activityId&&squad.id===protagonist.activityId))groups.push({...protagonist,isProtagonist:true});

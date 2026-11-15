@@ -98,6 +98,27 @@ test('Road connection and route selection do not depend on saved object insertio
   }
 });
 
+test('project topic strength makes related roads wider while unknown links stay narrow',()=>{
+  const layout=placeDistricts(projects(['仕事','仕事の業務','研究','未整理']),[]),roads=worldRoads(layout);
+  assert.deepEqual(roads.map(road=>road.strength),[1,.35,0]);
+  assert.ok(roads.every(road=>Number.isFinite(road.width)&&road.width>=3&&road.width<=80));
+  for(let i=1;i<roads.length;i++)assert.ok(roads[i-1].width>roads[i].width);
+  for(const road of roads){
+    assert.equal(road.strength,affinity(layout[road.from].evidence,layout[road.to].evidence));
+    assert.deepEqual(road.points[0],hub(layout[road.from]));
+    assert.deepEqual(road.points.at(-1),hub(layout[road.to]));
+  }
+});
+
+test('new project streets share their winding centerline with physical travel',()=>{
+  const layout={a:{x:0,y:0,evidence:['work']},b:{x:1400,y:0,evidence:['work']}};
+  const [road]=worldRoads(layout),highwayY=hub(layout.a).y+100;
+  assert.ok(road.points.some(p=>p.x>600&&p.x<1800&&Math.abs(p.y-highwayY)>1));
+  assert.deepEqual(districtRoute('a','b',layout),road.points);
+  assert.deepEqual(districtRoute('b','a',layout),[...road.points].reverse());
+  assert.deepEqual(worldRoads(layout),[road]);
+});
+
 test('Saved coordinates and explicit topic corrections survive additions and pinned positions win over distance preference',()=>{
   const items=projects(['仕事','研究','お化けの怪談']);
   const saved=placeDistricts(items,[]);
@@ -176,7 +197,23 @@ test('Both views can retain recorded streets while new routes use the updated to
   assert.deepEqual(visible.slice(0,generated.length),generated);
   assert.equal(visible.length,generated.length+1);
   assert.deepEqual(visible.at(-1).points,old.points);
+  assert.equal(visible.at(-1).strength,affinity(layout.p0.evidence,layout.p1.evidence));
+  assert.equal(visible.at(-1).width,generated.find(road=>road.from==='p0'&&road.to==='p1').width);
   assert.equal(JSON.stringify(journeys),before);
   assert.deepEqual(districtRoute('p0','p1',layout),route);
   assert.deepEqual(visibleWorldRoads(layout,{}),generated);
+});
+
+test('recorded journeys keep their path but refresh width from current endpoint topics',()=>{
+  const layout=placeDistricts(projects(['仕事','仕事','怪談']),[]);
+  const journeys={saved:{from:'p0',to:'p1',width:999,strength:0,
+    points:[hub(layout.p0),{x:2600,y:3200},hub(layout.p1)]}};
+  const before=structuredClone(journeys),strong=visibleWorldRoads(layout,journeys).at(-1);
+  const changed={...layout,p1:{...layout.p1,evidence:[{topic:'folklore',source:'user'}]}};
+  const unrelated=visibleWorldRoads(changed,journeys).at(-1);
+  assert.equal(strong.strength,1);assert.equal(unrelated.strength,0);
+  assert.ok(strong.width>unrelated.width);
+  assert.deepEqual(strong.points,journeys.saved.points);
+  assert.deepEqual(unrelated.points,journeys.saved.points);
+  assert.deepEqual(journeys,before);
 });

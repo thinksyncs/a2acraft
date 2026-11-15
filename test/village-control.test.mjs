@@ -5,6 +5,11 @@ import { villageIsland, village3DScene } from "../public/village-3d-scene.js";
 import { villageRiverWater, villageBridge } from "../public/world-terrain.js";
 import { VILLAGE_WORLD } from "../public/village-world.js";
 import { islandRouteWalkable } from "../public/world-island-travel.js";
+import { buildConversationAffinity } from "../public/conversation-affinity.js";
+import { buildVillageSemanticLayout } from "../public/village-semantic-layout.js";
+import { projectVillage } from "../public/village-model.js";
+import { villageBiomes } from "../public/village-3d-scene.js";
+import { sceneBuildingObstacles } from "../public/project-buildings.js";
 
 // Run the actual controller, animation and canvas drawing, without a browser,
 // external services or WebGL. The gold shadows locate the rendered party.
@@ -139,8 +144,12 @@ test("Reload can restore a dry position on the distant continent",t=>{
 
 const water=terrain.water.find(r=>r.top>100&&r.top<250);
 const cottage=village3DScene({population:3}).scenery.find(item=>item.kind==='cottage');
+const buildingChats=["a","b","c"].map(id=>({id,title:id,characterName:id,messages:[]}));
+const buildingProjection=projectVillage(buildingChats,[{conversationId:"a",kind:"software",stage:"building"}]);
+const buildingBase=village3DScene({population:3});
+const actualBuilding=buildVillageSemanticLayout({...buildingProjection,affinity:buildConversationAffinity(buildingChats),island:villageIsland(),terrain:buildingBase,obstacles:sceneBuildingObstacles(buildingBase),biomes:villageBiomes()}).projects[0];
 for(const [label,point] of [["sea",{x:1e6,y:1e6}],["river",{x:(water.left+water.right)/2,y:(water.top+water.bottom)/2}],
-  ["building",{x:230,y:170}],["cottage",{x:cottage.x,y:cottage.y-10}],["malformed",{x:"490",y:430}],["missing",null]])
+  ["building",{x:actualBuilding.x,y:actualBuilding.y-24}],["cottage",{x:cottage.x,y:cottage.y-10}],["malformed",{x:"490",y:430}],["missing",null]])
   test(`Reload rejects a saved party position in ${label}`,t=>{
     const f=fixture(t,{building:true,saved:{hero:{point}}});assert.deepEqual(f.hero(),{x:490,y:430});
     assert.deepEqual(f.party(),Array(3).fill({x:490,y:430}));

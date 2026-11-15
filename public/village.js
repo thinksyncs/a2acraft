@@ -1,4 +1,6 @@
 import {mapStorage} from './map-storage.js';
+import {buildConversationAffinity} from './conversation-affinity.js';
+import {buildVillageSemanticLayout} from './village-semantic-layout.js';
 import {projectVillage,VILLAGE_STAGES} from './village-model.js';
 import {drawVillageWorld,drawVillageIslandBackground,drawVillageConversationFocus,worldPersonColor} from './village-art.js';
 import {delegationCacheKey,delegationSummary,villageDelegateActors} from './village-delegates.js';
@@ -68,7 +70,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const next=button('village-district-next','→',()=>changeDistrict(district+1));next.setAttribute('aria-label','次の地区');districtControls.append(previous,districtLabel,next);
  const pause=button('village-motion','動きを止める',()=>{locallyPaused=!locallyPaused;syncAnimation();});pause.setAttribute('aria-pressed','false');
  mapControls.append(cameraControls,districtControls,pause);
- const mapHelp=make('p','ドラッグ・スクロールで見回す · 道の先に武器屋・酒場・お城','village-map-help');mapHelp.id='village-map-help';
+ const mapHelp=make('p','近い会話は近くに · 強い関連の主な道を表示 · 太い道ほど強い関連','village-map-help');mapHelp.id='village-map-help';
  const populationNote=make('p',undefined,'village-population-note');populationNote.id='village-population-note';
  const legend=make('div',undefined,'village-legend');legend.setAttribute('aria-label','建物の育ち方');for(const stage of VILLAGE_STAGES){const item=make('span',stage.label);item.dataset.stage=stage.id;legend.append(item);}
  mapSection.append(frame,mapControls,mapHelp,populationNote,legend);
@@ -168,7 +170,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
 
  const layoutKey=demo?'chat-ui-demo-village-layout':'chat-ui-village-layout';
  let assignments=new Map(),projectSlots=[],shownResidents=[],positions=[],frameId=0,lastFrame=0,lastPaint=0,elapsed=0,lastProjection=0,projectionTimer=0,overlaySignature='';
- let activities={protagonist:null,squads:[],allSquads:[],stats:{}},activitySignature='',activityReferences=[],squadScenes=[],heroScene=null,selectedSquadId=null,peekSignature='',gathering=new Map();
+ let semanticLayout=null,semanticSignature='',residentCameraCell='';
+ let activities={protagonist:null,squads:[],allSquads:[],stats:{}},activitySignature='',activityReferences=[],squadScenes=[],heroScene=null,selectedSquadId=null,peekSignature='';
  let speechId=null,speechAnchor=null,heroPoint={x:490,y:430},heroGoal=null,heroTrail=[{x:490,y:430}],heroLastTime=0,heroRouteIndex=0;
  let encounter=null,latestScene=null;const residentPauses=new Map();
  try{const rows=JSON.parse(mapStorage.getItem(layoutKey)||'[]'),used=new Set();if(Array.isArray(rows))for(const row of rows.slice(0,20000)){if(Array.isArray(row)&&typeof row[0]==='string'&&row[0].length<=512&&Number.isSafeInteger(row[1])&&row[1]>=0&&row[1]<20000&&!used.has(row[1])){assignments.set(row[0],row[1]);used.add(row[1]);}}}catch{}
@@ -224,7 +227,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   encounter={conversationId:id,name:person.name,person:{...person,...target},status:'approaching',heldAt:elapsed};
   root.dataset.encounterId=id;root.dataset.encounterStatus='approaching';
   const terrain=movementTerrain(),goal=villageEncounterApproach(target,leader,[...movementObstacles(),...islandWaterObstacles(terrain.water,terrain.bridges)]);
-  if(!goal||!moveHero(goal.x,goal.y,()=>showSpeech(id),{preserveEncounter:true}))endEncounter();
+  if(!goal||!moveHero(goal.x,goal.y,()=>showSpeech(id),{preserveEncounter:true}))endEncounter();else directory.open=false;
  }
  function showSpeech(id){
   const resident=projection.residents.find(item=>item.conversationId===id);if(!resident)return;
@@ -236,11 +239,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   renderMessageMarkdown(speechText,report.text);speechSource.textContent=report.label+' · '+resident.title;speechSource.title=resident.title;
   speech.hidden=false;heard[id]=acknowledgeResidentReport(heard[id],report);try{mapStorage.setItem('chat-ui-resident-heard'+(demo?'-demo':''),JSON.stringify(heard));}catch{}speechClose.focus({preventScroll:true});draw();
  }
- function projectFor(resident){return gathering.get(resident.conversationId)||null;}
- function topicScore(terms,project){const words=project.topicKeywords||[];return (terms||[]).reduce((score,word)=>score+(words.includes(word)?3:word.length>=2&&words.some(other=>other.length>=2&&(other.includes(word)||word.includes(other)))?1:0),0);}
- function updateGathering(){
-  gathering=new Map();for(const resident of projection.residents){const own=projection.projects.find(project=>project.conversationId===resident.conversationId);if(own){gathering.set(resident.conversationId,own);continue;}let best=null,bestScore=0;for(const project of projection.projects){const score=topicScore(resident.interestKeywords,project);if(score>bestScore||score&&score===bestScore&&project.seed<(best?.seed??Infinity)){best=project;bestScore=score;}}if(best)gathering.set(resident.conversationId,best);}
+ function projectFor(resident){
+  const home=semanticLayout?.homes.get(resident.conversationId);if(!home)return null;
+  let nearest=null,distance=350;
+  for(const project of projectSlots){const next=Math.hypot(project.x-home.x,project.y-home.y);if(next<distance){nearest=project;distance=next;}}
+  return nearest;
  }
+ function topicScore(terms,project){const words=project.topicKeywords||[];return (terms||[]).reduce((score,word)=>score+(words.includes(word)?3:word.length>=2&&words.some(other=>other.length>=2&&(other.includes(word)||word.includes(other)))?1:0),0);}
  function cachedProjection(chats){
   const settings=new Map(overrides().map(item=>[item.conversationId,item])),seen=new Set(),activeIds=new Set();
   const result={residents:[],projects:[],stats:{population:0,projects:0,working:0,stages:Object.fromEntries(VILLAGE_STAGES.map(item=>[item.id,0]))}};
@@ -266,7 +271,17 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const chats=getChats()||[],cached=cachedProjection(chats);lastProjection=performance.now();
   const state=getState()||{},references=[state.party,state.todos,state.boardDispatch];let activityChanged=false;
   if(cached.changed||references.some((value,index)=>value!==activityReferences[index])||!activitySignature){activityReferences=references;const next=projectVillageActivities(state,chats),key=JSON.stringify(next);if(key!==activitySignature){activities=next;activitySignature=key;activityChanged=true;}}
-  if(!cached.changed&&!activityChanged&&signature){syncAnimation();return;}signature='ready';projection=cached.value;if(cached.changed)updateGathering();
+  if(!cached.changed&&!activityChanged&&signature){syncAnimation();return;}signature='ready';projection=cached.value;
+  // A streaming delta never moves somebody's home underneath the player.
+  // Recompute after settled content changes and preserve the current camera.
+  if(!semanticLayout||!chats.some(chat=>['starting','running','stopping'].includes(chat.status))){
+   const affinity=buildConversationAffinity(chats),key=affinity.signature+'|'+projection.projects.map(p=>p.conversationId).sort().join('|');
+   if(!semanticLayout||key!==semanticSignature){
+    const base=village3DScene({population:projection.residents.length});
+    semanticLayout=buildVillageSemanticLayout({residents:projection.residents,projects:projection.projects,affinity,island:villageIsland(),
+     terrain:base,obstacles:sceneBuildingObstacles(base),biomes:villageBiomes()});semanticSignature=key;
+   }
+  }
   const previousAssignments=JSON.stringify([...assignments]);
   const ids=new Set(projection.projects.map(item=>item.conversationId));for(const id of assignments.keys())if(!ids.has(id))assignments.delete(id);
   const used=new Set(assignments.values());for(const project of [...projection.projects].sort((a,b)=>a.seed-b.seed||a.conversationId.localeCompare(b.conversationId))){if(assignments.has(project.conversationId))continue;let index=0;while(used.has(index))index++;assignments.set(project.conversationId,index);used.add(index);}
@@ -276,15 +291,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   directorySummary.textContent='村の名簿 · '+projection.residents.length+'人';empty.hidden=projection.residents.length>0;
   district=clamp(district,0,districtCount()-1);syncDistrict();renderDirectory();renderActivities();if(detail.open)refreshDetail();const heldId=encounter?.conversationId||speechId;if(heldId&&!projection.residents.some(item=>item.conversationId===heldId))closeSpeech(false);
  }
- function districtCount(){return Math.max(1,Math.ceil((Math.max(-1,...assignments.values())+1)/PROJECTS_PER_DISTRICT));}
+ function districtCount(){return Math.max(1,semanticLayout?.neighborhoods.length||1);}
  function syncDistrict(){
-  projectSlots=projection.projects.filter(item=>Math.floor(assignments.get(item.conversationId)/PROJECTS_PER_DISTRICT)===district).map(item=>{const index=assignments.get(item.conversationId)%PROJECTS_PER_DISTRICT;return {...item,x:230+(index%4)*160,y:180+Math.floor(index/4)*170};});
+  projectSlots=(semanticLayout?.projects||[]).map(item=>({...item,...projection.projects.find(p=>p.conversationId===item.conversationId),x:item.x,y:item.y}));
   restoreHeroView();
-  const projectIds=new Set(projectSlots.map(item=>item.conversationId)),partyIds=new Set([...(activities.protagonist?.members||[]),...visibleSquads().flatMap(squad=>squad.members)].map(member=>member.conversationId)),sorted=[...projection.residents].filter(item=>!partyIds.has(item.conversationId)).sort((a,b)=>a.seed-b.seed||a.conversationId.localeCompare(b.conversationId));
-  const residentsHere=sorted.filter(item=>projectIds.has(projectFor(item)?.conversationId)),other=sorted.filter(item=>!projectIds.has(projectFor(item)?.conversationId));
-  const start=other.length?district*(RESIDENT_LIMIT-projectSlots.length)%other.length:0,rotated=[...other.slice(start),...other.slice(0,start)];shownResidents=[...residentsHere,...rotated].slice(0,RESIDENT_LIMIT);
+  refreshNearbyResidents();
   root.dataset.district=String(district+1);root.dataset.renderedResidents=String(shownResidents.length);canvas.dataset.renderedResidents=String(shownResidents.length);
-  districtLabel.textContent='第'+(district+1)+'地区 / '+districtCount();previous.disabled=district===0;next.disabled=district>=districtCount()-1;
+  districtLabel.textContent='集落 '+(district+1)+' / '+districtCount();previous.disabled=district===0;next.disabled=district>=districtCount()-1;
   populationNote.textContent=projection.residents.length>RESIDENT_LIMIT?'この景色には'+shownResidents.length+'人。全'+projection.residents.length+'人の会話は、村の名簿で探せます。':projection.projects.length?'ソフトづくりの会話ごとに1棟。建物を選ぶと、元の会話と進み具合が分かります。':'ソフトづくりの会話が増えると、この村に建設現場が生まれます。';
   populationNote.classList.toggle('village-cap-note',projection.residents.length>RESIDENT_LIMIT);
   const focused=sites.contains(document.activeElement)?document.activeElement.dataset.villageProject:null;
@@ -292,11 +305,20 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(focused)Array.from(sites.children).find(item=>item.dataset.villageProject===focused)?.focus({preventScroll:true});
   syncQuestSites();draw();syncAnimation();
  }
- function changeDistrict(value){cancelTravel();closeSpeech(false);district=clamp(value,0,districtCount()-1);camera={x:500,y:320};syncDistrict();queueViewSave();}
+ function refreshNearbyResidents(){
+  const partyIds=new Set([...(activities.protagonist?.members||[]),...visibleSquads().flatMap(squad=>squad.members)].map(member=>member.conversationId));
+  const held=encounter?.conversationId||speechId||selected;
+  shownResidents=projection.residents.filter(item=>!partyIds.has(item.conversationId)&&semanticLayout?.homes.has(item.conversationId)).sort((a,b)=>{
+   if(a.conversationId===held)return -1;if(b.conversationId===held)return 1;
+   const left=semanticLayout.homes.get(a.conversationId),right=semanticLayout.homes.get(b.conversationId);
+   return Math.hypot(left.x-camera.x,left.y-camera.y)-Math.hypot(right.x-camera.x,right.y-camera.y)||a.seed-b.seed;
+  }).slice(0,RESIDENT_LIMIT);
+  residentCameraCell=Math.floor(camera.x/320)+':'+Math.floor(camera.y/320);
+ }
+ function changeDistrict(value){cancelTravel();closeSpeech(false);district=clamp(value,0,districtCount()-1);const place=semanticLayout?.neighborhoods[district];if(place){camera={x:place.x,y:place.y};zoom=Math.max(zoom,1);automaticZoom=false;}syncDistrict();queueViewSave();}
  function centerResident(id){
   cancelTravel();
-  const resident=projection.residents.find(item=>item.conversationId===id);if(!resident)return;const slot=assignments.get(projectFor(resident)?.conversationId||id);
-  if(slot!==undefined&&Math.floor(slot/PROJECTS_PER_DISTRICT)!==district){district=Math.floor(slot/PROJECTS_PER_DISTRICT);syncDistrict();}
+  const resident=projection.residents.find(item=>item.conversationId===id);if(!resident)return;
   if(!shownResidents.some(item=>item.conversationId===id)){shownResidents=shownResidents.slice(0,RESIDENT_LIMIT-1).concat(resident);}
   const project=projectSlots.find(item=>item.conversationId===id),point=encounter?.conversationId===id?encounter.person:project?{x:project.x,y:project.y-35}:residentPosition(resident);
   const focused=villageResidentCamera(dimensions.width,dimensions.height,point,zoom);
@@ -308,7 +330,6 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function closeQuestPeek(focus=true){questPeek.hidden=true;selectedSquadId=null;peekSignature='';delete root.dataset.selectedSquad;syncDistrict();if(focus&&visible)canvas.focus({preventScroll:true});}
  function locateSquad(){
   cancelTravel();const squad=selectedSquad();if(!squad)return;
-  const slot=assignments.get(squad.targetConversationId);if(slot!==undefined&&Math.floor(slot/PROJECTS_PER_DISTRICT)!==district){district=Math.floor(slot/PROJECTS_PER_DISTRICT);syncDistrict();}
   updateSquadScenes();const scene=squadScenes.find(item=>item.id===selectedSquadId)||(selectedSquadId==='protagonist'?heroScene:null);if(!scene)return;
   const scale=transform.scale||1,small=dimensions.width<600;
   const desiredX=small?dimensions.width/2:Math.max(120,(dimensions.width-questPeek.offsetWidth-36)/2),desiredY=small?Math.max(155,Math.min(200,dimensions.height*.3)):dimensions.height*.47;
@@ -369,14 +390,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function residentPosition(resident){
   if(encounter?.conversationId===resident.conversationId)return {...resident,...encounter.person,...villageFacing(encounter.person,controlledLeader()),walking:false,conversing:true};
-  const seed=resident.seed>>>0,project=projectSlots.find(item=>item.conversationId===projectFor(resident)?.conversationId),road=230+(seed%3)*170,otherRoad=230+((seed>>>3)%3)*170,lane=(seed>>>8)%2?310:630;
-  const clusterX=project?project.x-44+(seed%88):0,clusterY=project?project.y+24+((seed>>>7)%36):0;
-  const points=project?[{x:clusterX,y:clusterY},{x:project.x-44+((seed>>>9)%88),y:project.y+28+((seed>>>17)%32)},{x:project.x+((seed>>>12)%70)-35,y:project.y+47},{x:clusterX,y:clusterY+5}]:[{x:175+(seed%570),y:road},{x:lane,y:road},{x:lane,y:otherRoad},{x:180+((seed>>>6)%570),y:otherRoad}];
+  const seed=resident.seed>>>0,project=projectSlots.find(item=>item.conversationId===resident.conversationId),home=semanticLayout?.homes.get(resident.conversationId);
+  const points=home?.patrol||[{x:490,y:430},{x:510,y:430}];
   const lengths=points.map((point,index)=>{const next=points[(index+1)%points.length];return Math.hypot(next.x-point.x,next.y-point.y);}),total=lengths.reduce((a,b)=>a+b,0)||1;
   const speed=resident.activity==='working'?23:12+(seed%12),cycle=total/speed+8,seconds=((elapsed-(residentPauses.get(resident.conversationId)||0))/1000+(seed%1000)/17)%cycle;
   let distance=Math.min(total,seconds*speed),point=points[0],direction='right';
   for(let index=0;index<points.length;index++){if(distance<=lengths[index]||index===points.length-1){const from=points[index],to=points[(index+1)%points.length],ratio=lengths[index]?distance/lengths[index]:0;point={x:from.x+(to.x-from.x)*ratio,y:from.y+(to.y-from.y)*ratio};direction=Math.abs(to.x-from.x)>Math.abs(to.y-from.y)?to.x>from.x?'right':'left':to.y>from.y?'down':'up';break;}distance-=lengths[index];}
-  return {...resident,x:point.x+((seed>>>12)%9)-4,y:point.y+((seed>>>16)%11)-5,walking:seconds<total/speed&&motionEnabled(),direction,worker:Boolean(project)};
+  return {...resident,x:point.x,y:point.y,walking:seconds<total/speed&&motionEnabled(),direction,worker:Boolean(project)};
  }
  function holdTravelPosition(engine){
   heroPoint={...engine.position};heroGoal={...heroPoint};arrivalMembers=engine.members.map(({x,y})=>({x,y}));
@@ -428,7 +448,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(trip.follow)camera=travelCamera(heroPoint);
  }
  function movementObstacles(){
-  return sceneBuildingObstacles(village3DScene({projects:projectSlots,population:projection.residents.length}));
+  return [...sceneBuildingObstacles(village3DScene({projects:projectSlots,population:projection.residents.length})),...(semanticLayout?.mountains||[])];
  }
  let movementTerrainCache;
  function movementTerrain(){
@@ -503,6 +523,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   drawIslandWater(context,island,viewport);context.save();clipIslandLand(context,island);
   const distant=zoom<.35;
   drawVillageIslandBackground(context,island,{population:projection.residents.length,biomes:villageBiomes(),viewport});
+  if(projection.residents.length>RESIDENT_LIMIT&&residentCameraCell!==Math.floor(camera.x/320)+':'+Math.floor(camera.y/320))refreshNearbyResidents();
   positions=shownResidents.map(residentPosition);updateSquadScenes();
   const actors=villageEncounterActors({residents:positions,hero:heroScene,squads:squadScenes,heading:leaderHeading,encounter});positions=actors.residents.map(person=>({...person,kind:'agent',identityFocused:person.conversationId===(speechId||selected)}));heroScene=actors.hero;squadScenes=actors.squads;leaderHeading=actors.heading;
   const delegateOwners=new Map(projection.residents.map(resident=>[resident.conversationId,resident]));
@@ -511,10 +532,10 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
     delegation:delegateOwners.get(person.conversationId)?.delegation,color:worldPersonColor(person,{hero:group.isProtagonist,party:true,index,squadSeed:group.seed})})))];
   const delegates=villageDelegateActors(delegateParents);
   root.dataset.nativeSubagents=String(delegates.badges.reduce((count,badge)=>count+badge.count,0));root.dataset.renderedSubagents=String(delegates.helpers.length);
-  latestScene=village3DScene({projects:projectSlots,residents:positions,population:projection.residents.length,hero:heroScene,squads:squadScenes,heading:leaderHeading,delegates});
+  latestScene=village3DScene({projects:projectSlots,residents:positions,population:projection.residents.length,hero:heroScene,squads:squadScenes,heading:leaderHeading,delegates,roads:semanticLayout?.roads||[],clearings:semanticLayout?.clearings||[]});
   if(encounter?.status==='talking')latestScene=villageEncounterSightline(latestScene,encounter.conversationId);
   if(encounter&&actors.person){root.dataset.encounterPersonHeading=String(actors.person.heading);root.dataset.encounterLeaderHeading=String(latestScene.leader.heading);root.dataset.encounterPose=JSON.stringify({person:{id:'resident:'+encounter.conversationId,x:actors.person.x,y:actors.person.y,heading:actors.person.heading},leader:latestScene.leader});root.dataset.encounterCamera=JSON.stringify(world3D?.getCameraState()||null);}
-  if(insetVisible&&world3D)world3D.update(latestScene);drawVillageWorld(context,{time:elapsed,residents:positions,projects:projectSlots,population:projection.residents.length,selectedId:speechId||selected,squads:squadScenes,protagonist:heroScene,selectedSquadId,motion:canAnimate(),terrainVisible:!distant,delegates});
+  if(insetVisible&&world3D)world3D.update(latestScene);drawVillageWorld(context,{time:elapsed,residents:positions,projects:projectSlots,population:projection.residents.length,selectedId:speechId||selected,squads:squadScenes,protagonist:heroScene,selectedSquadId,motion:canAnimate(),terrainVisible:!distant,delegates,roads:latestScene.roads,clearings:semanticLayout?.clearings||[]});
   if(heroGoal&&Math.hypot(heroGoal.x-heroPoint.x,heroGoal.y-heroPoint.y)>3){context.strokeStyle='#ffe8a0';context.lineWidth=2;context.beginPath();context.ellipse(heroGoal.x,heroGoal.y,10,5,0,0,Math.PI*2);context.stroke();}context.restore();drawIslandCoast(context,island);context.restore();
   const nextOverlay=[scale,transform.x,transform.y].join(':');if(overlaySignature!==nextOverlay){overlaySignature=nextOverlay;for(const [index,control]of Array.from(sites.children).entries()){const project=projectSlots[index],w=Math.max(48,104*scale),h=Math.max(52,112*scale);control.style.left=transform.x+project.x*scale-w/2+'px';control.style.top=transform.y+project.y*scale-h+12*scale+'px';control.style.width=w+'px';control.style.height=h+'px';}}
   const guides=[];

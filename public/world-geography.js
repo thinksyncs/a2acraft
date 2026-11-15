@@ -1,4 +1,5 @@
 import { placeDistrictsByTopic } from "./world-layout.js";
+import { meanderRoad } from "./world-road-shape.js";
 
 // Shared, deterministic geography. Saved coordinates always win over inference.
 const vocabulary = {
@@ -64,6 +65,12 @@ export function placeDistricts(projects, chats, saved = {}) {
 export const hub = (place) => ({ x: place.x + 500, y: place.y + 610 });
 const compareId = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const walkingDistance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + 200;
+// Project streets reflect the existing topic evidence, independently of the
+// village's conversation vectors. Unknown relationships remain narrow paths.
+const relationshipStyle = (score) => {
+  const strength = Math.max(0, Math.min(1, Number.isFinite(score) ? score : 0));
+  return { strength, width: 12 + 28 * strength };
+};
 export function worldRoads(places) {
   const ids = Object.keys(places).sort(compareId), edges = [], candidates = [];
   // A maximum-affinity spanning tree joins related districts before adding
@@ -85,7 +92,7 @@ export function worldRoads(places) {
     while (components.get(id) !== id) id = components.get(id);
     return id;
   };
-  for (const { from, to } of candidates) {
+  for (const { from, to, score } of candidates) {
     const left = root(from), right = root(to);
     if (left === right) continue;
     components.set(left, right);
@@ -93,12 +100,14 @@ export function worldRoads(places) {
     edges.push({
       from,
       to,
-      points: [
+      ...relationshipStyle(score),
+      // Shape the physical route before layout, terrain and both views use it.
+      points: meanderRoad([
         a,
         { x: a.x, y: Math.max(a.y, b.y) + 100 },
         { x: b.x, y: Math.max(a.y, b.y) + 100 },
         b,
-      ],
+      ], { seed: from+'\u0000'+to, amplitude: 28, step: 72 }),
     });
     if (edges.length === ids.length - 1) break;
   }
@@ -120,7 +129,8 @@ export function visibleWorldRoads(places, journeys = {}) {
     const signature = key(journey.points);
     if (seen.has(signature)) continue;
     seen.add(signature);
-    roads.push({ from: journey.from, to: journey.to, points: journey.points });
+    roads.push({ from: journey.from, to: journey.to, points: journey.points,
+      ...relationshipStyle(affinity(places[journey.from].evidence || [], places[journey.to].evidence || [])) });
   }
   return roads;
 }

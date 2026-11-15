@@ -12,7 +12,9 @@ export function facilityRoads() {
 
 // Both projections use the same district origins, buildings and terrain model.
 export function projectSceneGeometry(layout, projects, residents, connectingRoads) {
-  const arteries=[...connectingRoads.map(road=>({...road,width:25})),...facilityRoads()];
+  // Normalize once before terrain, bridge planning and both renderers consume it.
+  const arteries=[...connectingRoads.map(road=>({...road,
+    width:Math.max(3,Math.min(80,Number.isFinite(road.width)?road.width:25))})),...facilityRoads()];
   const districts=projects.filter(project=>layout[project.id]).map(project=>({id:project.id,
     place:layout[project.id],buildings:projectBuildings(project),population:residents.filter(r=>r.projectId===project.id).length}));
   const fixedBuildings=facilities.map(facility=>({id:'facility:'+facility.id,x:facility.x,y:facility.y-30,

@@ -131,7 +131,7 @@ export function villageSpeechPlacement({width, height, bubbleWidth, bubbleHeight
 }
 
 // Projection only: rendering never creates jobs, progress, or AI activity.
-export function village3DScene({projects = [], residents = [], population = residents.length, hero, squads = [], heading = 0, delegates = null}) {
+export function village3DScene({projects = [], residents = [], population = residents.length, hero, squads = [], heading = 0, delegates = null, roads: semanticRoads = [], clearings = []}) {
   const terrain = districtTerrainGeometry({x:0,y:0},{population}), outskirts=villageOutskirtsGeometry(), outer=islandOutskirts(),island=villageIsland();
   const buildings = projects.map(project => ({
     id: 'project:' + project.conversationId,
@@ -168,10 +168,16 @@ export function village3DScene({projects = [], residents = [], population = resi
       if (activeLeader) leader = {id, x: member.x, y: member.y, heading};
     }
   }
-  const roads=[...terrain.roads,...outskirts.roads],water=[...terrain.water,...outskirts.water,...outer.water];
+  const roads=[...terrain.roads,...outskirts.roads,...semanticRoads],water=[...terrain.water,...outskirts.water,...outer.water];
   const biomes=villageBiomes();
+  const patches=clearings.flatMap(c=>c.patches||[]),keptScenery=item=>{
+    if(item.kind==='clearing')return true;
+    const size=item.size||1,box=['woodland','mountain-range'].includes(item.kind)?{left:item.x,right:item.x+item.width,top:item.y,bottom:item.y+item.depth}:
+      {left:item.x-22*size,right:item.x+22*size,top:item.y-58*size,bottom:item.y+10*size};
+    return !patches.some(p=>box.left<p.right&&box.right>p.left&&box.top<p.bottom&&box.bottom>p.top);
+  };
   return addDelegatesToScene({buildings, people, leader, roads, water,biomes,
-    scenery:[...terrain.scenery,...outskirts.scenery,...biomes.scenery], bridges:[terrain.bridge],island,bounds:island.seaBounds}, delegates);
+    scenery:[...terrain.scenery,...outskirts.scenery,...biomes.scenery].filter(keptScenery).concat(clearings), bridges:[terrain.bridge],island,bounds:island.seaBounds}, delegates);
 }
 
 export function readVillageView(value) {

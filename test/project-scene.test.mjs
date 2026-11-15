@@ -7,6 +7,8 @@ import {projectBuildings} from '../public/project-buildings.js';
 import {createResidents} from '../public/project-residents.js';
 import {islandRouteWalkable} from '../public/world-island-travel.js';
 import {riverBridges} from '../public/world-hydrology.js';
+import {drawRoadNetwork} from '../public/world-road-art.js';
+import {staticMesh} from '../public/world-3d-mesh.js';
 
 function fixture(){
  const sample=projectDemo(),projects=sample.projects.items,chats=sample.chats;
@@ -15,6 +17,28 @@ function fixture(){
  return {projects,chats,layout,journeys,scene};
 }
 const overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
+
+test('shared project roads retain affinity widths with bounded fallbacks in 2D and 3D',()=>{
+ const widths=[12,40,undefined,NaN,Infinity,-10,1000],expected=[12,40,25,25,25,3,80];
+ const input=widths.map((width,i)=>({from:'a',to:'b',width,strength:i===1?1:0,
+  points:[{x:0,y:i*100},{x:400,y:i*100}]})),before=structuredClone(input);
+ const scene=projectSceneGeometry({},[],[],input),roads=scene.roads.slice(0,input.length);
+ assert.deepEqual(roads.map(road=>road.width),expected);
+ assert.deepEqual(roads.map(road=>road.strength),input.map(road=>road.strength));
+ assert.deepEqual(input,before);
+ assert.ok(scene.roads.slice(input.length).every(road=>road.width===25),'fixed facility roads remain infrastructure');
+ for(const road of roads){
+  const surfaces=[],context={save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},fillRect(){},
+   stroke(){if(this.strokeStyle==='#cbb77b')surfaces.push(this.lineWidth);}};
+  drawRoadNetwork(context,[road]);
+  assert.deepEqual(surfaces,[road.width]);
+  const mesh=staticMesh({roads:[road],buildings:[],scenery:[],bounds:scene.bounds}),across=[];
+  for(let i=0;i<mesh.length;i+=9)if(Math.abs(mesh[i+6]-203/255)<1e-6&&
+   Math.abs(mesh[i+7]-183/255)<1e-6&&Math.abs(mesh[i+8]-123/255)<1e-6)across.push(mesh[i+2]);
+  assert.ok(across.length>0);
+  assert.ok(Math.abs(Math.max(...across)-Math.min(...across)-road.width)<1e-4,'3D surface matches the 2D road width');
+ }
+});
 
 test('the project map shares a world river and road crossings rather than stamped district rivers',()=>{
  const {scene,layout}=fixture();
