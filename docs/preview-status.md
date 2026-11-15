@@ -34,8 +34,11 @@ activation and repeated opens restore/show/focus the app; stalled page loading
 reaches the existing recovery dialog within 30 seconds. Quit still uses the
 existing draft/settings save coordinator, and late load completion cannot
 reopen a window after quitting. These behaviors have regression coverage.
-The packaged code and ad-hoc signature were verified. Native 0.4.7 visual
-acceptance is pending because the native control tool became unavailable.
+The packaged code and ad-hoc signature were verified. On 2026-11-15, the
+user confirmed that native 0.4.7 opened to Connect or the conversation/map
+screen. This confirms startup-window visibility on the user's Mac. Native
+Dock/reopen and failure-recovery scenarios have automated coverage but were
+not independently observed after the native control tool became unavailable.
 
 In the live browser with explicit fictional sample data, the new island overview,
 neighborhood navigation, a walk to a distant resident, face-to-face dialogue,
@@ -57,7 +60,7 @@ were observed. No model turn was sent during these display checks.
 | Scoped managed permissions | The app selects dedicated chat/work profiles only when explicitly allowed, then verifies the effective scope. Chat must be read-only; work must stay inside the assigned conversation folder, with tool network access and temporary-directory writes disabled |
 | Protection rules | SSH/Proton protections remain intact. Narrower host profiles were applied by the administrator, matched the reviewed configuration and passed the app's effective-scope checks. The app does not alter managed policy automatically |
 | Screen-reading support | An optional native View menu setting persists across restart. Renderer controls became accessible after enabling it and reopening the app. Version 0.4.4 also gives each transcript a keyboard-focusable, named region without announcing the whole imported history; named transcript regions were observed in the native 0.4.5 four-pane UI |
-| Startup/renderer failure recovery | Recovery dialog observed in 0.4.6. Version 0.4.7 adds a visible startup window, explicit reveal on completed navigation, Dock/repeated-open recovery and a bounded renderer load deadline. Startup failures expose only fixed stages/codes. Final native acceptance remains pending |
+| Startup/renderer failure recovery | Recovery dialog observed in 0.4.6. Version 0.4.7 adds a visible startup window, explicit reveal on completed navigation, Dock/repeated-open recovery and a bounded renderer load deadline. Startup failures expose only fixed stages/codes. The user confirmed successful 0.4.7 window display; native Dock/reopen and forced-failure checks remain unobserved |
 | Developer ID signing and notarization | Not available; Apple Developer Program registration is pending |
 | Intel Mac | Not supported by the pinned document-extraction runtime |
 
