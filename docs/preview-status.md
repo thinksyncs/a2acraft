@@ -1,4 +1,4 @@
-# A2ACraft 0.4.6 — Mac preview status
+# A2ACraft 0.4.7 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
 
@@ -22,23 +22,33 @@ Both projections use the same positions, clearings and road geometry.
 The existing project map retains its separate topic-based relationship model.
 
 Native 0.4.6 initially timed out during backend module loading; after retry,
-the running application exposed no window to the native control tool. Switching
-to this build is not yet accepted. Its signature and packaged frontend were
-verified separately. An isolated empty-data check using the packaged executable
-and backend reached ready in 441 ms, served the UI and all three new geography
-modules, and shut down cleanly without Codex sign-in or a model turn. This does
-not prove native window recovery. In the live browser with explicit fictional sample data, the new island overview,
+the running application exposed no window to the native control tool. In a
+later session its Connect screen, saved four-pane conversation structure and
+normal quit were observed. An isolated empty-data check of its packaged backend
+reached ready in 441 ms. The original module-loading delay remains unexplained.
+
+Version 0.4.7 keeps an isolated startup window visible while settings and the
+backend load, then explicitly shows the main window when navigation completes.
+It no longer depends on a first-frame notification to become visible. Dock
+activation and repeated opens restore/show/focus the app; stalled page loading
+reaches the existing recovery dialog within 30 seconds. Quit still uses the
+existing draft/settings save coordinator, and late load completion cannot
+reopen a window after quitting. These behaviors have regression coverage.
+The packaged code and ad-hoc signature were verified. Native 0.4.7 visual
+acceptance is pending because the native control tool became unavailable.
+
+In the live browser with explicit fictional sample data, the new island overview,
 neighborhood navigation, a walk to a distant resident, face-to-face dialogue,
 request/response details, opening the conversation and returning to the village
 were observed. No model turn was sent during these display checks.
 
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 410 passed in the full suite, plus two new spatial acceptance cases; 24 focused checks passed after the final UI fixes. Zero failures/skips. Coverage includes history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content including attachment-only requests, local vector distances, dry reachable settlements and shared winding road geometry |
+| Automated regression tests | 420 passed in the full suite. Zero failures/skips. Coverage includes window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
 | Conversation geography | 26/168 fictional-chat fixtures: all homes reachable. In the 168-chat fixture, same-topic median distance 480 versus 3,735 between topics; visible roads meet the 0.45 affinity threshold and full-width terrain checks. Layout takes approximately 1.4 seconds on the development Mac. This is a projection, not an exact preservation of every pairwise distance |
 | Codex history import | Native import of 22 conversation records confirmed; visible messages only. Single-file bundles, idempotent updates and safe snapshots are covered by regression tests |
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
-| Packaged Apple Silicon application | 0.4.6 built with the frontend, Codex 0.169.0, icon and third-party notices; ad-hoc signature verified and all 127 frontend files matched the reviewed source |
+| Packaged Apple Silicon application | 0.4.7 built with the frontend, Codex 0.169.0, icon and third-party notices; ad-hoc signature verified and packaged window lifecycle code matched the reviewed source |
 | Native launch and app-specific ChatGPT sign-in | Packaged 0.4.3 launch, saved-account connection and restart observed; packaged 0.4.5 launch and existing four-chat display also observed |
 | Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |
 | Imported-chat navigation | Resident arrival, opening the imported development chat and returning to the village were confirmed in the native UI. After the allowance recovered, a bounded read-only request completed and the displayed count increased from 523 to 525 messages. Moving-frame visual acceptance remains pending because screen capture returned stale images |
@@ -47,7 +57,7 @@ were observed. No model turn was sent during these display checks.
 | Scoped managed permissions | The app selects dedicated chat/work profiles only when explicitly allowed, then verifies the effective scope. Chat must be read-only; work must stay inside the assigned conversation folder, with tool network access and temporary-directory writes disabled |
 | Protection rules | SSH/Proton protections remain intact. Narrower host profiles were applied by the administrator, matched the reviewed configuration and passed the app's effective-scope checks. The app does not alter managed policy automatically |
 | Screen-reading support | An optional native View menu setting persists across restart. Renderer controls became accessible after enabling it and reopening the app. Version 0.4.4 also gives each transcript a keyboard-focusable, named region without announcing the whole imported history; named transcript regions were observed in the native 0.4.5 four-pane UI |
-| Startup/renderer failure recovery | Recovery dialog observed. A separate bootstrap entry reports when dependency loading begins; startup failures expose only fixed stages/codes. Final native acceptance remains pending |
+| Startup/renderer failure recovery | Recovery dialog observed in 0.4.6. Version 0.4.7 adds a visible startup window, explicit reveal on completed navigation, Dock/repeated-open recovery and a bounded renderer load deadline. Startup failures expose only fixed stages/codes. Final native acceptance remains pending |
 | Developer ID signing and notarization | Not available; Apple Developer Program registration is pending |
 | Intel Mac | Not supported by the pinned document-extraction runtime |
 

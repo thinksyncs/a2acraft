@@ -12,6 +12,7 @@ import {createCloseCoordinator} from './close-coordinator.mjs';
 import {createMapStateStore} from './map-state.mjs';
 import {bundledCodexPath,resolveCodexExecutable} from './codex-runtime.mjs';
 import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
+import {createStartupWindow,revealWindow,waitForWindowLoad} from './window-lifecycle.mjs';
 import { isTrustedExternal, isAppUrl, isMainFrame } from './security.mjs';
 
 const electronRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -35,7 +36,7 @@ if (smoke) {
   if (!smokePath || !path.isAbsolute(smokePath)) throw Error('Smoke test requires an isolated absolute data directory');
   app.setPath('userData', smokePath);
 }
-let window, backend, previewServer, origin, settings = {}, quitting = false, starting = true, restartRequired = false;
+let window, startupWindow, backend, previewServer, origin, settings = {}, quitting = false, starting = true, restartRequired = false;
 let relaunchRequested = false;
 let settingsWriting = Promise.resolve();
 let rendererFlushReady = false, rendererFlushWaiter = null;
@@ -111,7 +112,8 @@ const recoverRuntime=createRuntimeRecovery({
     const options={type:'error',title:'A2ACraft',message:'アプリの画面を表示できません。',
       detail:detail+'\n保存済みの会話と設定は保持します。再起動して接続し直してください。',
       buttons:['再起動','終了'],defaultId:0,cancelId:1,noLink:true};
-    if(window&&!window.isDestroyed()){window.show();return (await dialog.showMessageBox(window,options)).response;}
+    const parent=!starting&&window&&!window.isDestroyed()?window:startupWindow;
+    if(revealWindow(parent))return (await dialog.showMessageBox(parent,options)).response;
     return (await dialog.showMessageBox(options)).response;
   },
   close:async restart=>{
@@ -256,12 +258,14 @@ async function startBackend() {
   const token = randomBytes(32).toString('hex');
   if(demo){
     const {staticFiles}=await import(pathToFileURL(path.join(backendRoot,'public-assets.mjs')).href);
+    if(quitting)return;
     previewServer=await startPreviewServer({root:path.join(backendRoot,'public'),assets:staticFiles,token});
     origin=previewServer.origin;
     return createDesktopSession(token);
   }
   const dataDir = path.join(app.getPath('userData'), 'data');
   await mkdir(dataDir, { recursive: true, mode: 0o700 });
+  if(quitting)return;
   const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: '0', CHAT_UI_DESKTOP: '1', CHAT_UI_SESSION_TOKEN: token, CHAT_UI_DATA_DIR: dataDir, CHAT_UI_PACKAGE_ROOT: app.getAppPath() };
   delete env.OPENAI_API_KEY; delete env.CODEX_API_KEY;
   if(settings.workDirectory)env.CHAT_UI_WORKSPACE_DIR=settings.workDirectory;
@@ -270,6 +274,7 @@ async function startBackend() {
   // An explicit saved path or CODEX_BIN always takes precedence.
   env.CODEX_BIN=await resolveCodexExecutable({configured:settings.codexPath,environment:process.env.CODEX_BIN,
     bundled:bundledCodexPath({packaged:app.isPackaged,resourcesPath:process.resourcesPath,appPath:app.getAppPath()})});
+  if(quitting)return;
   backend = spawn(process.execPath, [path.join(backendRoot, 'backend-bootstrap.mjs')], {
     cwd: dataDir, env, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], windowsHide: true
   });
@@ -335,12 +340,15 @@ async function createWindow(desktopSession) {
   });
   const windowState = () => { if (!window.isDestroyed()) window.webContents.send('window:state', { maximized: window.isMaximized() }); };
   window.on('maximize', windowState); window.on('unmaximize', windowState);
-  window.once('ready-to-show', () => window.show());
+  const createdWindow=window;
   const url = new URL(origin);
   url.searchParams.set('desktop', '1');
   if (demo) { url.searchParams.set('demo', '1'); url.searchParams.set('village', 'sample'); url.searchParams.set('projects','sample'); url.searchParams.set('subagents','sample'); }
-  await window.loadURL(url.href);
+  await waitForWindowLoad(createdWindow,url.href,{canReveal:()=>!quitting});
+  if(quitting)return;
   starting = false;
+  if(startupWindow&&!startupWindow.isDestroyed())startupWindow.destroy();
+  startupWindow=null;
   if (smoke) await smokeCheck();
 }
 
@@ -381,17 +389,25 @@ async function smokeCheck() {
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 else {
-  app.on('second-instance', () => {
-    if (window && !window.isDestroyed()) { if (window.isMinimized()) window.restore(); window.focus(); }
-  });
+  const revealApp=()=>{
+    if(quitting)return;
+    if(starting)revealWindow(startupWindow);
+    else if(!revealWindow(window))revealWindow(startupWindow);
+  };
+  app.on('second-instance',revealApp);
+  app.on('activate',revealApp);
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', event => {
     if (quitting) return;
     event.preventDefault(); closeWithSavedDrafts();
   });
   app.whenReady().then(async () => {
+    startupWindow=createStartupWindow(BrowserWindow,{onClose:closeWithSavedDrafts});
     await mkdir(app.getPath('userData'), { recursive: true, mode: 0o700 });
-    await readSettings(); installIpc();
+    if(quitting)return;
+    await readSettings();
+    if(quitting)return;
+    installIpc();
     const supportsScreenReading=['darwin','win32'].includes(process.platform);
     if(supportsScreenReading&&settings.accessibilitySupportEnabled===true)app.setAccessibilitySupportEnabled(true);
     Menu.setApplicationMenu(Menu.buildFromTemplate([
@@ -406,6 +422,7 @@ else {
       if(item)item.checked=enabled;
     });
     const desktopSession = await startBackend();
+    if(quitting)return;
     await createWindow(desktopSession);
   }).catch(error => {
     process.exitCode=1;
