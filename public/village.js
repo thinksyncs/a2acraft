@@ -1,6 +1,8 @@
 import {mapStorage} from './map-storage.js';
 import {buildConversationAffinity} from './conversation-affinity.js';
 import {buildVillageSemanticLayout} from './village-semantic-layout.js';
+import {buildResidentPatrols,residentPatrolPosition} from './village-resident-motion.js';
+import {createVillageContext} from './village-context.js';
 import {projectVillage,VILLAGE_STAGES} from './village-model.js';
 import {drawVillageWorld,drawVillageIslandBackground,drawVillageConversationFocus,worldPersonColor} from './village-art.js';
 import {delegationCacheKey,delegationSummary,villageDelegateActors} from './village-delegates.js';
@@ -62,8 +64,9 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  frame.append(canvas,sites,questSites,places,empty,speech);
  const mapControls=make('div',undefined,'village-map-controls'),cameraControls=make('div',undefined,'village-camera-controls');
  const zoomOut=button('village-zoom-out','−',()=>changeZoom(zoom/1.2));zoomOut.setAttribute('aria-label','村を縮小');
- const fit=button('village-fit','全体へ',()=>{cancelTravel();automaticZoom=false;fitIsland();draw();queueViewSave();});fit.setAttribute('aria-label','島全体を見る');
+ const fit=button('village-fit','全体へ',()=>{if(travel)travel.follow=false;automaticZoom=false;fitIsland();draw();queueViewSave();});fit.setAttribute('aria-label','島全体を見る');
  const zoomIn=button('village-zoom-in','＋',()=>changeZoom(zoom*1.2));zoomIn.setAttribute('aria-label','村を拡大');cameraControls.append(zoomOut,fit,zoomIn);
+ const follow=button('village-follow','歩行に追従',()=>{if(!travel)return;travel.follow=true;automaticZoom=false;zoom=Math.max(zoom,.8);camera=travelCamera(heroPoint);draw();queueViewSave();});follow.hidden=true;cameraControls.append(follow);
  const districtControls=make('div',undefined,'village-district-controls');
  const previous=button('village-district-prev','←',()=>changeDistrict(district-1));previous.setAttribute('aria-label','前の地区');
  const districtLabel=make('span','第1地区');districtLabel.id='village-district-label';districtLabel.setAttribute('role','status');
@@ -116,7 +119,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const wayfinding=make('nav',undefined,'village-wayfinding');wayfinding.setAttribute('aria-label','道の先へ');
  for(const place of VILLAGE_PLACES){const guide=button('village-travel-'+place.id,place.shortName,()=>travelTo(place.id),'village-waypoint');guide.dataset.destination=place.id;guide.setAttribute('aria-label',place.name+'へ向かう');wayfinding.append(guide);}
  const journey=make('p',undefined,'village-journey');journey.id='village-journey';journey.setAttribute('role','status');journey.hidden=true;
- root.replaceChildren(mapSection,heading,statistics,previewNote,services,wayfinding,journey,directory,questDrawer,questPeek,note);
+ const neighborhoodContext=createVillageContext({onTalk:id=>openSpeech(id)});
+ root.replaceChildren(mapSection,heading,statistics,previewNote,services,wayfinding,journey,directory,questDrawer,questPeek,neighborhoodContext.element,note);
 
  const detail=make('dialog',undefined,'village-detail');detail.id='village-detail';detail.setAttribute('aria-labelledby','village-detail-title');
  const detailHeader=make('div',undefined,'village-detail-header'),detailTitle=make('h2');detailTitle.id='village-detail-title';
@@ -170,7 +174,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
 
  const layoutKey=demo?'chat-ui-demo-village-layout':'chat-ui-village-layout';
  let assignments=new Map(),projectSlots=[],shownResidents=[],positions=[],frameId=0,lastFrame=0,lastPaint=0,elapsed=0,lastProjection=0,projectionTimer=0,overlaySignature='';
- let semanticLayout=null,semanticSignature='',residentCameraCell='';
+ let semanticLayout=null,semanticSignature='',residentCameraCell='',contextKey='';
+ let residentPatrols=new Map(),patrolLayout=null;
  let activities={protagonist:null,squads:[],allSquads:[],stats:{}},activitySignature='',activityReferences=[],squadScenes=[],heroScene=null,selectedSquadId=null,peekSignature='';
  let speechId=null,speechAnchor=null,heroPoint={x:490,y:430},heroGoal=null,heroTrail=[{x:490,y:430}],heroLastTime=0,heroRouteIndex=0;
  let encounter=null,latestScene=null;const residentPauses=new Map();
@@ -185,7 +190,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let drag=null,suppressMapClick=false,travel=null,arrivalFocus=null,travelVersion=0,arrivalMembers=null;
  let heard={};try{heard=JSON.parse(mapStorage.getItem('chat-ui-resident-heard'+(demo?'-demo':''))||'{}');}catch{}
  const media=matchMedia('(prefers-reduced-motion: reduce)'),context=canvas.getContext('2d');
- const motionEnabled=()=>!locallyPaused&&!media.matches&&document.body.dataset.motion!=='reduced';
+ const reducedMotion=()=>media.matches||document.body.dataset.motion==='reduced';
+ const motionEnabled=()=>!locallyPaused&&!reducedMotion();
  const canAnimate=()=>visible&&!document.hidden&&!detail.open&&!document.querySelector('dialog[open]')&&motionEnabled()&&(travel||shownResidents.length>0||activities.protagonist||activities.squads.length>0)&&frame.clientWidth>0;
  function saveView(){clearTimeout(viewSaveTimer);viewSaveTimer=0;try{mapStorage.setItem(viewKey,JSON.stringify({mode:'2d',camera:{...camera,zoom},district,insetVisible,insetCamera:world3D?.getCameraState()||insetCamera,
   hero:savedHero||{point:{...heroPoint},heading:leaderHeading,members:(travel?.engine.members||arrivalMembers||heroScene?.members||[heroPoint]).slice(0,8).map(({x,y})=>({x,y}))}}));}catch{}}
@@ -222,12 +228,14 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const person=projection.residents.find(r=>r.conversationId===id);if(!person)return;
   if(id===controlledLeader().conversationId){onOpenChat?.(id);return;}
   const candidates=[...positions,...[...squadScenes,...(heroScene?[heroScene]:[])].flatMap(group=>group.members.map((member,index)=>({...member,color:worldPersonColor(member,{hero:group.isProtagonist,party:true,index,squadSeed:group.seed})})))].filter(item=>item.conversationId===id);
-  endEncounter({redraw:false});cancelTravel();centerResident(id);
+  endEncounter({redraw:false});cancelTravel();
   const leader=controlledLeader(),target=candidates.sort((a,b)=>Math.hypot(a.x-leader.x,a.y-leader.y)-Math.hypot(b.x-leader.x,b.y-leader.y))[0]||residentPosition(person);
   encounter={conversationId:id,name:person.name,person:{...person,...target},status:'approaching',heldAt:elapsed};
+  refreshNearbyResidents();
   root.dataset.encounterId=id;root.dataset.encounterStatus='approaching';
   const terrain=movementTerrain(),goal=villageEncounterApproach(target,leader,[...movementObstacles(),...islandWaterObstacles(terrain.water,terrain.bridges)]);
-  if(!goal||!moveHero(goal.x,goal.y,()=>showSpeech(id),{preserveEncounter:true}))endEncounter();else directory.open=false;
+  const title=String(person.title||''),journeyTitle=title.length>48?title.slice(0,48)+'…':title;
+  if(!goal||!moveHero(goal.x,goal.y,()=>showSpeech(id),{preserveEncounter:true,follow:true,label:person.name+'へ移動中 · '+journeyTitle}))endEncounter();else directory.open=false;
  }
  function showSpeech(id){
   const resident=projection.residents.find(item=>item.conversationId===id);if(!resident)return;
@@ -294,6 +302,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function districtCount(){return Math.max(1,semanticLayout?.neighborhoods.length||1);}
  function syncDistrict(){
   projectSlots=(semanticLayout?.projects||[]).map(item=>({...item,...projection.projects.find(p=>p.conversationId===item.conversationId),x:item.x,y:item.y}));
+  if(semanticLayout&&patrolLayout!==semanticLayout){
+   const terrain=village3DScene({projects:projectSlots,population:projection.residents.length});
+   residentPatrols=buildResidentPatrols({residents:projection.residents,homes:semanticLayout.homes,island:villageIsland(),
+    obstacles:[...sceneBuildingObstacles(terrain),...(semanticLayout.mountains||[])],water:terrain.water,bridges:terrain.bridges});
+   patrolLayout=semanticLayout;
+  }
+  contextKey='';
   restoreHeroView();
   refreshNearbyResidents();
   root.dataset.district=String(district+1);root.dataset.renderedResidents=String(shownResidents.length);canvas.dataset.renderedResidents=String(shownResidents.length);
@@ -390,19 +405,14 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function residentPosition(resident){
   if(encounter?.conversationId===resident.conversationId)return {...resident,...encounter.person,...villageFacing(encounter.person,controlledLeader()),walking:false,conversing:true};
-  const seed=resident.seed>>>0,project=projectSlots.find(item=>item.conversationId===resident.conversationId),home=semanticLayout?.homes.get(resident.conversationId);
-  const points=home?.patrol||[{x:490,y:430},{x:510,y:430}];
-  const lengths=points.map((point,index)=>{const next=points[(index+1)%points.length];return Math.hypot(next.x-point.x,next.y-point.y);}),total=lengths.reduce((a,b)=>a+b,0)||1;
-  const speed=resident.activity==='working'?23:12+(seed%12),cycle=total/speed+8,seconds=((elapsed-(residentPauses.get(resident.conversationId)||0))/1000+(seed%1000)/17)%cycle;
-  let distance=Math.min(total,seconds*speed),point=points[0],direction='right';
-  for(let index=0;index<points.length;index++){if(distance<=lengths[index]||index===points.length-1){const from=points[index],to=points[(index+1)%points.length],ratio=lengths[index]?distance/lengths[index]:0;point={x:from.x+(to.x-from.x)*ratio,y:from.y+(to.y-from.y)*ratio};direction=Math.abs(to.x-from.x)>Math.abs(to.y-from.y)?to.x>from.x?'right':'left':to.y>from.y?'down':'up';break;}distance-=lengths[index];}
-  return {...resident,x:point.x,y:point.y,walking:seconds<total/speed&&motionEnabled(),direction,worker:Boolean(project)};
+  const project=projectSlots.find(item=>item.conversationId===resident.conversationId);
+  return {...resident,...residentPatrolPosition(residentPatrols.get(resident.conversationId),elapsed-(residentPauses.get(resident.conversationId)||0),{motion:motionEnabled()}),worker:Boolean(project)};
  }
  function holdTravelPosition(engine){
   heroPoint={...engine.position};heroGoal={...heroPoint};arrivalMembers=engine.members.map(({x,y})=>({x,y}));
   heroTrail=arrivalMembers.slice().reverse();if(!heroTrail.length)heroTrail=[{...heroPoint}];
  }
- function cancelTravel(){travelVersion++;arrivalFocus=null;if(travel?.walking){holdTravelPosition(travel.engine);travel.engine.cancel();}travel=null;root.dataset.travelling='';root.dataset.arrivedPlace='';journey.hidden=true;}
+ function cancelTravel(){travelVersion++;arrivalFocus=null;if(travel?.walking){holdTravelPosition(travel.engine);travel.engine.cancel();}travel=null;root.dataset.travelling='';root.dataset.arrivedPlace='';delete root.dataset.travelRemainingSeconds;root.dataset.cameraFollowing='false';follow.hidden=true;journey.hidden=true;}
  function travelTo(id){
   const place=VILLAGE_PLACES.find(item=>item.id===id);if(!place)return;
   const walking=true,from=walking?{...heroPoint}:{...camera};
@@ -422,7 +432,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(!points.length)return false;
   cancelTravel();closeSpeech(false);questPeek.hidden=true;directory.open=false;questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');
   const engine=new PartyTravel({...heroPoint},(activities.protagonist?.activityId?1:activities.protagonist?.members.length)||1),version=travelVersion;
-  travel={place,walking:true,engine,follow:true,last:elapsed};arrivalMembers=null;
+  travel={place,walking:true,engine,follow:true,last:elapsed,label:place.shortName+'へ向かっています'};arrivalMembers=null;
   root.dataset.travelling=id;journey.textContent=place.shortName+'へ向かっています';journey.hidden=false;automaticZoom=false;
   engine.go(points,()=>{
    if(version!==travelVersion)return;
@@ -431,6 +441,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
    root.dataset.travelling='';root.dataset.arrivedPlace=place.id;journey.textContent=place.shortName+'に着きました';travel=null;
    queueMicrotask(()=>{if(version===travelVersion&&visible)onNavigate?.(place.id);});
   });
+  if(reducedMotion())engine.advance(Infinity);
   draw();syncAnimation();
  }
  function entranceBottomSpace(){return dimensions.width<600?132:76;}
@@ -442,10 +453,14 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   return {x:point.x,y:point.y-(entranceY-height/2)/scale};
  }
  function updateTravel(){
+  follow.hidden=!travel||travel.follow;root.dataset.cameraFollowing=String(Boolean(travel?.follow));
   if(!travel)return;
-  const trip=travel,dt=motionEnabled()?Math.max(0,elapsed-trip.last)/1000:Infinity;trip.last=elapsed;
+  const trip=travel,dt=motionEnabled()?Math.max(0,elapsed-trip.last)/1000:0;trip.last=elapsed;
   trip.engine.advance(dt);heroPoint={...trip.engine.position};heroGoal={...heroPoint};
+  if(travel!==trip){follow.hidden=true;root.dataset.cameraFollowing='false';delete root.dataset.travelRemainingSeconds;return;}
   if(trip.follow)camera=travelCamera(heroPoint);
+  const remaining=Math.max(0,Math.ceil((trip.engine.length+(trip.engine.count-1)*18-trip.engine.progress)/90));root.dataset.travelRemainingSeconds=String(remaining);
+  if(trip.label){journey.textContent=trip.label+' · '+(locallyPaused?'一時停止中':'残り約'+remaining+'秒');journey.hidden=false;}
  }
  function movementObstacles(){
   return [...sceneBuildingObstacles(village3DScene({projects:projectSlots,population:projection.residents.length})),...(semanticLayout?.mountains||[])];
@@ -473,14 +488,16 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
    ?members.map(({x,y})=>({x,y})):[{...heroPoint}];
   arrivalMembers[0]={...heroPoint};
  }
- function moveHero(x,y,onArrival,{preserveEncounter=false}={}){
+ function moveHero(x,y,onArrival,{preserveEncounter=false,follow=false,label=''}={}){
   if(!pointInIsland({x,y},villageIsland()))return false;
   const goal={x,y};
   const route=islandLandRoute(heroPoint,goal,villageIsland(),{obstacles:movementObstacles(),...movementTerrain()});if(!route.length)return false;
   cancelTravel();closeSpeech(false,{preserveEncounter});arrivalMembers=null;
   const engine=new PartyTravel({...heroPoint},(activities.protagonist?.activityId?1:activities.protagonist?.members.length)||1),version=travelVersion;
-  travel={engine,walking:true,place:{entrance:goal},follow:false,last:elapsed};
-  engine.go(route,()=>{if(version!==travelVersion)return;holdTravelPosition(engine);travel=null;queueViewSave();onArrival?.();});
+  travel={engine,walking:true,place:{entrance:goal},follow,last:elapsed,label};
+  if(follow){automaticZoom=false;zoom=Math.max(zoom,.8);camera=travelCamera(heroPoint);}
+  engine.go(route,()=>{if(version!==travelVersion)return;holdTravelPosition(engine);travel=null;journey.hidden=true;queueViewSave();onArrival?.();});
+  if(reducedMotion())engine.advance(Infinity);
   root.dataset.heroGoalX=goal.x.toFixed(1);root.dataset.heroGoalY=goal.y.toFixed(1);draw();syncAnimation();return true;
  }
  function followingPoint(distance){let rest=distance;for(let index=heroTrail.length-1;index>0;index--){const a=heroTrail[index],b=heroTrail[index-1],length=Math.hypot(a.x-b.x,a.y-b.y);if(rest<=length)return {x:a.x+(b.x-a.x)*rest/(length||1),y:a.y+(b.y-a.y)*rest/(length||1)};rest-=length;}return heroTrail[0]||heroPoint;}
@@ -517,6 +534,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   camera.y=halfHeight*2>=bounds.bottom-bounds.top?(bounds.top+bounds.bottom)/2:clamp(camera.y,bounds.top+halfHeight,bounds.bottom-halfHeight);
   empty.hidden=projection.residents.length>0||camera.x<0||camera.x>1000||camera.y<0||camera.y>640;
   root.dataset.cameraX=camera.x.toFixed(1);root.dataset.cameraY=camera.y.toFixed(1);root.dataset.zoom=zoom.toFixed(2);
+  const nextContextKey=[Math.floor(camera.x/160),Math.floor(camera.y/160),encounter?.status||'',signature].join(':');
+  if(contextKey!==nextContextKey){contextKey=nextContextKey;neighborhoodContext.update({residents:projection.residents,homes:semanticLayout?.homes,point:camera,chats:getChats(),hidden:Boolean(encounter),revision:signature});}
   transform={scale,x:width/2-camera.x*scale,y:height/2-camera.y*scale};
   context.imageSmoothingEnabled=false;context.fillStyle=island.seaColor;context.fillRect(0,0,width,height);context.save();context.translate(transform.x,transform.y);context.scale(scale,scale);
   const viewport={left:-transform.x/scale,right:(width-transform.x)/scale,top:-transform.y/scale,bottom:(height-transform.y)/scale,zoom:scale};
@@ -577,7 +596,10 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(next<zoom&&next<=overview.zoom)camera={x:overview.x,y:overview.y};
   zoom=next;draw();queueViewSave();
  }
- function tick(now){frameId=0;if(!canAnimate()){syncAnimation();return;}const delta=lastFrame?Math.min(80,now-lastFrame):0;lastFrame=now;elapsed+=delta;if(now-lastPaint>=32){lastPaint=now;draw();}frameId=requestAnimationFrame(tick);}
+ // Visible slow frames must advance real walking time. The previous 80 ms cap
+ // made a 1 fps window walk 12.5 times slower. Hidden/paused intervals reset
+ // lastFrame below; the 1 s ceiling only prevents jumps after system sleep.
+ function tick(now){frameId=0;if(!canAnimate()){syncAnimation();return;}const delta=lastFrame?Math.min(1000,Math.max(0,now-lastFrame)):0;lastFrame=now;elapsed+=delta;if(now-lastPaint>=32){lastPaint=now;draw();}frameId=requestAnimationFrame(tick);}
  function syncAnimation(){
   const reduced=media.matches||document.body.dataset.motion==='reduced';pause.disabled=reduced;pause.textContent=reduced?'静かな表示':locallyPaused?'動きを再開':'動きを止める';pause.setAttribute('aria-pressed',String(locallyPaused||reduced));
   const active=canAnimate();root.dataset.animated=String(active);if(active&&!frameId){lastFrame=0;frameId=requestAnimationFrame(tick);}else if(!active&&frameId){cancelAnimationFrame(frameId);frameId=0;lastFrame=0;}if(!active)draw();
@@ -599,7 +621,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  speech.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();closeSpeech();}});
  const observer=new ResizeObserver(resize);observer.observe(frame);const insetObserver=new ResizeObserver(resizeInset);insetObserver.observe(canvas3D);
  const modalObserver=new MutationObserver(syncAnimation);modalObserver.observe(document.body,{subtree:true,attributes:true,attributeFilter:['open']});
- const motionChanged=()=>{world3D?.setVisible(visible&&insetVisible&&!document.hidden);syncAnimation();};media.addEventListener('change',motionChanged);addEventListener('chat-ui-motion',motionChanged);document.addEventListener('visibilitychange',motionChanged);
+ const motionChanged=()=>{world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(visible&&!document.hidden&&reducedMotion()&&!locallyPaused)travel?.engine.advance(Infinity);syncAnimation();};media.addEventListener('change',motionChanged);addEventListener('chat-ui-motion',motionChanged);document.addEventListener('visibilitychange',motionChanged);
  function render(){
   if(!visible||disposed)return;
   if(performance.now()-lastProjection>220){clearTimeout(projectionTimer);projectionTimer=0;updateProjection();}

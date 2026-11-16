@@ -13,8 +13,9 @@ import { sceneBuildingObstacles } from "../public/project-buildings.js";
 
 // Run the actual controller, animation and canvas drawing, without a browser,
 // external services or WebGL. The gold shadows locate the rendered party.
-function fixture(t, { saved, demo = false, building = false, visible = true } = {}) {
+function fixture(t, { saved, demo = false, building = false, visible = true, extraChats = [] } = {}) {
   const frames = new Map(), storage = new Map(), navigations = [];
+  const documentListeners = new Map();
   let nextFrame = 0, now = 0, view, root;
   class Element {
     constructor(tag = "div") {
@@ -30,6 +31,8 @@ function fixture(t, { saved, demo = false, building = false, visible = true } = 
       }, {get:(target,key)=>key in target ? target[key] : ()=>{}});
     }
     getContext() { return this.context; }
+    get ownerDocument() { return document; }
+    getClientRects() { return [this.getBoundingClientRect()]; }
     getBoundingClientRect() { return {width:1000,height:640,left:0,top:0,right:1000,bottom:640}; }
     append(...items) { for (const item of items) { item.parentElement=this; this.children.push(item); } }
     add(item) { this.append(item); }
@@ -54,8 +57,9 @@ function fixture(t, { saved, demo = false, building = false, visible = true } = 
   const globals = {
     location:{search:""}, devicePixelRatio:1,
     document:{body,hidden:false,activeElement:null,createElement:tag=>new Element(tag),
+      createDocumentFragment:()=>new Element('fragment'),createTextNode:text=>Object.assign(new Element('text'),{textContent:text}),
       createElementNS:(_,tag)=>new Element(tag),querySelector:selector=>body.querySelector(selector),
-      addEventListener(){},removeEventListener(){}},
+      addEventListener:(type,handler)=>documentListeners.set(type,handler),removeEventListener:type=>documentListeners.delete(type)},
     localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
     matchMedia:()=>({matches:false,addEventListener(){},removeEventListener(){}}),
     Option:class extends Element { constructor(label,value){super("option");this.textContent=label;this.value=value;} },
@@ -71,8 +75,8 @@ function fixture(t, { saved, demo = false, building = false, visible = true } = 
   }}});
   const key=demo?"chat-ui-demo-village-view":"chat-ui-village-view";
   storage.set(key,JSON.stringify({camera:{x:500,y:320,zoom:1},insetVisible:false,...saved}));
-  const chats=["a","b","c"].map(id=>({id,title:id,characterName:id,messages:[]}));
-  const state={party:{party:{leaderId:"a",members:chats.map(chat=>({conversationId:chat.id,role:"担当"}))}},
+  const members=["a","b","c"].map(id=>({id,title:id,characterName:id,messages:[]})),chats=[...members,...extraChats];
+  const state={party:{party:{leaderId:"a",members:members.map(chat=>({conversationId:chat.id,role:"担当"}))}},
     village:{overrides:building?[{conversationId:"a",kind:"software",stage:"building"}]:[]}};
   const start=()=>{
     root=new Element();root.id="history-village";body.replaceChildren(root);
@@ -85,17 +89,47 @@ function fixture(t, { saved, demo = false, building = false, visible = true } = 
     hero:()=>({x:Number(root.dataset.heroX),y:Number(root.dataset.heroY)}),
     camera:()=>({x:root.dataset.cameraX,y:root.dataset.cameraY,zoom:root.dataset.zoom}),
     party:()=>body.querySelector("#village-canvas").shadows.slice(-3),
-    advance(count=1) {for(let i=0;i<count;i++){now+=80;const callbacks=[...frames.values()];frames.clear();for(const callback of callbacks)callback(now);}},
+    advance(count=1, milliseconds=80) {for(let i=0;i<count;i++){now+=milliseconds;const callbacks=[...frames.values()];frames.clear();for(const callback of callbacks)callback(now);}},
+    hide(value) { document.hidden=value;documentListeners.get('visibilitychange')?.(); },
+    talk(id) { const find=node=>node.dataset?.villageTalk===id?node:node.children?.map(find).find(Boolean);const control=find(root);assert.ok(control);control.click(); },
     reload(record) {view.dispose();if(record)storage.set(key,JSON.stringify(record));return start();},
   };
 }
 
-test("Cancelling a village walk holds every drawn party member at its current position",t=>{
+test("Island overview changes the camera without cancelling the party walk",t=>{
   const f=fixture(t);f.element("village-canvas").dispatch("keydown",{key:"d"});f.advance(6);
   const before=f.party(),leader=f.hero();assert.equal(before.length,3);assert.ok(leader.x>510&&leader.x<550);
   f.element("village-fit").click();
-  assert.deepEqual(f.party(),before,"cancellation must not redraw the party on its old trail");
-  assert.deepEqual(f.hero(),leader);f.advance(8);assert.deepEqual(f.party(),before);
+  assert.deepEqual(f.party(),before,"overview must not redraw the party on its old trail");
+  assert.deepEqual(f.hero(),leader);f.advance(8);assert.ok(f.hero().x>leader.x);
+  assert.equal(f.root.dataset.cameraFollowing,'false');
+});
+
+const distantChat={id:'distant',title:'北の天文台の観測記録',characterName:'天文台の人',messages:[{id:'u1',role:'user',text:'星空の観測日時と望遠鏡の記録をまとめたい。'}]};
+test("A distant resident walk follows the party, survives overview, resumes following and arrives",t=>{
+  const f=fixture(t,{extraChats:[distantChat],saved:{hero:{point:{x:-2635,y:2224}}}});const start=f.hero();f.talk(distantChat.id);
+  assert.equal(f.root.dataset.encounterStatus,'approaching');assert.equal(f.root.dataset.cameraFollowing,'true');
+  const goal={x:Number(f.root.dataset.heroGoalX),y:Number(f.root.dataset.heroGoalY)};
+  assert.ok(Math.hypot(goal.x-start.x,goal.y-start.y)>1500,'fixture must exercise a long walk');
+  assert.ok(Math.abs(Number(f.camera().x)-start.x)<1,'selection focuses the party rather than the distant resident');
+  f.advance(10);assert.ok(Math.abs(Number(f.camera().x)-f.hero().x)<1);
+  const before=f.hero(),eta=Number(f.root.dataset.travelRemainingSeconds);f.element('village-fit').click();const overview=f.camera();f.advance(10);
+  assert.notDeepEqual(f.hero(),before);assert.deepEqual(f.camera(),overview);assert.equal(f.root.dataset.encounterStatus,'approaching');
+  assert.ok(Number(f.root.dataset.travelRemainingSeconds)<eta);assert.equal(f.element('village-follow').hidden,false);
+  f.element('village-follow').click();f.advance(2);assert.equal(f.root.dataset.cameraFollowing,'true');assert.ok(Math.abs(Number(f.camera().x)-f.hero().x)<1);
+  for(let i=0;i<180&&f.root.dataset.encounterStatus==='approaching';i++)f.advance(1,1000);
+  assert.equal(f.root.dataset.encounterStatus,'talking');assert.ok(Math.hypot(f.hero().x-goal.x,f.hero().y-goal.y)<.2);
+  assert.equal(f.element('village-speech').hidden,false);assert.equal(f.element('village-journey').hidden,true);
+});
+
+test("Visible slow frames keep walking speed while hidden and paused time never jumps forward",t=>{
+  const f=fixture(t,{extraChats:[distantChat]});f.talk(distantChat.id);f.advance(2);
+  const before=f.hero();f.advance(1,1000);const moved=f.hero();
+  assert.ok(Math.hypot(moved.x-before.x,moved.y-before.y)>80,'a one-second visible frame must not be truncated to 80 milliseconds');
+  f.hide(true);f.advance(30,1000);assert.deepEqual(f.hero(),moved);f.hide(false);f.advance();assert.deepEqual(f.hero(),moved,'first visible frame resets the clock');f.advance();
+  const paused=f.hero();f.element('village-motion').click();assert.deepEqual(f.hero(),paused,'pause must not instantly complete the route');
+  f.advance(30,1000);assert.deepEqual(f.hero(),paused);assert.equal(f.root.dataset.encounterStatus,'approaching');
+  f.element('village-motion').click();f.advance();assert.deepEqual(f.hero(),paused);f.advance();assert.notDeepEqual(f.hero(),paused);
 });
 
 test("Leaving a village mid-journey keeps the party on return and cancels stale arrivals",async t=>{

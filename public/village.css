@@ -18,6 +18,16 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 .village-heading h2{font-size:18px;line-height:1.5;font-weight:600;color:#fff0c6;margin:0;letter-spacing:.02em}
 .village-heading h2:focus{outline:none}
 .village-intro{display:none}
+.village-context{position:absolute;z-index:6;top:166px;left:12px;width:min(300px,calc(100% - 24px));max-height:calc(100% - 288px);overflow:auto;padding:10px;border:1px solid #cbd7b344;border-radius:9px;background:#142a26ed;box-shadow:0 5px 18px #10251c33;color:#e9efdd;font-size:12px}
+.village-context>summary{cursor:pointer;font-size:13px;font-weight:600;color:#f7e6ba}
+.village-context>p{margin:7px 0;color:#becdbb;font-size:11px;line-height:1.5}
+.village-context-list{display:grid;gap:7px}
+.history-village .village-context-row{display:flex;flex-direction:column;gap:3px;min-width:0;text-align:left;padding:8px;background:#284338;border:1px solid #809a7955;border-radius:6px;box-shadow:none;white-space:normal}
+.village-context-row strong{font-size:13px;line-height:1.4;color:#fff0c9;overflow-wrap:anywhere}
+.village-context-row small{font-size:11px;color:#c3d5bd}
+.village-context-row>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:1.55;color:#e0e7d9}
+.history-village:has(.village-context[open]:not([hidden])) .village-wayfinding{visibility:hidden}
+@media(max-height:620px),(max-width:600px){.village-context{top:145px;max-height:calc(100% - 282px);width:min(250px,calc(100% - 24px))}.village-context-row:nth-child(n+2){display:none}.village-context>p{display:none}}
 .village-header-actions{display:flex;gap:5px;pointer-events:auto}
 .history-village .village-header-actions button{display:grid;place-items:center;width:44px;height:44px;padding:0}
 .village-statistics{position:absolute;z-index:6;top:47px;left:25px;display:flex;gap:15px;color:#d8dfc4;pointer-events:none}
@@ -177,8 +187,10 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 .history-village .village-place::before{content:'';position:absolute;top:-8px;left:calc(50% - 6px);width:12px;height:12px;transform:rotate(45deg);background:#263d2b;border-left:1px solid #d6bf80;border-top:1px solid #d6bf80}
 .village-wayfinding{position:absolute;z-index:4;inset:0;pointer-events:none}
 .history-village .village-waypoint{position:absolute;pointer-events:auto;min-height:48px;padding:9px 14px;border:1px solid #d0b77a99;background:#1b342bea;color:#fff0bf;font-size:16px;white-space:nowrap;box-shadow:0 4px 20px #182b2940}
-.history-village[data-compact-map=true] .village-journey,.history-village[data-compact-map=true] .village-map-help{width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;padding:0;border:0}
-.village-journey{position:absolute;z-index:4;top:12px;left:50%;transform:translateX(-50%);margin:0;padding:8px 16px;border:1px solid #c6af7466;border-radius:8px;background:#183029eb;color:#fff0c1;font-size:15px;pointer-events:none;white-space:nowrap}
+.history-village[data-compact-map=true] .village-map-help{width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;padding:0;border:0}
+.village-journey{position:absolute;z-index:6;top:12px;left:50%;transform:translateX(-50%);max-width:min(440px,calc(100% - 24px));margin:0;padding:8px 12px;border:1px solid #c6af7466;border-radius:8px;background:#183029eb;color:#fff0c1;font-size:13px;line-height:1.5;pointer-events:none;white-space:normal;overflow-wrap:anywhere}
+.history-village .village-camera-controls #village-follow{font-size:12px;max-width:76px;white-space:normal;line-height:1.3}
+.history-village[data-compact-map=true] .village-journey{top:auto;bottom:74px;font-size:12px;padding:5px 8px}
 @media(max-width:700px){
  .history-village .village-waypoint{padding:8px 10px;font-size:15px}
  .village-journey{top:137px;font-size:13px;padding:5px 10px;max-width:calc(100% - 24px)}

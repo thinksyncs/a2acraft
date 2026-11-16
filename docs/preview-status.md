@@ -1,6 +1,31 @@
-# A2ACraft 0.4.7 — Mac preview status
+# A2ACraft 0.4.8 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+Version 0.4.8 keeps the camera on the party when selecting a distant resident.
+The island overview now changes only the camera; it no longer cancels the walk
+while leaving the encounter waiting for arrival. A follow control returns to the
+party. Travel displays the destination conversation and estimated remaining time.
+Low-frame-rate updates no longer slow a visible walk by a factor of 12.5, and
+pausing freezes travel instead of completing it immediately. Hidden intervals
+reset the animation clock rather than jumping ahead when the window returns.
+
+Residents now take short, deterministic walks around their homes, avoiding
+water, buildings and mountains, and stop for an encounter. Nearby-conversation
+cards show the actual latest request (or latest response if no request exists)
+and provide a direct way to walk to that resident. No new model request is used
+to generate these cards.
+
+On 2026-11-16, a browser check with explicit fictional sample data completed a
+long walk after switching to the island overview, restoring follow, pausing and
+resuming. The remaining time decreased and the party reached face-to-face
+dialogue. Native 0.4.8 launched and displayed the new context cards and a distant
+resident walk with a following view and remaining-time label. Native arrival is
+not yet independently verified: the control tool subsequently returned stale
+frames, `noWindowsAvailable`, and then an unavailable screenshot. This does not
+establish whether native animation continued. The 129 packaged frontend files
+match the tested source byte-for-byte; that is not a substitute for native
+arrival acceptance.
 
 This preview renders common Markdown in conversation messages, exposes
 the existing 1×1 / 1×2 / 2×2 layout controls, and preserves the selected layout
@@ -47,11 +72,11 @@ were observed. No model turn was sent during these display checks.
 
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 420 passed in the full suite. Zero failures/skips. Coverage includes window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
+| Automated regression tests | 429 passed in the full suite. Zero failures/skips. Coverage includes distant travel through overview/follow changes, low-frame-rate and pause/visibility timing, terrain-safe resident patrols, nearby conversation content, window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
 | Conversation geography | 26/168 fictional-chat fixtures: all homes reachable. In the 168-chat fixture, same-topic median distance 480 versus 3,735 between topics; visible roads meet the 0.45 affinity threshold and full-width terrain checks. Layout takes approximately 1.4 seconds on the development Mac. This is a projection, not an exact preservation of every pairwise distance |
 | Codex history import | Native import of 22 conversation records confirmed; visible messages only. Single-file bundles, idempotent updates and safe snapshots are covered by regression tests |
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
-| Packaged Apple Silicon application | 0.4.7 built with the frontend, Codex 0.169.0, icon and third-party notices; ad-hoc signature verified and packaged window lifecycle code matched the reviewed source |
+| Packaged Apple Silicon application | 0.4.8 built with the frontend, Codex 0.169.0, icon and third-party notices; strict ad-hoc signature verification passed, all 129 frontend files and the static serving allowlist matched the reviewed source |
 | Native launch and app-specific ChatGPT sign-in | Packaged 0.4.3 launch, saved-account connection and restart observed; packaged 0.4.5 launch and existing four-chat display also observed |
 | Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |
 | Imported-chat navigation | Resident arrival, opening the imported development chat and returning to the village were confirmed in the native UI. After the allowance recovered, a bounded read-only request completed and the displayed count increased from 523 to 525 messages. Moving-frame visual acceptance remains pending because screen capture returned stale images |
