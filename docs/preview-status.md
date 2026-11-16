@@ -1,4 +1,4 @@
-# A2ACraft 0.4.8 — Mac preview status
+# A2ACraft 0.4.9 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
 
@@ -20,12 +20,31 @@ On 2026-11-16, a browser check with explicit fictional sample data completed a
 long walk after switching to the island overview, restoring follow, pausing and
 resuming. The remaining time decreased and the party reached face-to-face
 dialogue. Native 0.4.8 launched and displayed the new context cards and a distant
-resident walk with a following view and remaining-time label. Native arrival is
-not yet independently verified: the control tool subsequently returned stale
-frames, `noWindowsAvailable`, and then an unavailable screenshot. This does not
-establish whether native animation continued. The 129 packaged frontend files
-match the tested source byte-for-byte; that is not a substitute for native
-arrival acceptance.
+resident walk with a following view and remaining-time label. The control tool
+initially returned stale frames, `noWindowsAvailable`, and an unavailable
+screenshot. A subsequent native-only check normally quit/reopened 0.4.8, then
+used its View > Reload command after a blank capture. Fresh native captures
+then showed a distant walk progressing from 31 to 13 seconds, arrival and
+face-to-face display in both projections, opening the resident conversation,
+sending a fictional sample message and receiving the local demo reply, and
+returning to the village. Two captures about 18 seconds apart, with the camera
+and buildings fixed, showed multiple residents changing position around their
+homes. No model turn was sent. The successful run establishes this flow on the
+Mac, but the earlier failure's root cause remains unconfirmed: renderer
+occlusion, rendering state and the native capture tool were not independently
+instrumented during the failure. It is not evidence of missing macOS permission.
+
+Version 0.4.9 adds a native Window > Restore Display action without reloading,
+and a Display Diagnostics dialog containing only window/renderer state and a
+bounded recent event list. It saves that structural report only when requested;
+it does not collect conversations, URLs, credentials or screen images. View >
+Reload Display first waits for drafts and map state to save. A save failure
+keeps the current page instead of discarding unsaved text. These are recovery
+and diagnostic improvements, not a claim that the capture failure is cured.
+The 0.4.9 package passed strict signature and source comparisons. Native control
+timed out while switching from 0.4.8 to 0.4.9, so the new diagnostic dialog and
+unsent-draft reload have automated coverage but have not yet been observed in
+the packaged 0.4.9 UI. Do not treat the successful 0.4.8 village run as that check.
 
 This preview renders common Markdown in conversation messages, exposes
 the existing 1×1 / 1×2 / 2×2 layout controls, and preserves the selected layout
@@ -72,11 +91,11 @@ were observed. No model turn was sent during these display checks.
 
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 429 passed in the full suite. Zero failures/skips. Coverage includes distant travel through overview/follow changes, low-frame-rate and pause/visibility timing, terrain-safe resident patrols, nearby conversation content, window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
+| Automated regression tests | 445 passed in the full suite. Zero failures/skips. Coverage includes saved reload failure/retry/close races, narrow display diagnostics, distant travel through overview/follow changes, low-frame-rate and pause/visibility timing, terrain-safe resident patrols, nearby conversation content, window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
 | Conversation geography | 26/168 fictional-chat fixtures: all homes reachable. In the 168-chat fixture, same-topic median distance 480 versus 3,735 between topics; visible roads meet the 0.45 affinity threshold and full-width terrain checks. Layout takes approximately 1.4 seconds on the development Mac. This is a projection, not an exact preservation of every pairwise distance |
 | Codex history import | Native import of 22 conversation records confirmed; visible messages only. Single-file bundles, idempotent updates and safe snapshots are covered by regression tests |
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
-| Packaged Apple Silicon application | 0.4.8 built with the frontend, Codex 0.169.0, icon and third-party notices; strict ad-hoc signature verification passed, all 129 frontend files and the static serving allowlist matched the reviewed source |
+| Packaged Apple Silicon application | 0.4.9 built with the frontend, Codex 0.169.0, icon and third-party notices; strict ad-hoc signature verification passed. All 129 frontend files, the static serving allowlist and ASAR main/diagnostic/saved-reload modules matched the reviewed source |
 | Native launch and app-specific ChatGPT sign-in | Packaged 0.4.3 launch, saved-account connection and restart observed; packaged 0.4.5 launch and existing four-chat display also observed |
 | Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |
 | Imported-chat navigation | Resident arrival, opening the imported development chat and returning to the village were confirmed in the native UI. After the allowance recovered, a bounded read-only request completed and the displayed count increased from 523 to 525 messages. Moving-frame visual acceptance remains pending because screen capture returned stale images |

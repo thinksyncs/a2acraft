@@ -13,6 +13,8 @@ import {createMapStateStore} from './map-state.mjs';
 import {bundledCodexPath,resolveCodexExecutable} from './codex-runtime.mjs';
 import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
 import {createStartupWindow,revealWindow,waitForWindowLoad} from './window-lifecycle.mjs';
+import {createWindowDiagnostics} from './window-diagnostics.mjs';
+import {createSavedReload,createWindowStateFlusher} from './saved-reload.mjs';
 import { isTrustedExternal, isAppUrl, isMainFrame } from './security.mjs';
 
 const electronRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +42,8 @@ let window, startupWindow, backend, previewServer, origin, settings = {}, quitti
 let relaunchRequested = false;
 let settingsWriting = Promise.resolve();
 let rendererFlushReady = false, rendererFlushWaiter = null;
+let windowDiagnostics;
+let closingRequest=null;
 const uiStore = createUiStateStore({
   read: () => readFile(path.join(app.getPath('userData'), 'ui-state.json'), 'utf8'),
   write: async snapshot => {
@@ -71,12 +75,13 @@ function flushRendererDrafts() {
   });
 }
 
-const requestClose = createCloseCoordinator({
+const flushWindowState=createWindowStateFlusher({flushRenderer:flushRendererDrafts,
+  flushUi:()=>uiStore.flush(),flushMap:()=>mapStore.flush()});
+
+const coordinatedClose = createCloseCoordinator({
   flush: async () => {
     if (window && !window.isDestroyed()) {
-      await flushRendererDrafts();
-      await uiStore.flush();
-      await mapStore.flush();
+      await flushWindowState();
     }
     try { await settingsWriting; } catch { await writeSettings(); }
   },
@@ -97,6 +102,32 @@ const requestClose = createCloseCoordinator({
     await Promise.allSettled([stopBackend(), settingsWriting]);
     if(relaunchRequested)app.relaunch();
     app.exit(process.exitCode || 0);
+  }
+});
+
+function requestClose() {
+  if(closingRequest)return closingRequest;
+  closingRequest=coordinatedClose().finally(()=>{closingRequest=null;});
+  return closingRequest;
+}
+
+function resumeRenderer() {
+  if(quitting||closingRequest||!window||window.isDestroyed())return;
+  try{window.webContents.send('ui:close-cancelled');}catch{}
+}
+const requestReload=createSavedReload({
+  canReload:()=>!quitting&&!closingRequest&&!starting&&window&&!window.isDestroyed(),
+  flush:flushWindowState,
+  reload:()=>window.webContents.reload(),
+  resume:resumeRenderer,
+  onFailure:async stage=>{
+    if(quitting||closingRequest)return;
+    const options={type:'warning',title:'画面の再読み込み',
+      message:stage==='save'?'保存を確認できないため、画面を再読み込みしませんでした。':'下書きと地図は保存しましたが、画面を再読み込みできませんでした。',
+      detail:stage==='save'?'下書きと地図を保持するため、現在の画面を残しています。保存先の空き容量や画面の応答を確認し、もう一度「画面を再読み込み」を選んでください。':'「ウィンドウ → 表示を復帰」を試してください。改善しない場合は、アプリを終了して開き直してください。',
+      buttons:['画面へ戻る'],defaultId:0,cancelId:0,noLink:true};
+    if(window&&!window.isDestroyed())await dialog.showMessageBox(window,options);
+    else await dialog.showMessageBox(options);
   }
 });
 
@@ -315,6 +346,7 @@ async function createWindow(desktopSession) {
       webSecurity: true, allowRunningInsecureContent: false, webviewTag: false,
       spellcheck: false, devTools: !app.isPackaged }
   });
+  windowDiagnostics?.observe(window);
   window.on('close', event => {
     if (quitting) return;
     event.preventDefault(); closeWithSavedDrafts();
@@ -410,12 +442,26 @@ else {
     installIpc();
     const supportsScreenReading=['darwin','win32'].includes(process.platform);
     if(supportsScreenReading&&settings.accessibilitySupportEnabled===true)app.setAccessibilitySupportEnabled(true);
+    const diagnosticPath=path.join(app.getPath('logs'),'window-diagnostics.json');
+    windowDiagnostics=createWindowDiagnostics({getWindow:()=>window,version:app.getVersion(),logPath:diagnosticPath,
+      writeReport:async report=>{
+        await mkdir(path.dirname(diagnosticPath),{recursive:true,mode:0o700});
+        await writeFile(diagnosticPath,JSON.stringify(report,null,2)+'\n',{mode:0o600});
+      },
+      present:(parent,options)=>parent?dialog.showMessageBox(parent,options):dialog.showMessageBox(options)});
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
       { label: '編集', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
-      { label: '表示', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' },
+      { label: '表示', submenu: [
+        {label:'画面を再読み込み',accelerator:'CmdOrCtrl+R',click:()=>{void requestReload().catch(()=>{
+          resumeRenderer();dialog.showErrorBox('画面の再読み込み','画面を再読み込みできませんでした。現在の画面で保存状態を確認してください。');
+        });}},
+        { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' },
         ...(supportsScreenReading?[{type:'separator'},accessibilityMenuItem()]:[])] },
-      { label: 'ウィンドウ', submenu: [{ role: 'minimize' }, { role: 'close' }] }
+      { label: 'ウィンドウ', submenu: [
+        {label:'表示を復帰',click:()=>{if(!quitting){if(process.platform==='darwin')app.show();revealApp();}}},
+        {label:'表示の診断',click:()=>{void windowDiagnostics.show().catch(()=>dialog.showErrorBox('表示の診断','診断画面を開けませんでした。'));}},
+        {type:'separator'},{ role: 'minimize' }, { role: 'close' }] }
     ]));
     app.on('accessibility-support-changed',(_event,enabled)=>{
       const item=Menu.getApplicationMenu()?.getMenuItemById('screen-reading');
