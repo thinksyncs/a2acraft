@@ -47,7 +47,7 @@ unsent-draft reload have automated coverage but have not yet been observed in
 the packaged 0.4.9 UI. Do not treat the successful 0.4.8 village run as that check.
 
 On 2026-11-17, the native control tool explicitly reported that the Mac was
-locked. That blocks the current native acceptance attempt; it does not establish
+locked. That blocked the initial native acceptance attempt; it does not establish
 the cause of the earlier switching timeouts. A code review found that an old
 instance waiting for a save decision continues to own the single-instance lock,
 so opening a newer build can reveal the old instance instead. No such pending
@@ -59,8 +59,27 @@ It preserves the existing retry, cancel and unsaved-data behavior. The village
 legend, whole-project map button and nearby-conversation cards also use a
 coordinated layout to avoid overlapping controls. Browser screenshots and DOM
 geometry at 1280×720, 600×620 and 900×500 confirmed separate rows and
-scrollable context on short windows. Native diagnostic and unsent-
-draft reload checks remain pending until the Mac is unlocked.
+scrollable context on short windows.
+
+After the user unlocked the Mac on 2026-11-17, packaged 0.4.10 opened normally.
+Window > Display Diagnostics was opened and dismissed in the native app. Its
+accessible text confirmed version 0.4.10, a visible/focused/non-minimized window,
+completed loading, no crash and no load error, and reported that the structural
+diagnostic was saved. The native sheet's captured image was blank, including
+after raising it; this remains a capture limitation with an unconfirmed cause.
+The main conversation window produced current, readable screenshots. The
+diagnostic's accessible text and interaction were verified, not its pixels.
+
+In normal desktop mode, without connecting Codex or using the demo, two new
+conversations received distinct synthetic, multiline unsent drafts. View >
+Reload Display completed. Reopening with Continue Without Connecting restored
+both draft texts exactly, the selected conversation and the 2×2 layout. All four
+new panes still showed zero messages. A normal Quit A2ACraft and reopen then
+restored both drafts again, confirming persistence across an app restart as well
+as a renderer reload. The diagnostics remained available after restart. No model
+turn or external message was sent, and no protected resources were accessed.
+The earlier switching timeout did not recur in this run; its historical cause
+is still unconfirmed. No save-failure fault was injected into the user's store.
 
 This preview renders common Markdown in conversation messages, exposes
 the existing 1×1 / 1×2 / 2×2 layout controls, and preserves the selected layout
@@ -113,7 +132,8 @@ were observed. No model turn was sent during these display checks.
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
 | Packaged Apple Silicon application | 0.4.10 built with the frontend, Codex 0.169.0, icon and third-party notices; strict ad-hoc signature verification passed. All 129 frontend files, the static serving allowlist and ASAR main/lifecycle/diagnostic/saved-reload modules matched the reviewed source |
 | Native launch and app-specific ChatGPT sign-in | Packaged 0.4.3 launch, saved-account connection and restart observed; packaged 0.4.5 launch and existing four-chat display also observed |
-| Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |
+| Drafts and settings | Native 0.4.10 preserved two distinct multiline drafts, selected conversation and 2×2 layout across its save-before-reload command, then preserved both drafts across normal quit/reopen. Both checks used normal desktop mode, not demo storage. Earlier work-folder settings persistence also passed |
+| Native display diagnostics | 0.4.10 dialog opened/dismissed and its accessible text reported loaded, visible and non-crashed state before and after restart. Diagnostic sheet screenshots were blank while the main conversation screenshots were current; native sheet pixel capture remains unresolved |
 | Imported-chat navigation | Resident arrival, opening the imported development chat and returning to the village were confirmed in the native UI. After the allowance recovered, a bounded read-only request completed and the displayed count increased from 523 to 525 messages. Moving-frame visual acceptance remains pending because screen capture returned stale images |
 | Connection readiness | Native checks report ready for both conversation and file work using the bundled Codex. The check starts no model turn and sends no conversation content |
 | Live model response and file work | A live request reached completed status after the quota reset. The response text is not yet independently confirmed; file creation and persistence of the new results remain pending. |
