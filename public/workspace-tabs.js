@@ -32,6 +32,8 @@ export function groupForConversation(groups,chats,conversationId){
 
 export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,onGroup,onAdd}){
   const root=document.querySelector('#workspace-tabs');
+  const home=root.parentElement,homeNext=root.nextElementSibling;
+  const chatToolbar=document.querySelector('#chat-view .workspace-toolbar');
   const list=document.createElement('div');
   list.className='workspace-tab-list';list.setAttribute('role','tablist');list.setAttribute('aria-label','マップとチャット');
   const map=document.createElement('button');
@@ -45,10 +47,15 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
   status.className='workspace-tabs-status';status.setAttribute('role','status');status.hidden=true;
   root.replaceChildren(list,add,status);
   const buttons=new Map();
-  let busy=false;
-  function announce(message){status.textContent=message;status.hidden=!message;}
+  let busy=false,lastActive=null;
+  function announce(message,kind='status'){status.textContent=message;status.hidden=!message;status.dataset.kind=kind;}
   function render(){
     const groups=chatGroupsFor(getGroups(),getChats()),selected=getSelected(),view=getView();
+    // Reuse the same tabs and handlers in the chat's single toolbar. Other
+    // screens retain their original navigation position and keyboard order.
+    if(view==='chat'&&chatToolbar){
+      if(root.parentElement!==chatToolbar)chatToolbar.insertBefore(root,document.querySelector('#chat-heading'));
+    }else if(root.parentElement!==home)home.insertBefore(root,homeNext);
     const active=groups.find(group=>view==='chat'&&group.conversationIds.includes(selected));
     map.setAttribute('aria-selected',String(['town','equipment','tavern','castle'].includes(view)));
     map.tabIndex=active?-1:0;
@@ -74,6 +81,9 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
       if(list.children[index+1]!==button)list.insertBefore(button,list.children[index+1]||null);
     });
     add.disabled=busy;add.setAttribute('aria-busy',String(busy));
+    const activeId=active?.id||null;
+    if(activeId&&activeId!==lastActive)buttons.get(activeId)?.scrollIntoView({block:'nearest',inline:'nearest'});
+    lastActive=activeId;
   }
   list.addEventListener('keydown',event=>{
     if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
@@ -88,7 +98,7 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
     if(busy)return;
     busy=true;announce('新しい2×2チャットを追加しています…');render();
     try{await onAdd();announce('新しい2×2チャットを追加しました。');}
-    catch(error){announce('チャットを追加できませんでした。'+(error?.message||'もう一度お試しください。'));}
+    catch(error){announce('チャットを追加できませんでした。'+(error?.message||'もう一度お試しください。'),'error');}
     finally{busy=false;render();}
   };
   render();

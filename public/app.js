@@ -525,7 +525,15 @@ function updateState() {
   $('#connection-dot').classList.toggle('mint', state.connected);
   setText('#connection-text', demo ? 'DEMO MODE' : state.connected ? 'APP SERVER ONLINE' : 'DISCONNECTED');
   setText('#quota-updated', state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + ' 更新' : '未取得');
-  setText('#notice', state.persistenceError || state.error || (offlineBrowsing&&!demo&&(!state.connected||state.account?.type!=='chatgpt')?'Codexは未接続です。送信するにはCodexに接続してください。':!state.policy?.ok ? state.policy?.reason : '') || '');
+  const offline=offlineBrowsing&&!demo&&(!state.connected||state.account?.type!=='chatgpt');
+  const policyReason=!state.policy?.ok?state.policy?.reason||'':'';
+  // Only routine sign-in guidance becomes a chip. Unknown policy failures,
+  // persistence failures and runtime errors must retain their full notice.
+  const routineSignIn=['','Codexに接続してください。','ChatGPTアカウントでログインしてください。APIキー接続は利用できません。'].includes(policyReason);
+  const blockingNotice=state.persistenceError||state.error||(!routineSignIn?policyReason:'');
+  $('#chat-connect').hidden=!offline;
+  $('#notice').dataset.kind=blockingNotice?'error':offline?'offline':'policy';
+  setText('#notice',blockingNotice||(offline?'Codexは未接続です。送信するにはCodexに接続してください。':policyReason));
   history.render();
   setText('#connect-btn', demo ? 'DEMO ONLINE' : state.connected ? (state.account?.type === 'chatgpt' ? 'CODEX ONLINE ✓' : 'ChatGPTでログイン ↗') : 'Codexに接続 ↗');
   setText('#auth-pill', state.account?.type === 'chatgpt' ? 'ChatGPT認証済み' : state.connected ? '未ログイン' : '未接続');
@@ -712,7 +720,7 @@ function updateComposer() {
   setText('#target', activeEncounter?.name || (chat ? chat.title : '会話を作成してください'));
   setText('#chat-heading',activeEncounter?.name || chat?.characterName || chat?.title || '会話');
   const topic=(activeEncounter?.name||chat?.characterName)&&chat?.title!==$('#chat-heading').textContent?chat?.title:'';
-  setText('#chat-topic',topic||'');$('#chat-topic').hidden=!topic;
+  setText('#chat-topic',topic||'');$('#chat-topic').hidden=!topic;$('#chat-topic').title=topic||'';
   setText('#chat-status',demo?'デモ':chat?(statusLabels[chat.status]||chat.status):'');
   setText('#chat-information',chat?(chat.model||'モデル未選択')+' · '+chat.messages.length+'件のメッセージ · 会話ごとに下書きを保存':'履歴を選ぶか、新しい会話を作成してください。');
   $('#chat-share').disabled=!chat;
@@ -825,6 +833,7 @@ $('#adventure-town-access').addEventListener('click',()=>townSection('town'));
 $('#town-facilities').addEventListener('toggle',()=>town.render());
 $('#town-tools-toggle').onclick=()=>{workspaceMenu.showModal();$('#town-tools-toggle').setAttribute('aria-expanded','true');};
 $('#chat-navigation').onclick=()=>{workspaceMenu.showModal();$('#chat-navigation').setAttribute('aria-expanded','true');};
+$('#chat-connect').onclick=()=>switchView('settings');
 $('#workspace-menu-close').onclick=()=>workspaceMenu.close();
 $('#workspace-menu-party-map').onclick=()=>{workspaceMenu.close();openPartyMap();};
 $('#workspace-menu-village-preview').onclick=()=>location.assign('/?demo=1&village=sample');

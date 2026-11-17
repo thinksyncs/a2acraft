@@ -117,10 +117,6 @@ body[data-motion=reduced] .context-arrow.is-sending{animation:none;opacity:.8}
 @media(min-width:901px){
   .main:has(#chat-view:not([hidden])) .deck-header{height:42px}
   .main:has(#chat-view:not([hidden])) main{padding-top:6px}
-  .main:has(#chat-view:not([hidden])) #workspace-tabs{gap:6px;padding:0 0 4px}
-  .main:has(#chat-view:not([hidden])) .workspace-tab-list{padding:0 2px}
-  .main:has(#chat-view:not([hidden])) .workspace-tab{min-height:30px;padding:4px 12px}
-  .main:has(#chat-view:not([hidden])) .workspace-add-chat{width:30px;height:30px;font-size:20px}
   .main:has(#chat-view:not([hidden])) .page-heading{min-height:30px;margin-bottom:4px}
   .main:has(#chat-view:not([hidden])) .module{height:30px;border-radius:7px}
   .main:has(#chat-view:not([hidden])) .module h1,.main:has(#chat-view:not([hidden])) .module>b{font-size:14px}

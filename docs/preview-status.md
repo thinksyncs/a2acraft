@@ -1,6 +1,26 @@
-# A2ACraft 0.4.10 — Mac preview status
+# A2ACraft 0.4.11 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+Version 0.4.11 combines workspace tabs and chat controls into one desktop row,
+using a small disconnected-state button to open connection settings. Persistence,
+runtime and non-sign-in policy errors retain their full notices. Multi-pane
+headers and footers are smaller; transcript text keeps its existing size. Single
+pane mode retains the conversation subject. Small windows use two control rows
+with 40px touch targets, and selecting a tab brings it into view.
+
+Browser checks at 1280×720 and 375×740 verified 1×1 and 2×2 layouts, with a
+separate 1×2 check, and a map-to-chat round trip. The desktop toolbar measured
+37 CSS pixels; no horizontal page overflow was observed. All 448 automated tests
+passed. The arm64 package passed strict ad-hoc signature verification, and all
+129 packaged frontend files matched the reviewed source.
+
+The first native 0.4.11 launch timed out at the reported module-load stage. Its
+49 backend graph files and 13 Electron modules matched the working 0.4.10
+package, and a data-free packaged IPC callback test passed. These checks do not
+identify the timeout's cause. After the app's Restart action, the control tool
+reported no available window. Native compact-header and draft-restoration
+acceptance for 0.4.11 remains pending; browser checks are not a substitute.
 
 Version 0.4.8 keeps the camera on the party when selecting a distant resident.
 The island overview now changes only the camera; it no longer cancels the walk
