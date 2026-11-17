@@ -19,8 +19,12 @@ The first native 0.4.11 launch timed out at the reported module-load stage. Its
 49 backend graph files and 13 Electron modules matched the working 0.4.10
 package, and a data-free packaged IPC callback test passed. These checks do not
 identify the timeout's cause. After the app's Restart action, the control tool
-reported no available window. Native compact-header and draft-restoration
-acceptance for 0.4.11 remains pending; browser checks are not a substitute.
+reported no available window. The user subsequently opened the exact 0.4.11
+app from Terminal and reported a Connect or conversation screen. Rebinding
+the native control tool, including resetting its session, still returned no
+available window. The user-observed launch succeeded, but native compact-header
+and draft-restoration acceptance remains pending; browser checks are not a
+substitute.
 
 Version 0.4.8 keeps the camera on the party when selecting a distant resident.
 The island overview now changes only the camera; it no longer cancels the walk
