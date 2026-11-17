@@ -1,4 +1,4 @@
-# A2ACraft 0.4.9 — Mac preview status
+# A2ACraft 0.4.10 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
 
@@ -46,6 +46,22 @@ timed out while switching from 0.4.8 to 0.4.9, so the new diagnostic dialog and
 unsent-draft reload have automated coverage but have not yet been observed in
 the packaged 0.4.9 UI. Do not treat the successful 0.4.8 village run as that check.
 
+On 2026-11-17, the native control tool explicitly reported that the Mac was
+locked. That blocks the current native acceptance attempt; it does not establish
+the cause of the earlier switching timeouts. A code review found that an old
+instance waiting for a save decision continues to own the single-instance lock,
+so opening a newer build can reveal the old instance instead. No such pending
+save dialog has yet been observed during this investigation.
+
+Version 0.4.10 reveals the app-owned window before presenting a save or reload
+failure dialog, so a hidden/minimized window does not conceal the decision.
+It preserves the existing retry, cancel and unsaved-data behavior. The village
+legend, whole-project map button and nearby-conversation cards also use a
+coordinated layout to avoid overlapping controls. Browser screenshots and DOM
+geometry at 1280×720, 600×620 and 900×500 confirmed separate rows and
+scrollable context on short windows. Native diagnostic and unsent-
+draft reload checks remain pending until the Mac is unlocked.
+
 This preview renders common Markdown in conversation messages, exposes
 the existing 1×1 / 1×2 / 2×2 layout controls, and preserves the selected layout
 when opening a resident's conversation. Map reports show actual message text,
@@ -91,11 +107,11 @@ were observed. No model turn was sent during these display checks.
 
 | Check | Result |
 | --- | --- |
-| Automated regression tests | 445 passed in the full suite. Zero failures/skips. Coverage includes saved reload failure/retry/close races, narrow display diagnostics, distant travel through overview/follow changes, low-frame-rate and pause/visibility timing, terrain-safe resident patrols, nearby conversation content, window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
+| Automated regression tests | 448 passed in the full suite. Zero failures/skips. Coverage includes saved reload failure/retry/close races, narrow display diagnostics, distant travel through overview/follow changes, low-frame-rate and pause/visibility timing, terrain-safe resident patrols, nearby conversation content, window reveal/timeout/quit races, history imports, effective permission checks, keyboard-addressable transcripts, Markdown safety/streaming, multi-pane draft preservation, detailed map content, local vector distances, dry reachable settlements and shared winding road geometry |
 | Conversation geography | 26/168 fictional-chat fixtures: all homes reachable. In the 168-chat fixture, same-topic median distance 480 versus 3,735 between topics; visible roads meet the 0.45 affinity threshold and full-width terrain checks. Layout takes approximately 1.4 seconds on the development Mac. This is a projection, not an exact preservation of every pairwise distance |
 | Codex history import | Native import of 22 conversation records confirmed; visible messages only. Single-file bundles, idempotent updates and safe snapshots are covered by regression tests |
 | Long imported conversations | Full transcript retained in the assigned workspace; a bounded recent excerpt and archive reference are prepared before sending |
-| Packaged Apple Silicon application | 0.4.9 built with the frontend, Codex 0.169.0, icon and third-party notices; strict ad-hoc signature verification passed. All 129 frontend files, the static serving allowlist and ASAR main/diagnostic/saved-reload modules matched the reviewed source |
+| Packaged Apple Silicon application | 0.4.10 built with the frontend, Codex 0.169.0, icon and third-party notices; strict ad-hoc signature verification passed. All 129 frontend files, the static serving allowlist and ASAR main/lifecycle/diagnostic/saved-reload modules matched the reviewed source |
 | Native launch and app-specific ChatGPT sign-in | Packaged 0.4.3 launch, saved-account connection and restart observed; packaged 0.4.5 launch and existing four-chat display also observed |
 | Drafts and settings | Saved drafts and selected work-folder settings persisted across restart |
 | Imported-chat navigation | Resident arrival, opening the imported development chat and returning to the village were confirmed in the native UI. After the allowance recovered, a bounded read-only request completed and the displayed count increased from 523 to 525 messages. Moving-frame visual acceptance remains pending because screen capture returned stale images |

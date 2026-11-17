@@ -12,7 +12,7 @@ import {createCloseCoordinator} from './close-coordinator.mjs';
 import {createMapStateStore} from './map-state.mjs';
 import {bundledCodexPath,resolveCodexExecutable} from './codex-runtime.mjs';
 import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
-import {createStartupWindow,revealWindow,waitForWindowLoad} from './window-lifecycle.mjs';
+import {createStartupWindow,revealWindow,revealForDialog,waitForWindowLoad} from './window-lifecycle.mjs';
 import {createWindowDiagnostics} from './window-diagnostics.mjs';
 import {createSavedReload,createWindowStateFlusher} from './saved-reload.mjs';
 import { isTrustedExternal, isAppUrl, isMainFrame } from './security.mjs';
@@ -93,7 +93,7 @@ const coordinatedClose = createCloseCoordinator({
       buttons: ['戻る', '保存を再試行', '保存せずに終了'], defaultId: 0, cancelId: 0,
       noLink: true
     };
-    const result = window && !window.isDestroyed() ? await dialog.showMessageBox(window, options) : await dialog.showMessageBox(options);
+    const result = await revealForDialog(window,parent=>parent?dialog.showMessageBox(parent,options):dialog.showMessageBox(options));
     if (result.response !== 1 && result.response !== 2 && window && !window.isDestroyed()) window.webContents.send('ui:close-cancelled');
     return result.response === 1 ? 'retry' : result.response === 2 ? 'discard' : 'cancel';
   },
@@ -126,15 +126,14 @@ const requestReload=createSavedReload({
       message:stage==='save'?'保存を確認できないため、画面を再読み込みしませんでした。':'下書きと地図は保存しましたが、画面を再読み込みできませんでした。',
       detail:stage==='save'?'下書きと地図を保持するため、現在の画面を残しています。保存先の空き容量や画面の応答を確認し、もう一度「画面を再読み込み」を選んでください。':'「ウィンドウ → 表示を復帰」を試してください。改善しない場合は、アプリを終了して開き直してください。',
       buttons:['画面へ戻る'],defaultId:0,cancelId:0,noLink:true};
-    if(window&&!window.isDestroyed())await dialog.showMessageBox(window,options);
-    else await dialog.showMessageBox(options);
+    await revealForDialog(window,parent=>parent?dialog.showMessageBox(parent,options):dialog.showMessageBox(options));
   }
 });
 
 function closeWithSavedDrafts() {
   void requestClose().catch(error => {
     if (window && !window.isDestroyed()) window.webContents.send('ui:close-cancelled');
-    dialog.showErrorBox('終了前の保存', error.message);
+    revealForDialog(window,()=>dialog.showErrorBox('終了前の保存',error.message));
   });
 }
 
@@ -454,7 +453,7 @@ else {
       { label: '編集', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
       { label: '表示', submenu: [
         {label:'画面を再読み込み',accelerator:'CmdOrCtrl+R',click:()=>{void requestReload().catch(()=>{
-          resumeRenderer();dialog.showErrorBox('画面の再読み込み','画面を再読み込みできませんでした。現在の画面で保存状態を確認してください。');
+          resumeRenderer();revealForDialog(window,()=>dialog.showErrorBox('画面の再読み込み','画面を再読み込みできませんでした。現在の画面で保存状態を確認してください。'));
         });}},
         { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' },
         ...(supportsScreenReading?[{type:'separator'},accessibilityMenuItem()]:[])] },

@@ -10,6 +10,12 @@ export function revealWindow(window) {
   return true;
 }
 
+// A failed save may be reported after the user hid or minimized the app.
+// Reveal only the supplied app-owned window before presenting its decision.
+export function revealForDialog(window, present) {
+  return present(revealWindow(window) ? window : undefined);
+}
+
 export async function waitForWindowLoad(window, url, {timeoutMs = 30000, canReveal = () => true} = {}) {
   let timer, onClosed;
   const unavailable = () => {

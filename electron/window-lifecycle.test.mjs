@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import {revealWindow, waitForWindowLoad, createStartupWindow} from './window-lifecycle.mjs';
+import {revealWindow, revealForDialog, waitForWindowLoad, createStartupWindow} from './window-lifecycle.mjs';
+import {createCloseCoordinator} from './close-coordinator.mjs';
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((ok,no)=>{resolve=ok;reject=no;});return {promise,resolve,reject};};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -35,6 +36,45 @@ test('reopening a hidden or minimized window explicitly restores, shows and focu
   const closed=new WindowFixture();closed.destroy();
   assert.equal(revealWindow(closed),false);assert.deepEqual(closed.calls,[]);
   assert.equal(revealWindow(null),false);
+});
+
+test('save failure dialogs reveal their hidden or minimized parent before asking for a decision',async()=>{
+  for(const minimized of [false,true]) {
+    const window=new WindowFixture();window.minimized=minimized;
+    const answer={response:0};
+    const result=await revealForDialog(window,async parent=>{
+      assert.equal(parent,window);assert.equal(window.visible,true);
+      assert.equal(window.minimized,false);assert.equal(window.focused,true);
+      assert.deepEqual(window.calls,minimized?['restore','show','focus']:['show','focus']);
+      return answer;
+    });
+    assert.equal(result,answer,'the native decision is preserved without auto-retry or discard');
+  }
+});
+
+test('a failed save cancelled from the revealed window leaves the window and backend available',async()=>{
+  const window=new WindowFixture();window.minimized=true;let closed=0;
+  const close=createCloseCoordinator({flush:async()=>{throw Error('Save failed');},
+    onFailure:async()=>{
+      const result=await revealForDialog(window,async parent=>{
+        assert.equal(parent,window);assert.equal(window.focused,true);return {response:0};
+      });
+      return result.response===0?'cancel':'discard';
+    },close:async()=>{closed++;window.destroy();}});
+  assert.equal(await close(),false);assert.equal(closed,0);
+  assert.equal(window.destroyed,false);assert.equal(window.visible,true);assert.equal(window.minimized,false);
+});
+
+test('failure dialogs remain available without touching a closed or missing parent window',async()=>{
+  const closed=new WindowFixture();closed.destroy();
+  for(const window of [closed,null,undefined]) {
+    let shown=0;
+    assert.deepEqual(await revealForDialog(window,async parent=>{
+      shown++;assert.equal(parent,undefined);return {response:0};
+    }),{response:0});
+    assert.equal(shown,1);
+  }
+  assert.deepEqual(closed.calls,[]);
 });
 
 test('a completed load shows the app even when ready-to-show was never emitted',async()=>{
