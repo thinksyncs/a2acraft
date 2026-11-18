@@ -2,11 +2,13 @@ const boolean = value => typeof value === 'boolean' ? value : null;
 const integer = value => Number.isSafeInteger(value) ? value : null;
 const read = action => { try { return action(); } catch { return null; } };
 const yesNo = value => value === true ? 'はい' : value === false ? 'いいえ' : '不明';
+const validRect = value => value && ['x','y','width','height'].every(key => Number.isSafeInteger(value[key]))
+  && value.width > 0 && value.height > 0;
 
 // Window/process state only. Never query renderer content, its URL, cookies,
 // account details, titles, arguments or other applications' windows.
 export function createWindowDiagnostics({getWindow, version, writeReport, present, logPath = '',
-  now = () => new Date(), timeoutMs = 2000}) {
+  getWorkArea, now = () => new Date(), timeoutMs = 2000}) {
   let loadState = 'not-created', responsiveness = 'unknown', lastErrorCode = null;
   let sequence = 0, events = [], pending = null, detach = () => {};
   const timestamp = () => now().toISOString();
@@ -41,6 +43,16 @@ export function createWindowDiagnostics({getWindow, version, writeReport, presen
     const contents = !destroyed && window.webContents;
     const rendererDestroyed = !contents || read(() => contents.isDestroyed()) !== false;
     const bounds = !destroyed ? read(() => window.getBounds()) : null;
+    // Query only the display selected for this app-owned window. Keep no
+    // display identifiers, names, scaling metadata or other display inventory.
+    const workArea = !destroyed && typeof getWorkArea === 'function' ? read(() => {
+      const value = getWorkArea(window);
+      return validRect(value) ? Object.fromEntries(['x','y','width','height'].map(key => [key,value[key]])) : null;
+    }) : null;
+    const fullyWithinWorkArea = validRect(bounds) && workArea ?
+      bounds.x >= workArea.x && bounds.y >= workArea.y &&
+      bounds.x + bounds.width <= workArea.x + workArea.width &&
+      bounds.y + bounds.height <= workArea.y + workArea.height : null;
     return {
       schema:1, capturedAt:timestamp(),
       appVersion:/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(version) ? version : 'unknown',
@@ -49,7 +61,8 @@ export function createWindowDiagnostics({getWindow, version, writeReport, presen
         minimized:!destroyed ? boolean(read(() => window.isMinimized())) : null,
         focused:!destroyed ? boolean(read(() => window.isFocused())) : false,
         fullScreen:!destroyed ? boolean(read(() => window.isFullScreen())) : null,
-        bounds:bounds ? Object.fromEntries(['x','y','width','height'].map(key => [key,integer(bounds[key])])) : null},
+        bounds:bounds ? Object.fromEntries(['x','y','width','height'].map(key => [key,integer(bounds[key])])) : null,
+        workArea, fullyWithinWorkArea},
       renderer:{destroyed:rendererDestroyed,
         loading:!rendererDestroyed ? boolean(read(() => contents.isLoadingMainFrame())) : null,
         crashed:!rendererDestroyed ? boolean(read(() => contents.isCrashed())) : null,
@@ -83,6 +96,8 @@ export function createWindowDiagnostics({getWindow, version, writeReport, presen
         '表示: '+yesNo(w.visible)+' / 最小化: '+yesNo(w.minimized)+' / フォーカス: '+yesNo(w.focused),
         'フルスクリーン: '+yesNo(w.fullScreen),
         '位置・大きさ: '+(w.bounds ? `${w.bounds.x}, ${w.bounds.y} / ${w.bounds.width} × ${w.bounds.height}` : '不明'),
+        '画面の作業領域: '+(w.workArea ? `${w.workArea.x}, ${w.workArea.y} / ${w.workArea.width} × ${w.workArea.height}` : '不明'),
+        'ウィンドウ全体が作業領域内: '+yesNo(w.fullyWithinWorkArea),
         '画面の読込: '+states[r.loadState]+' / 読込中: '+yesNo(r.loading),
         '応答の通知: '+responses[r.responsiveness]+' / クラッシュ: '+yesNo(r.crashed),
         '読込エラー番号: '+(r.lastErrorCode ?? 'なし'),

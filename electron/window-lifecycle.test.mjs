@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import {revealWindow, revealForDialog, waitForWindowLoad, createStartupWindow} from './window-lifecycle.mjs';
+import {fitWindowBounds, fitWindowToWorkArea, revealWindow, revealForDialog, waitForWindowLoad, createStartupWindow} from './window-lifecycle.mjs';
 import {createCloseCoordinator} from './close-coordinator.mjs';
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((ok,no)=>{resolve=ok;reject=no;});return {promise,resolve,reject};};
@@ -11,6 +11,9 @@ class WindowFixture extends EventEmitter {
   constructor(options={}) {
     super();this.options=options;this.visible=options.show===true;
     this.minimized=false;this.destroyed=false;this.focused=false;this.calls=[];
+    this.fullScreen=false;this.maximized=false;this.simpleFullScreen=false;
+    this.bounds={x:0,y:30,width:1440,height:789};
+    this.minimum=[920,620];
     this.load=deferred();this.urls=[];
     this.webContents=new EventEmitter();
     this.webContents.setWindowOpenHandler=handler=>{this.openHandler=handler;};
@@ -19,12 +22,91 @@ class WindowFixture extends EventEmitter {
   isDestroyed(){return this.destroyed;}
   isMinimized(){return this.minimized;}
   isVisible(){return this.visible;}
+  isFullScreen(){return this.fullScreen;}
+  isMaximized(){return this.maximized;}
+  isSimpleFullScreen(){return this.simpleFullScreen;}
+  getBounds(){return {...this.bounds};}
+  getMinimumSize(){return [...this.minimum];}
+  setMinimumSize(width,height){this.calls.push('setMinimumSize');this.minimum=[width,height];}
+  setBounds(bounds,animate){
+    assert.equal(animate,false);this.calls.push('setBounds');
+    this.bounds={...bounds,width:Math.max(bounds.width,this.minimum[0]),height:Math.max(bounds.height,this.minimum[1])};
+  }
   restore(){this.calls.push('restore');this.minimized=false;}
   show(){assert.equal(this.destroyed,false);this.calls.push('show');this.visible=true;}
   focus(){assert.equal(this.destroyed,false);this.calls.push('focus');this.focused=true;}
   loadURL(url){this.urls.push(url);return this.load.promise;}
   destroy(){this.destroyed=true;this.visible=false;this.emit('closed');}
 }
+
+test('fitting right and bottom overflow retains size and keeps all edges in the work area',()=>{
+  const bounds=Object.freeze({x:317,y:511,width:1440,height:789});
+  const workArea=Object.freeze({x:0,y:30,width:1440,height:870});
+  assert.deepEqual(fitWindowBounds(bounds,workArea),{x:0,y:111,width:1440,height:789});
+  const window=new WindowFixture();window.bounds={...bounds};
+  assert.equal(fitWindowToWorkArea(window,workArea),true);
+  assert.deepEqual(window.bounds,{x:0,y:111,width:1440,height:789});
+  assert.deepEqual(window.calls,['setBounds']);
+  assert.equal(fitWindowToWorkArea(window,workArea),false);
+  assert.deepEqual(window.calls,['setBounds'],'repeated recovery does not resize an already fitted window');
+});
+
+test('an in-bounds window is unchanged and receives no native move or resize',()=>{
+  const window=new WindowFixture(),bounds=window.getBounds();
+  assert.deepEqual(fitWindowBounds(bounds,{x:0,y:30,width:1440,height:870}),bounds);
+  assert.equal(fitWindowToWorkArea(window,{x:0,y:30,width:1440,height:870}),false);
+  assert.deepEqual(window.bounds,bounds);assert.deepEqual(window.calls,[]);
+});
+
+test('fitting handles left and top overflow, oversized windows and negative display coordinates',()=>{
+  assert.deepEqual(fitWindowBounds({x:-40,y:-50,width:800,height:600},{x:0,y:30,width:1440,height:870}),
+    {x:0,y:30,width:800,height:600});
+  assert.deepEqual(fitWindowBounds({x:317,y:511,width:1560,height:1060},{x:0,y:30,width:1440,height:870}),
+    {x:0,y:30,width:1440,height:870});
+  const secondary={x:-1920,y:-1050,width:1920,height:1080};
+  assert.deepEqual(fitWindowBounds({x:-500,y:-200,width:1000,height:700},secondary),
+    {x:-1000,y:-670,width:1000,height:700});
+  assert.deepEqual(fitWindowBounds({x:-2200,y:-1200,width:1000,height:700},secondary),
+    {x:-1920,y:-1050,width:1000,height:700});
+});
+
+test('invalid geometry is ignored without moving the native window',()=>{
+  const valid={x:0,y:30,width:1440,height:870};
+  for(const invalid of [null,{}, {...valid,x:NaN},{...valid,y:Infinity},{...valid,width:0},
+    {...valid,height:-1},{...valid,width:'1440'}]){
+    assert.equal(fitWindowBounds(valid,invalid),null);
+    assert.equal(fitWindowBounds(invalid,valid),null);
+    const window=new WindowFixture();
+    assert.equal(fitWindowToWorkArea(window,invalid),false);assert.deepEqual(window.calls,[]);
+  }
+});
+
+test('a smaller display caps the native minimum before fitting instead of leaving the window clipped',()=>{
+  const window=new WindowFixture(),workArea={x:-800,y:30,width:800,height:580};
+  assert.equal(fitWindowToWorkArea(window,workArea),true);
+  assert.deepEqual(window.minimum,[800,580]);
+  assert.deepEqual(window.bounds,{x:-800,y:30,width:800,height:580});
+  assert.deepEqual(window.calls,['setMinimumSize','setBounds']);
+  assert.equal(fitWindowToWorkArea(window,workArea),false);
+  assert.deepEqual(window.calls,['setMinimumSize','setBounds']);
+});
+
+test('fitting remains available when optional native minimum-size APIs are absent',()=>{
+  const window=new WindowFixture();window.bounds.x=317;
+  window.getMinimumSize=undefined;window.setMinimumSize=undefined;
+  assert.equal(fitWindowToWorkArea(window,{x:0,y:30,width:1440,height:870}),true);
+  assert.equal(window.bounds.x,0);assert.deepEqual(window.calls,['setBounds']);
+});
+
+test('fitting never changes a missing, destroyed, maximized or fullscreen window',()=>{
+  const workArea={x:0,y:30,width:1440,height:870};
+  assert.equal(fitWindowToWorkArea(null,workArea),false);
+  for(const state of ['destroyed','maximized','fullScreen','simpleFullScreen']){
+    const window=new WindowFixture();window[state]=true;
+    window.getBounds=()=>{throw Error('protected window geometry must not be read');};
+    assert.equal(fitWindowToWorkArea(window,workArea),false);assert.deepEqual(window.calls,[]);
+  }
+});
 
 test('reopening a hidden or minimized window explicitly restores, shows and focuses it',()=>{
   const hidden=new WindowFixture();

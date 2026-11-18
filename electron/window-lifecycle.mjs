@@ -1,5 +1,44 @@
 import {randomUUID} from 'node:crypto';
 
+// The caller supplies the work area of the window's own display. Preserve its
+// size where possible and support displays to the left/above the main display.
+export function fitWindowBounds(bounds, workArea) {
+  const valid = rect => rect && ['x','y','width','height'].every(key => Number.isSafeInteger(rect[key]))
+    && rect.width > 0 && rect.height > 0;
+  if (!valid(bounds) || !valid(workArea)) return null;
+  const width = Math.min(bounds.width, workArea.width);
+  const height = Math.min(bounds.height, workArea.height);
+  return {
+    x: Math.max(workArea.x, Math.min(bounds.x, workArea.x + workArea.width - width)),
+    y: Math.max(workArea.y, Math.min(bounds.y, workArea.y + workArea.height - height)),
+    width, height
+  };
+}
+
+export function fitWindowToWorkArea(window, workArea) {
+  if (!window || window.isDestroyed() || window.isFullScreen() || window.isMaximized()
+      || window.isSimpleFullScreen?.()) return false;
+  const bounds = window.getBounds(), fitted = fitWindowBounds(bounds, workArea);
+  if (!fitted) return false;
+  let changed = false;
+  // Electron otherwise clamps setBounds back to its larger native minimum.
+  if (typeof window.getMinimumSize === 'function' && typeof window.setMinimumSize === 'function') {
+    const minimum = window.getMinimumSize();
+    if (Array.isArray(minimum) && minimum.length === 2 && minimum.every(value => Number.isSafeInteger(value) && value >= 0)) {
+      const width = Math.min(minimum[0], workArea.width), height = Math.min(minimum[1], workArea.height);
+      if (width !== minimum[0] || height !== minimum[1]) {
+        window.setMinimumSize(width, height);
+        changed = true;
+      }
+    }
+  }
+  if (['x','y','width','height'].some(key => bounds[key] !== fitted[key])) {
+    window.setBounds(fitted, false);
+    changed = true;
+  }
+  return changed;
+}
+
 // Opening an already-running app must reveal hidden windows, not only focus
 // them. All callers pass an app-owned window; no other apps are inspected.
 export function revealWindow(window) {

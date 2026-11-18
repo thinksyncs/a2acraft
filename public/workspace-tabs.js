@@ -48,6 +48,27 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
   root.replaceChildren(list,add,status);
   const buttons=new Map();
   let busy=false,lastActive=null;
+  // A layout change can narrow the list without changing its active group.
+  // Observe width only so manual scrolling and streaming updates stay put.
+  if(typeof ResizeObserver==='function'){
+    let observedWidth=null,resizeFrame=null;
+    const observer=new ResizeObserver(([entry])=>{
+      const width=entry.contentRect.width;
+      if(observedWidth!==null&&Math.abs(width-observedWidth)<.5)return;
+      observedWidth=width;
+      if(width<=0||resizeFrame!==null)return;
+      resizeFrame=requestAnimationFrame(()=>{
+        resizeFrame=null;
+        const button=buttons.get(lastActive),viewportWidth=list.clientWidth;
+        if(getView()!=='chat'||!list.isConnected||!button||viewportWidth<=0)return;
+        const bounds=list.getBoundingClientRect(),tab=button.getBoundingClientRect();
+        const left=bounds.left+list.clientLeft,right=left+viewportWidth;
+        const delta=tab.width>viewportWidth||tab.left<left?tab.left-left:tab.right>right?tab.right-right:0;
+        if(Math.abs(delta)>.5)list.scrollLeft+=delta;
+      });
+    });
+    observer.observe(list);
+  }
   function announce(message,kind='status'){status.textContent=message;status.hidden=!message;status.dataset.kind=kind;}
   function render(){
     const groups=chatGroupsFor(getGroups(),getChats()),selected=getSelected(),view=getView();

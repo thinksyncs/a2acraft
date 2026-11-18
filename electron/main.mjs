@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, ipcMain, shell, dialog, Menu } from 'electron';
+import { app, BrowserWindow, session, ipcMain, shell, dialog, Menu, screen } from 'electron';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile, mkdir, rename, stat, access } from 'node:fs/promises';
@@ -12,7 +12,7 @@ import {createCloseCoordinator} from './close-coordinator.mjs';
 import {createMapStateStore} from './map-state.mjs';
 import {bundledCodexPath,resolveCodexExecutable} from './codex-runtime.mjs';
 import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
-import {createStartupWindow,revealWindow,revealForDialog,waitForWindowLoad} from './window-lifecycle.mjs';
+import {createStartupWindow,revealWindow,revealForDialog,waitForWindowLoad,fitWindowToWorkArea} from './window-lifecycle.mjs';
 import {createWindowDiagnostics} from './window-diagnostics.mjs';
 import {createSavedReload,createWindowStateFlusher} from './saved-reload.mjs';
 import { isTrustedExternal, isAppUrl, isMainFrame } from './security.mjs';
@@ -44,6 +44,17 @@ let settingsWriting = Promise.resolve();
 let rendererFlushReady = false, rendererFlushWaiter = null;
 let windowDiagnostics;
 let closingRequest=null;
+function fitOwnedWindow(target) {
+  if(!target||target.isDestroyed())return;
+  fitWindowToWorkArea(target,screen.getDisplayMatching(target.getBounds()).workArea);
+}
+function revealAppWindow(target) {
+  if(!target||target.isDestroyed())return false;
+  if(process.platform==='darwin')app.show();
+  if(target.isMinimized())target.restore();
+  fitOwnedWindow(target);
+  return revealWindow(target);
+}
 const uiStore = createUiStateStore({
   read: () => readFile(path.join(app.getPath('userData'), 'ui-state.json'), 'utf8'),
   write: async snapshot => {
@@ -143,7 +154,7 @@ const recoverRuntime=createRuntimeRecovery({
       detail:detail+'\n保存済みの会話と設定は保持します。再起動して接続し直してください。',
       buttons:['再起動','終了'],defaultId:0,cancelId:1,noLink:true};
     const parent=!starting&&window&&!window.isDestroyed()?window:startupWindow;
-    if(revealWindow(parent))return (await dialog.showMessageBox(parent,options)).response;
+    if(revealAppWindow(parent))return (await dialog.showMessageBox(parent,options)).response;
     return (await dialog.showMessageBox(options)).response;
   },
   close:async restart=>{
@@ -345,6 +356,11 @@ async function createWindow(desktopSession) {
       webSecurity: true, allowRunningInsecureContent: false, webviewTag: false,
       spellcheck: false, devTools: !app.isPackaged }
   });
+  // Native captures can clip a window outside its display. Constrain only our
+  // window before first show and when restoring it, without reloading drafts.
+  fitOwnedWindow(window);
+  const fittedWindow=window;
+  fittedWindow.on('show',()=>fitOwnedWindow(fittedWindow));
   windowDiagnostics?.observe(window);
   window.on('close', event => {
     if (quitting) return;
@@ -422,8 +438,8 @@ if (!gotLock) app.quit();
 else {
   const revealApp=()=>{
     if(quitting)return;
-    if(starting)revealWindow(startupWindow);
-    else if(!revealWindow(window))revealWindow(startupWindow);
+    if(starting)revealAppWindow(startupWindow);
+    else if(!revealAppWindow(window))revealAppWindow(startupWindow);
   };
   app.on('second-instance',revealApp);
   app.on('activate',revealApp);
@@ -434,6 +450,7 @@ else {
   });
   app.whenReady().then(async () => {
     startupWindow=createStartupWindow(BrowserWindow,{onClose:closeWithSavedDrafts});
+    fitOwnedWindow(startupWindow);
     await mkdir(app.getPath('userData'), { recursive: true, mode: 0o700 });
     if(quitting)return;
     await readSettings();
@@ -443,11 +460,15 @@ else {
     if(supportsScreenReading&&settings.accessibilitySupportEnabled===true)app.setAccessibilitySupportEnabled(true);
     const diagnosticPath=path.join(app.getPath('logs'),'window-diagnostics.json');
     windowDiagnostics=createWindowDiagnostics({getWindow:()=>window,version:app.getVersion(),logPath:diagnosticPath,
+      getWorkArea:target=>screen.getDisplayMatching(target.getBounds()).workArea,
       writeReport:async report=>{
         await mkdir(path.dirname(diagnosticPath),{recursive:true,mode:0o700});
         await writeFile(diagnosticPath,JSON.stringify(report,null,2)+'\n',{mode:0o600});
       },
-      present:(parent,options)=>parent?dialog.showMessageBox(parent,options):dialog.showMessageBox(options)});
+      present:(parent,options)=>{
+        // The diagnostic snapshot is already recorded before this recovery.
+        return revealAppWindow(parent)?dialog.showMessageBox(parent,options):dialog.showMessageBox(options);
+      }});
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
       { label: '編集', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
@@ -458,7 +479,7 @@ else {
         { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' },
         ...(supportsScreenReading?[{type:'separator'},accessibilityMenuItem()]:[])] },
       { label: 'ウィンドウ', submenu: [
-        {label:'表示を復帰',click:()=>{if(!quitting){if(process.platform==='darwin')app.show();revealApp();}}},
+        {label:'表示を復帰',click:()=>{if(!quitting)revealApp();}},
         {label:'表示の診断',click:()=>{void windowDiagnostics.show().catch(()=>dialog.showErrorBox('表示の診断','診断画面を開けませんでした。'));}},
         {type:'separator'},{ role: 'minimize' }, { role: 'close' }] }
     ]));

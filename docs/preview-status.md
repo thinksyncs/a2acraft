@@ -1,4 +1,4 @@
-# A2ACraft 0.4.11 — Mac preview status
+# A2ACraft 0.4.12 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
 
@@ -22,9 +22,68 @@ identify the timeout's cause. After the app's Restart action, the control tool
 reported no available window. The user subsequently opened the exact 0.4.11
 app from Terminal and reported a Connect or conversation screen. Rebinding
 the native control tool, including resetting its session, still returned no
-available window. The user-observed launch succeeded, but native compact-header
-and draft-restoration acceptance remains pending; browser checks are not a
+available window. The user-observed launch succeeded. At that point, native compact-header
+and draft-restoration acceptance remained pending; browser checks were not a
 substitute.
+
+On 2026-11-18, reacquiring the exact 0.4.11 app returned a live native window
+and current screenshots without permission or security changes. Native Display
+Diagnostics confirmed version 0.4.11, visible/focused/not minimized, loaded, no
+crash and no load error. The compact single-row header, disconnected-state
+button, selected last workspace tab and four conversation panes were visible.
+Two earlier synthetic drafts were intact. One was extended with a new multiline
+verification note, and its exact text and the selected 2×2 layout survived View >
+Reload. After normal Quit and reopen, both independent drafts were intact again.
+The app was connected by the time the conversation screen was revisited, but no
+model turn was sent during this acceptance run. All four test panes still had
+zero messages. The historical capture failure and startup timeout remain
+unexplained; a successful later run is not proof of their root cause or a fix.
+
+This native check found that switching from 2×2 to 1×1 could hide the active
+workspace tab when the conversation subject narrowed the tab strip. Version
+0.4.12 observes strip-width changes and scrolls only as far as needed to reveal
+the active tab. Manual scrolling and normal updates at unchanged width are
+preserved.
+
+A subsequent native check captured only part of a loaded normal window, with
+the rest white. Its reported position was x317/y511 and its size 1440×789;
+the visible capture occupied 1123×389. Full screen immediately produced a
+complete capture. This is consistent with clipping at the display edge, but
+the original diagnostic did not record the actual display work area, so it
+cannot by itself prove the cause. Version 0.4.12 now fits the app-owned window
+inside its display work area before showing it and when restoring/activating
+it. It preserves size where possible, supports negative monitor coordinates,
+and leaves full-screen and maximized windows alone. Small work areas also cap
+the native minimum size. Display Diagnostics now records the owned window's
+work area and whether the whole window fits, then brings its parent on screen
+before opening the dialog. No permission or security settings are changed.
+
+The native 0.4.12 check captured the complete normal window, its compact header,
+four panes and both previous drafts after the upgrade. Switching to 1×1 kept
+the active last workspace tab visible; switching back restored all four panes.
+View > Reload preserved the selected pane and exact multiline draft again.
+The control tool still intermittently returned stale state, a white diagnostic
+sheet and noWindowsAvailable. Window > Restore Display recovered current native
+captures without reloading or changing drafts. These tool-side symptoms remain
+distinct from successful app acceptance and do not establish a permission
+problem or explain the historical module-load timeout.
+
+
+The final 0.4.12 package also unhides the macOS application itself on explicit
+reveal/activation and before diagnostic presentation, matching the working
+Restore Display action. The final native diagnostic reported window bounds
+0,30 / 1440×789, the same work area, full containment, loaded, no crash and no
+load error. After a normal quit/rebuild/reopen, a complete 2×2 screenshot showed
+the selected pane and its unchanged multiline draft. The diagnostic sheet still
+captured white even with the parent fully inside the work area. One capture
+request returned ScreenCaptureKit SCStreamErrorDomain -3811 (capture stream
+could not start); rebinding the same app recovered its main window. This rules
+out treating every white capture as off-screen placement, and does not prove
+that screen-recording permission is absent. The capture-tool limitation remains
+open. No security settings were changed. All 459 automated tests passed; strict
+ad-hoc signature verification passed and all 129 packaged frontend files plus
+the three changed Electron modules matched source. Developer ID signing and
+notarization remain pending.
 
 Version 0.4.8 keeps the camera on the party when selecting a distant resident.
 The island overview now changes only the camera; it no longer cancels the walk

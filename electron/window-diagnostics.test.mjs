@@ -38,7 +38,7 @@ test('native state and lifecycle events are observable without inspecting render
   window.emit('unresponsive');
   const loading=diagnostics.snapshot();
   assert.deepEqual(loading.window,{electronId:7,destroyed:false,visible:false,minimized:true,focused:false,fullScreen:false,
-    bounds:{x:12,y:32,width:1560,height:1060}});
+    bounds:{x:12,y:32,width:1560,height:1060},workArea:null,fullyWithinWorkArea:null});
   assert.deepEqual(loading.renderer,{destroyed:false,loading:true,crashed:false,loadState:'loading',responsiveness:'unresponsive',lastErrorCode:null});
   window.webContents.loading=false;window.webContents.emit('did-finish-load');window.emit('responsive');
   const loaded=diagnostics.snapshot();
@@ -135,4 +135,65 @@ test('diagnostics remain available before a main window exists',async()=>{
   const {report}=await diagnostics.show();
   assert.equal(report.appVersion,'unknown');assert.equal(report.window.destroyed,true);
   assert.equal(dialogs[0].parent,undefined);assert.doesNotMatch(dialogs[0].options.detail,/private-version/);
+});
+
+test('own-display geometry distinguishes clipped windows and is captured before dialog recovery',async()=>{
+  let bounds={x:166,y:494,width:1440,height:789},receivedWindow;
+  const area={x:0,y:30,width:1440,height:870,id:'never-record-display',scaleFactor:2};
+  const {window,diagnostics,reports,dialogs}=setup({
+    getWorkArea:target=>{receivedWindow=target;return area;},
+    present:async(parent,options)=>{
+      // The main process fits the owned parent at this point, after snapshot.
+      bounds={x:0,y:111,width:1440,height:789};dialogs.push({parent,options});
+    }
+  });
+  window.getBounds=()=>({...bounds});
+  const result=await diagnostics.show();
+  assert.equal(receivedWindow,window);
+  assert.deepEqual(result.report.window.workArea,{x:0,y:30,width:1440,height:870});
+  assert.equal(result.report.window.fullyWithinWorkArea,false);
+  assert.deepEqual(reports[0].window.bounds,{x:166,y:494,width:1440,height:789});
+  assert.equal(diagnostics.snapshot().window.fullyWithinWorkArea,true);
+  assert.match(dialogs[0].options.detail,/画面の作業領域: 0, 30 \/ 1440 × 870/);
+  assert.match(dialogs[0].options.detail,/ウィンドウ全体が作業領域内: いいえ/);
+  assert.doesNotMatch(JSON.stringify(result.report),/never-record-display|scaleFactor/);
+});
+
+test('own-display containment supports negative coordinates and checks every edge',()=>{
+  const area={x:-1920,y:-1050,width:1920,height:1080};
+  const {window,diagnostics}=setup({getWorkArea:()=>area});
+  let bounds={...area};window.getBounds=()=>({...bounds});
+  assert.equal(diagnostics.snapshot().window.fullyWithinWorkArea,true);
+  for(const outside of [{...area,x:area.x-1},{...area,y:area.y-1},
+    {...area,width:area.width+1},{...area,height:area.height+1}]) {
+    bounds=outside;assert.equal(diagnostics.snapshot().window.fullyWithinWorkArea,false);
+  }
+});
+
+test('missing or invalid work-area metadata remains unknown without leaking provider values',()=>{
+  const area={x:0,y:30,width:1440,height:870};
+  for(const value of [null,{}, {...area,x:Infinity},{...area,y:1.5},{...area,width:0},
+    {...area,height:'private-height'},{...area,height:-1}]) {
+    const {diagnostics}=setup({getWorkArea:()=>value});
+    const report=diagnostics.snapshot();
+    assert.equal(report.window.workArea,null);assert.equal(report.window.fullyWithinWorkArea,null);
+    assert.doesNotMatch(JSON.stringify(report),/private-height/);
+  }
+  const {diagnostics}=setup({getWorkArea:()=>{throw Error('private-display-error');}});
+  assert.equal(diagnostics.snapshot().window.workArea,null);
+  assert.doesNotMatch(JSON.stringify(diagnostics.snapshot()),/private-display-error/);
+  const invalidBounds=setup({getWorkArea:()=>area});
+  invalidBounds.window.getBounds=()=>({x:0,y:30,width:NaN,height:400});
+  assert.equal(invalidBounds.diagnostics.snapshot().window.fullyWithinWorkArea,null);
+});
+
+test('work-area provider is never called for a missing or destroyed window',()=>{
+  let calls=0;const provider=()=>{calls++;return {x:0,y:0,width:1440,height:900};};
+  const {window,diagnostics}=setup({getWorkArea:provider});
+  window.destroyed=true;
+  assert.equal(diagnostics.snapshot().window.workArea,null);
+  const missing=setup({getWindow:()=>undefined,getWorkArea:provider});
+  assert.equal(missing.diagnostics.snapshot().window.workArea,null);
+  assert.equal(missing.diagnostics.snapshot().window.fullyWithinWorkArea,null);
+  assert.equal(calls,0);
 });
