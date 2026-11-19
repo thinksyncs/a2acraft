@@ -5,19 +5,19 @@ const knownImportCodes = new Set([
   'ERR_UNKNOWN_FILE_EXTENSION', 'ERR_PACKAGE_PATH_NOT_EXPORTED',
 ]);
 
-async function report(message) {
+function report(message) {
   if (!process.connected) return;
-  await new Promise(resolve => {
-    try { process.send(message, () => resolve()); } catch { resolve(); }
-  });
+  // Diagnostics must never gate loading the application. A delayed IPC flush
+  // callback is not evidence that the backend cannot initialize.
+  try { process.send(message, () => {}); } catch {}
 }
 
-await report({type: 'startup-progress', stage: 'module-load'});
+report({type: 'startup-progress', stage: 'module-load'});
 try {
   // The packaged sibling is fixed; no command-line or environment path is used.
   await import('./server.mjs');
 } catch (error) {
   process.exitCode = 1;
-  await report({type: 'startup-error',
+  report({type: 'startup-error',
     code: knownImportCodes.has(error?.code) ? error.code : 'BACKEND_IMPORT_FAILED'});
 }

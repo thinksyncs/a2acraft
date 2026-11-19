@@ -56,9 +56,11 @@ test('startup timeout reports only the latest allowlisted progress identifier',a
 
 test('startup and spawn diagnostics exclude payloads and retain only process status',async()=>{
   const child=childFixture(),ready=waitForBackendReady(child);
+  child.emit('message',{type:'startup-progress',stage:'workspace'});
   child.emit('message',{type:'startup-error',code:'EACCES',message:'Bearer never-print-this-secret'});
   await assert.rejects(ready,error=>{
     assert.match(error.publicDiagnostic,/code=EACCES/);
+    assert.match(error.publicDiagnostic,/stage=workspace$/);
     assert.doesNotMatch(error.publicDiagnostic,/Bearer|secret/);return true;
   });
   const failed=childFixture();failed.pid=undefined;

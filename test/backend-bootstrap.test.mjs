@@ -8,11 +8,18 @@ import {fileURLToPath} from 'node:url';
 import {waitForBackendReady,stopOwnedChild} from '../electron/runtime-recovery.mjs';
 
 const source=fileURLToPath(new URL('../backend-bootstrap.mjs',import.meta.url));
-async function fixture(t,server){
+async function fixture(t,server,{dropProgressCallback=false}={}){
   const root=await mkdtemp(path.join(os.tmpdir(),'a2acraft-bootstrap-'));
   await copyFile(source,path.join(root,'backend-bootstrap.mjs'));
   if(server!==undefined)await writeFile(path.join(root,'server.mjs'),server);
-  const child=spawn(process.execPath,[path.join(root,'backend-bootstrap.mjs')],{
+  const args=[];
+  if(dropProgressCallback){
+    const preload=path.join(root,'delayed-progress.cjs');
+    await writeFile(preload,"const send=process.send.bind(process);process.send=(message,...args)=>message?.type==='startup-progress'?send(message):send(message,...args);");
+    args.push('--require',preload);
+  }
+  args.push(path.join(root,'backend-bootstrap.mjs'));
+  const child=spawn(process.execPath,args,{
     cwd:root,env:{OPENSSL_CONF:'/dev/null'},stdio:['ignore','pipe','pipe','ipc']
   });
   t.after(async()=>{await stopOwnedChild(child,{graceMs:100});await rm(root,{recursive:true,force:true});});
@@ -25,6 +32,15 @@ test('entry point reports module loading before the fixed sibling starts',async 
   const {child,messages}=await fixture(t,
     "process.send({type:'ready',port:4317,origin:'http://127.0.0.1:4317'});setInterval(()=>{},1000);");
   assert.equal((await waitForBackendReady(child)).port,4317);
+  assert.deepEqual(messages[0],{type:'startup-progress',stage:'module-load'});
+  assert.equal(messages[1].type,'ready');
+});
+
+test('a progress delivery callback cannot block application startup',async t=>{
+  const {child,messages}=await fixture(t,
+    "process.send({type:'ready',port:4317,origin:'http://127.0.0.1:4317'});setInterval(()=>{},1000);",
+    {dropProgressCallback:true});
+  assert.equal((await waitForBackendReady(child,{timeoutMs:1000,stopOptions:{graceMs:100}})).port,4317);
   assert.deepEqual(messages[0],{type:'startup-progress',stage:'module-load'});
   assert.equal(messages[1].type,'ready');
 });

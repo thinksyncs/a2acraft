@@ -1,6 +1,30 @@
-# A2ACraft 0.4.13 — Mac preview status
+# A2ACraft 0.4.14 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+Version 0.4.14 removes a startup dependency on the diagnostic IPC callback.
+Application loading now proceeds even if delivery of a progress notification
+never invokes its callback. A real-child regression test covers that stall.
+Startup failures also report the last allowlisted stage, without exposing
+saved contents, account information or arbitrary error text. The 30-second
+deadline and process/security boundaries are unchanged.
+
+Native Mac acceptance on 2026-11-19 passed initial launch and normal Quit/reopen.
+The running app's diagnostics reported version 0.4.14, a fully visible window
+within the display work area, a loaded renderer and no crash or load error.
+The one-row composer and 2×2 conversation layout were verified in screenshots.
+Two independent synthetic multiline drafts survived reload and restart, including
+a new verification line. No message was sent. The control tool initially showed
+the Connect screen after reload/reopen; opening saved chats and using Window >
+Restore Display exposed the current conversation view and intact drafts.
+
+All 44 targeted bootstrap, runtime, persistence, reload and backend-storage tests
+passed; the arm64 package passed strict ad-hoc signature verification. The IPC
+callback stall is reproduced by the regression test, but the historical native
+timeouts did not capture enough evidence to establish it as their sole cause.
+The earlier 0.4.13 build also showed a generic backend import failure on this
+run; that failure did not recur in the two verified 0.4.14 starts. SSH and Proton
+protections and system permissions were unchanged.
 
 Version 0.4.13 keeps the composer on one row: destination, options, message and
 send controls. Multiline drafts remain intact and scroll inside the one-line
@@ -10,7 +34,7 @@ Browser checks at 1440px and 375px confirmed composer heights of 50px and
 56px respectively, with the textarea showing one line. A four-line synthetic
 draft survived reload exactly; the options menu stayed within the small viewport.
 All 37 targeted draft, reload, recovery and attachment tests passed. The arm64
-build passed strict ad-hoc signature verification. Native 0.4.13 acceptance is
+build passed strict ad-hoc signature verification. Native 0.4.13 acceptance was
 pending: its initial launch reported the existing 30-second module-load timeout,
 and Restart followed by control-tool rebinding returned noWindowsAvailable.
 No AI message was sent and no security setting was changed.

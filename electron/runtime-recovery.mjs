@@ -48,7 +48,7 @@ export async function waitForBackendReady(child,{timeoutMs=30000,stopOptions}={}
       const onMessage=value=>{
         if(value?.type==='startup-progress'&&knownStartupStages.has(value.stage))latestStage=value.stage;
         if(value?.type==='ready'&&Number.isInteger(value.port)&&value.port>0&&value.port<=65535&&value.origin===`http://127.0.0.1:${value.port}`)done(null,value);
-        if(value?.type==='startup-error')done(Error('GUIサーバーを起動できませんでした。 '+processDiagnostic({code:value.code})));
+        if(value?.type==='startup-error')done(Error('GUIサーバーを起動できませんでした。 '+processDiagnostic({code:value.code})+`, stage=${latestStage}`));
       };
       const timer=setTimeout(()=>done(Error(`GUIサーバーの起動がタイムアウトしました。 timeout=${timeoutMs}ms, stage=${latestStage}`)),timeoutMs);
       child.on('message',onMessage);child.once('exit',onExit);child.once('error',onError);
