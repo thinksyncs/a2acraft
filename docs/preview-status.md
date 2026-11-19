@@ -1,6 +1,19 @@
-# A2ACraft 0.4.12 — Mac preview status
+# A2ACraft 0.4.13 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+Version 0.4.13 keeps the composer on one row: destination, options, message and
+send controls. Multiline drafts remain intact and scroll inside the one-line
+textarea; typing and restoring a draft no longer expand the composer. Options
+open above the composer, and attachment previews appear only when present.
+Browser checks at 1440px and 375px confirmed composer heights of 50px and
+56px respectively, with the textarea showing one line. A four-line synthetic
+draft survived reload exactly; the options menu stayed within the small viewport.
+All 37 targeted draft, reload, recovery and attachment tests passed. The arm64
+build passed strict ad-hoc signature verification. Native 0.4.13 acceptance is
+pending: its initial launch reported the existing 30-second module-load timeout,
+and Restart followed by control-tool rebinding returned noWindowsAvailable.
+No AI message was sent and no security setting was changed.
 
 Version 0.4.11 combines workspace tabs and chat controls into one desktop row,
 using a small disconnected-state button to open connection settings. Persistence,

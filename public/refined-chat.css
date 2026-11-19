@@ -231,13 +231,16 @@ body[data-view="chat"]:not([data-town-tools="open"]) #notice{padding:6px 10px;ma
 #chat-view .run-progress{min-height:30px;padding:6px 8px;margin:6px 0;font-size:13px}
 #chat-view .progress-label{font-size:12px}
 #chat-view #composer{position:relative;flex:none;margin:6px 0 0;border:1px solid #63776a;border-radius:10px;background:#1c2b2c;overflow:visible}
-#chat-view .composer-top{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-#chat-view .composer-line{display:flex;align-items:flex-end;gap:6px;padding:6px}
-#chat-view #prompt,#chat-view.resident-chat-active #prompt{display:block;flex:1;min-width:0;width:0;min-height:36px;height:36px;max-height:132px;resize:none;padding:7px 4px;margin:0;font:400 14px/1.55 var(--font-ui);background:transparent;overflow-y:auto}
+#chat-view .composer-top{display:flex;flex:0 1 auto;align-items:center;gap:4px;max-width:140px;min-width:0;padding:0 2px;overflow:hidden;white-space:nowrap;font:12px/1.4 var(--font-ui)}
+#chat-view .composer-top span{flex:none}
+#chat-view .composer-top b{min-width:0;overflow:hidden;text-overflow:ellipsis;font:600 12px/1.4 var(--font-ui)}
+#chat-view .composer-line{display:flex;align-items:center;gap:6px;padding:6px}
+#chat-view #prompt,#chat-view.resident-chat-active #prompt{display:block;flex:1;min-width:0;width:0;min-height:36px;height:36px;max-height:36px;resize:none;padding:0 4px;margin:0;font:400 14px/36px var(--font-ui);background:transparent;overflow-y:auto}
 #chat-view #prompt::placeholder{font:inherit;color:#9fb4a7}
-#chat-view .send-controls{display:flex;flex:none;gap:5px}
+#chat-view .send-controls{display:flex;flex:none;flex-wrap:nowrap;gap:5px}
 #chat-view #send-btn,#chat-view #stop-btn{min-height:36px;min-width:48px;padding:6px 10px;font:600 13px/1.4 var(--font-ui);border-radius:7px;white-space:nowrap}
-#chat-view #composer-options>.chat-menu-panel{top:auto;bottom:calc(100% + 10px);left:0;right:auto}
+#chat-view #composer-options{position:static}
+#chat-view #composer-options>.chat-menu-panel{top:auto;bottom:calc(100% + 6px);left:6px;right:auto;max-width:calc(100% - 12px)}
 #chat-view #composer-options>summary{min-height:36px;width:32px}
 #chat-view #send-hint{display:block;max-width:none;white-space:normal;font-size:12px}
 #chat-view .attachment-list{max-height:100px;overflow:auto;padding:6px 8px 0}
@@ -259,7 +262,9 @@ body[data-view="chat"]:not([data-town-tools="open"]) #notice{padding:6px 10px;ma
  #chat-view #chat-navigation,.chat-disclosure>summary{min-width:40px;min-height:40px}
  #chat-view #chat-status{max-width:84px;font-size:11px}
  #chat-view .messages,#chat-view .layout-1 .messages,#chat-view .layout-2 .messages{padding:10px}
- #chat-view #prompt,#chat-view.resident-chat-active #prompt{font-size:16px;min-height:42px;height:42px;padding:8px 3px}
+ #chat-view #prompt,#chat-view.resident-chat-active #prompt{font-size:16px;line-height:42px;min-height:42px;height:42px;max-height:42px;padding:0 3px}
+ #chat-view .composer-top{max-width:72px}
+ #chat-view .composer-top span{display:none}
  #chat-view #composer-options>summary{width:36px;min-width:36px;min-height:42px}
  #chat-view #send-btn,#chat-view #stop-btn{min-height:42px;min-width:46px;padding:7px 9px;font-size:13px}
  #chat-view .chat-menu-panel button,#chat-view .chat-menu-panel select,#chat-view .chat-menu-panel #attach-btn,#chat-view .chat-menu-panel #context-board-toggle,#chat-view .chat-menu-panel #add-chat{min-height:40px}
@@ -290,8 +295,6 @@ body[data-view="chat"] #workspace-tabs .workspace-add-chat{width:30px;height:30p
 #chat-view.multi-chat .status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
 #chat-view.multi-chat .messages{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:10px 12px}
 #chat-view.multi-chat .panel-foot{display:flex;font-size:10px}
-#chat-view.multi-chat .composer-top{position:static;width:auto;height:auto;overflow:hidden;clip-path:none;padding:5px 9px 0;display:flex;justify-content:flex-start;gap:6px;font:12px/1.4 var(--font-ui)}
-#chat-view.multi-chat .composer-top b{font:600 12px/1.4 var(--font-ui)}
 @media(max-width:700px){
  #chat-view .workspace-toolbar{gap:5px;flex-wrap:wrap;padding-block:3px}
  #chat-heading{max-width:calc(100% - 140px)}

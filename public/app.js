@@ -744,7 +744,6 @@ function updateComposer() {
   $('#stop-btn').disabled = chat?.status !== 'running';
   setText('#stop-btn', chat?.status === 'stopping' ? '停止待ち' : '停止');
   $('#stop-btn').setAttribute('aria-label',chat?.status === 'stopping'?'停止要求中':'この会話を停止');
-  resizePrompt();
   $('#model').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active); $('#effort').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
   $('#logout-btn').disabled = !state.account || connectionBusy || Boolean(connectionReadiness?.busy) || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
   $('#login-btn').disabled = connectionBusy || Boolean(connectionReadiness?.busy) || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
@@ -917,11 +916,6 @@ $('#grid').addEventListener('pointermove',event => {
 });
 $$('[data-prompt]').forEach(button => button.onclick = () => { switchView('chat', () => $('#prompt').focus()); $('#prompt').value = button.dataset.prompt; if (selected) drafts[selected] = $('#prompt').value; persist(); updateComposer(); });
 $('#prompt').oninput = () => { if (selected) drafts[selected] = $('#prompt').value; persist(); updateComposer(); };
-function resizePrompt(){
-  const prompt=$('#prompt');prompt.style.height='auto';
-  prompt.style.height=Math.min(132,Math.max(matchMedia('(max-width:700px)').matches?42:36,prompt.scrollHeight))+'px';
-}
-addEventListener('resize',resizePrompt);
 $('#model').onchange = () => { updateEfforts(); updateComposer(); }; $('#effort').onchange = updateComposer;
 function updateConversationMode(chat) {
   const request=conversationModeRequests.get(selected),control=$('#conversation-mode');
