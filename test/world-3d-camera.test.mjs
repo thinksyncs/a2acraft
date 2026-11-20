@@ -174,7 +174,7 @@ test('Explicit shared scenery replaces invented woodland and keeps each landmark
   const empty=staticMesh({...base,scenery:[]});
   assert.ok(staticMesh(base).length>empty.length,'Legacy scenery remains only for scenes without a shared list');
   for(const kind of ['tree','pine','well','field','cottage','rock','signpost']){
-    const item={kind,x:150,y:240,size:1,w:92,h:48,tone:1};
+    const item={id:'shared-landmark:'+kind,kind,x:150,y:240,size:1,w:92,h:48,tone:1};
     const first=staticMesh({...base,scenery:[item]}).slice(empty.length);
     const moved=staticMesh({...base,scenery:[{...item,x:350,y:440}]}).slice(empty.length);
     assert.ok(first.length>0&&first.every(Number.isFinite));assert.equal(moved.length,first.length);

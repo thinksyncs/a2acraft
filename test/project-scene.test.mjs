@@ -8,6 +8,7 @@ import {createResidents} from '../public/project-residents.js';
 import {islandRouteWalkable} from '../public/world-island-travel.js';
 import {riverBridges} from '../public/world-hydrology.js';
 import {drawRoadNetwork} from '../public/world-road-art.js';
+import {ROAD_SURFACE} from '../public/road-material.js';
 import {staticMesh} from '../public/world-3d-mesh.js';
 
 function fixture(){
@@ -28,8 +29,8 @@ test('shared project roads retain affinity widths with bounded fallbacks in 2D a
  assert.deepEqual(input,before);
  assert.ok(scene.roads.slice(input.length).every(road=>road.width===25),'fixed facility roads remain infrastructure');
  for(const road of roads){
-  const surfaces=[],context={save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},fillRect(){},
-   stroke(){if(this.strokeStyle==='#cbb77b')surfaces.push(this.lineWidth);}};
+  const surfaces=[],context={save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},fillRect(){},
+   stroke(){if(this.strokeStyle===ROAD_SURFACE)surfaces.push(this.lineWidth);}};
   drawRoadNetwork(context,[road]);
   assert.deepEqual(surfaces,[road.width]);
   const mesh=staticMesh({roads:[road],buildings:[],scenery:[],bounds:scene.bounds}),across=[];

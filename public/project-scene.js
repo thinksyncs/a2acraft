@@ -1,3 +1,4 @@
+import {projectModel,facilityModel} from './world-model-descriptors.js';
 import {projectBuildings, facilities} from './project-buildings.js';
 import {developmentScenery} from './world-terrain.js';
 import {createWorldIsland, pointInIsland} from './world-island.js';
@@ -17,9 +18,7 @@ export function projectSceneGeometry(layout, projects, residents, connectingRoad
     width:Math.max(3,Math.min(80,Number.isFinite(road.width)?road.width:25))})),...facilityRoads()];
   const districts=projects.filter(project=>layout[project.id]).map(project=>({id:project.id,
     place:layout[project.id],buildings:projectBuildings(project),population:residents.filter(r=>r.projectId===project.id).length}));
-  const fixedBuildings=facilities.map(facility=>({id:'facility:'+facility.id,x:facility.x,y:facility.y-30,
-    width:140,depth:90,height:facility.id==='castle'?130:85,stage:'finished',kind:facility.id,
-    label:facility.name,color:facility.id==='castle'?'#bbb9a7':'#ad8661'}));
+  const fixedBuildings=facilities.map(facility=>({...facilityModel(facility,{district:true}),id:'facility:'+facility.id,label:facility.name}));
   const all=Object.values(layout);
   const bounds={
     left:Math.min(-650,...all.map(p=>p.x)),right:Math.max(1000,...all.map(p=>p.x+1000)),
@@ -35,11 +34,8 @@ export function projectSceneGeometry(layout, projects, residents, connectingRoad
   const settlements=plan.settlements,roads=[...arteries,...plan.roads].map(road=>({...road,rounded:true})),bridges=riverBridges(hydrology,roads);
   const buildings=[...fixedBuildings];
   for(const settlement of settlements)for(const building of settlement.buildings)buildings.push({
-    id:'building:'+JSON.stringify([settlement.id,building.id]),x:settlement.place.x+building.x,
-    y:settlement.place.y+building.y-26,width:110,depth:77,
-    height:{planned:20,building:45,testing:65,finished:78}[building.stage]||45,
-    stage:building.stage,label:building.name,kind:'building',
-    color:{planned:'#bdaf85',building:'#c68a52',testing:'#709ea1',finished:'#d0b276'}[building.stage],
+    ...projectModel({...building,x:settlement.place.x+building.x,y:settlement.place.y+building.y},{district:true}),
+    id:'building:'+JSON.stringify([settlement.id,building.id]),label:building.name,
   });
   const actualPlots=settlements.flatMap(s=>s.plots);
   const biomes=worldBiomes(island,{regions:actualPlots,roads,facilities,water});

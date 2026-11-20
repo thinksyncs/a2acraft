@@ -2,6 +2,8 @@ import {finite, clamp, perspective, lookAt, multiply, transform, cameraPose, ini
   sanitizeCamera, screenRay, rayGround, rayBox, movementTarget, worldBounds} from './world-3d-math.js';
 import {staticMesh, peopleMesh, visiblePeople, buildingShape} from './world-3d-mesh.js';
 import {worldDelegateLabels} from './village-delegates.js';
+import {ROAD_SURFACE,ROAD_EARTH,ROAD_WEAR} from './road-material.js';
+const materialColor=hex=>[1,3,5].map(index=>(parseInt(hex.slice(index,index+2),16)/255).toFixed(5)).join(',');
 
 const VERTEX = `
 attribute vec3 aPosition;
@@ -16,11 +18,11 @@ varying float vRoadMaterial;
 void main() {
   vec3 sunlight = normalize(vec3(-0.35, 0.85, 0.45));
   float light = 0.43 + 0.57 * max(dot(normalize(aNormal), sunlight), 0.0);
-  vColor = aColor * light;
   vDistance = distance(aPosition, uEye);
   vWorldPosition = aPosition;
   vRoadMaterial = (1.0 - step(0.025, min(distance(aColor, vec3(0.7961, 0.7176, 0.4824)), distance(aColor, vec3(0.7686, 0.7020, 0.5216)))))
     * step(0.9, aNormal.y) * (1.0 - step(0.7, aPosition.y));
+  vColor = mix(aColor,vec3(${materialColor(ROAD_SURFACE)}),vRoadMaterial) * light;
   gl_Position = uViewProjection * vec4(aPosition, 1.0);
 }`;
 const FRAGMENT = `
@@ -30,14 +32,27 @@ varying float vDistance;
 varying vec3 vWorldPosition;
 varying float vRoadMaterial;
 uniform float uFogDistance;
+float soilHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float soilNoise(vec2 p){
+  vec2 cell=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
+  return mix(mix(soilHash(cell),soilHash(cell+vec2(1.0,0.0)),u.x),
+    mix(soilHash(cell+vec2(0.0,1.0)),soilHash(cell+vec2(1.0,1.0)),u.x),u.y);
+}
 void main() {
   float fog = smoothstep(uFogDistance * 0.42, uFogDistance, vDistance);
   // Fixed world-space earth grain: no animated noise, added geometry or
   // different terrain in the leader view. Fade detail before it can shimmer.
-  vec2 cell = floor(vWorldPosition.xz * 0.65);
-  float grain = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
   float nearby = 1.0 - smoothstep(140.0, 850.0, vDistance);
-  vec3 material = vColor * (1.0 + (grain - 0.5) * 0.13 * vRoadMaterial * nearby);
+  vec3 material=vColor;
+  if(vRoadMaterial>.5 && nearby>0.0){
+    vec2 cell = floor(vWorldPosition.xz * 0.65);
+    float grain = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+    float worn=soilNoise(vWorldPosition.xz*.085);
+    vec3 earth=mix(vec3(${materialColor(ROAD_EARTH)}),vec3(${materialColor(ROAD_WEAR)}),smoothstep(.15,.85,worn));
+    vec3 soil=vColor*(earth/vec3(${materialColor(ROAD_SURFACE)}));
+    material=mix(vColor,soil,vRoadMaterial*nearby);
+    material *= 1.0 + (grain - 0.5) * 0.16 * vRoadMaterial * nearby;
+  }
   gl_FragColor = vec4(mix(material, vec3(0.72, 0.83, 0.85), fog * 0.72), 1.0);
 }`;
 
@@ -94,6 +109,17 @@ function crossesFace(from,to,faces) {
       if(enter>leave)return false;
     }
     return true;
+  });
+}
+
+// Reject only complete character volumes outside the view, before building the
+// animated crowd mesh. Actors crossing an edge retain their full geometry.
+export function peopleInView(people,matrix){
+  return people.filter(person=>{
+    const size=clamp(finite(person.scale,1),.35,1.25),points=[];
+    for(const x of [-18,18])for(const y of [0,40])for(const z of [-18,18])
+      points.push(transform(matrix,[person.x+x*size,y*size,person.y+z*size,1]));
+    return ![0,1,2].some(axis=>[-1,1].some(sign=>points.every(point=>sign*point[axis]>point[3])));
   });
 }
 
@@ -197,7 +223,7 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
       gl.useProgram(gpu.program); gl.uniformMatrix4fv(gpu.viewProjection, false, viewProjection);
       gl.uniform3fv(gpu.eye, pose.eye); gl.uniform1f(gpu.fogDistance, Math.max(1400, span * 1.3, camera.distance * 2));
       renderBuffer(gpu.groundBuffer, staticVertices);
-      shownPeople = visiblePeople(scene, pose.eye, camera.mode);
+      shownPeople = peopleInView(visiblePeople(scene, pose.eye, camera.mode),viewProjection);
       const people = peopleMesh(shownPeople);
       upload(gpu.peopleBuffer, people, gl.DYNAMIC_DRAW); renderBuffer(gpu.peopleBuffer, people.length / 9);
       paintLabels();

@@ -1,3 +1,4 @@
+import {projectModel,facilityModel,characterPose} from './world-model-descriptors.js';
 import {VILLAGE_PLACES, VILLAGE_WORLD} from './village-world.js';
 import {addDelegatesToScene} from './village-delegates.js';
 import {worldPersonColor} from './village-art.js';
@@ -5,9 +6,6 @@ import {districtTerrainGeometry, villageOutskirtsGeometry, villageRiverWater} fr
 import {createWorldIsland, pointInIsland} from './world-island.js';
 import {worldBiomes} from './world-biomes.js';
 
-const COLORS = ['#d2ac65', '#71afb5', '#b78ca8', '#9bb968'];
-const height = {planned: 5, building: 32, testing: 55, complete: 64};
-const direction = {up: 0, right: Math.PI / 2, down: Math.PI, left: -Math.PI / 2};
 export const VILLAGE_MIN_ZOOM = .001;
 
 let cachedIsland, cachedIslandOutskirts,cachedIslandOutskirtsShape='';
@@ -131,27 +129,15 @@ export function villageSpeechPlacement({width, height, bubbleWidth, bubbleHeight
 }
 
 // Projection only: rendering never creates jobs, progress, or AI activity.
-export function village3DScene({projects = [], residents = [], population = residents.length, hero, squads = [], heading = 0, delegates = null, roads: semanticRoads = [], clearings = []}) {
+export function village3DScene({projects = [], residents = [], population = residents.length, hero, squads = [], heading = 0, delegates = null, roads: semanticRoads = [], clearings = [],time=0,motion=true}) {
   const terrain = districtTerrainGeometry({x:0,y:0},{population}), outskirts=villageOutskirtsGeometry(), outer=islandOutskirts(),island=villageIsland();
-  const buildings = projects.map(project => ({
-    id: 'project:' + project.conversationId,
-    x: project.x, y: project.y - 24, width: 100, depth: 72,
-    height: height[project.stage] ?? 5, stage: project.stage,
-    color: COLORS[(project.seed >>> 0) % COLORS.length], label: project.title,
-  }));
-  buildings.push(...VILLAGE_PLACES.map(place => ({
-    id: 'place:' + place.id, x: place.x, y: place.y - 40,
-    width: place.id === 'castle' ? 170 : 120, depth: 100,
-    height: place.id === 'castle' ? 100 : 64, stage: 'complete',
-    kind: place.id, label: place.name,
-    color: place.id === 'castle' ? '#99a9bb' : place.id === 'tavern' ? '#c28d68' : '#86a6a0',
-  })));
+  const buildings=projects.map(project=>({...projectModel(project),id:'project:'+project.conversationId,label:project.title}));
+  buildings.push(...VILLAGE_PLACES.map(place=>({...facilityModel(place),label:place.name})));
   const people = residents.map(resident => ({
-    id: 'resident:' + resident.conversationId, conversationId: resident.conversationId, x: resident.x, y: resident.y,
+    ...characterPose(resident,{time,motion}), id: 'resident:' + resident.conversationId, conversationId: resident.conversationId, x: resident.x, y: resident.y,
     kind:resident.kind||'agent',name:resident.name||resident.characterName||resident.title,
     identityFocused:Boolean(resident.identityFocused),
     color: worldPersonColor(resident),
-    heading: Number.isFinite(resident.heading) ? resident.heading : direction[resident.direction] ?? 0,
   }));
   let leader = {id: 'leader', x: 490, y: 430, heading};
   for (const group of [...squads, ...(hero ? [hero] : [])]) {
@@ -160,12 +146,12 @@ export function village3DScene({projects = [], residents = [], population = resi
     for (const [index, member] of members.entries()) {
       const id = 'party:' + group.id + ':' + index;
       const activeLeader = group.isProtagonist && member === first;
-      people.push({id, conversationId: member.conversationId, x: member.x, y: member.y,
+      people.push({...characterPose(member,{time,motion}),hero:activeLeader,id, conversationId: member.conversationId, x: member.x, y: member.y,
         kind:member.conversationId?'agent':'party',name:member.name||member.characterName,
         identityFocused:Boolean(member.identityFocused||activeLeader),
         color: worldPersonColor(member,{hero:group.isProtagonist,party:true,index,squadSeed:group.seed}),
-        heading: activeLeader ? heading : Number.isFinite(member.heading) ? member.heading : direction[member.direction] ?? 0});
-      if (activeLeader) leader = {id, x: member.x, y: member.y, heading};
+        heading: activeLeader ? heading : characterPose(member).heading});
+      if (activeLeader) leader = {...people.at(-1),heading};
     }
   }
   const roads=[...terrain.roads,...outskirts.roads,...semanticRoads],water=[...terrain.water,...outskirts.water,...outer.water];

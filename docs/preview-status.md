@@ -1,6 +1,48 @@
-# A2ACraft 0.4.15 — Mac preview status
+# A2ACraft 0.4.16 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+Version 0.4.16 replaces the map's front-facing character/building stamps with
+an oblique projection of the same original 3D meshes used by the eye view.
+Houses show timber walls, framed windows, roof thickness and chimneys; the
+inn, forge and castle have distinct volumes. Planned and construction stages
+still follow recorded progress. Character models add shaped bodies, role
+headwear, capes, boots, directional faces and walking poses. Main sessions
+retain shields/pennants; smaller helpers retain their parent's color.
+Trees now have branching trunks and layered crowns. Rocks and mountain
+landmarks have irregular facets and strata, shared by both projections.
+
+Ground anchors, routes and saved world positions remain unchanged. Building
+click areas now cover the projected roofs, and stable visual seeds prevent
+picking IDs from changing materials between views. Pixelated canvas scaling
+is removed; fractional coordinates and image smoothing retain continuous
+edges. The intentionally angular island outline is unchanged.
+
+Footpaths use muted earth, a broken grass verge, worn patches and sparse gravel
+instead of a yellow fill with a uniform dark outline. Every verge is painted
+before every path surface so junctions remain continuous. Nominal road widths
+still express relationship strength; navigation geometry is unchanged. The eye
+view uses the same earth palette with fixed world-space soil variation.
+
+Trackpad pinch uses continuous deltas with a cursor anchor and increased
+sensitivity. Input paints at most once per animation frame, and map persistence
+is debounced. Offscreen sprites and out-of-view 3D people are culled; bounded
+local-pose caches avoid rebuilding character geometry every frame. The distant
+terrain bitmap is drawn without populating hundreds of close-up sprite caches.
+
+Verification on 2026-11-21: all 512 tests and the 267-module size check passed.
+Browser sample UI checks at desktop width and the normal narrow viewport showed
+shared building/character models, forest and mountain detail, earthy footpaths,
+working zoom buttons and district navigation; the browser console reported no errors. Input
+tests cover fractional pinch, cursor anchoring, limits and latest-frame painting.
+Physical trackpad gesture feel has not been independently verified on the Mac.
+
+The 0.4.16 arm64 application built successfully, passed strict ad-hoc signature
+verification, and all 123 packaged frontend/style/asset-manifest files matched
+source. Native app selection repeatedly returned computer-use timeout -10005,
+so native launch/display acceptance remains unverified for this version. This
+is not evidence of an OS permission denial; no security settings were changed.
+SSH/Proton protections, personal conversations and drafts were untouched.
 
 Version 0.4.15 adds minimal discovery exchange and companion-aware village
 conversation. The two sharing actions copy one code and import one code. Its

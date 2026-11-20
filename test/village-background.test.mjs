@@ -4,8 +4,14 @@ import {drawVillageIslandBackground,drawVillageWorld} from '../public/village-ar
 import {villageIsland} from '../public/village-3d-scene.js';
 
 const context = () => {
-  const calls=[];
-  const ctx=new Proxy({calls,measureText:text=>({width:String(text).length*6})},{
+  const calls=[],stack=[];let matrix={a:1,b:0,c:0,d:1,e:0,f:0};
+  const ctx=new Proxy({calls,measureText:text=>({width:String(text).length*6}),
+    getTransform:()=>({...matrix}),
+    setTransform(a,b,c,d,e,f){matrix={a,b,c,d,e,f};calls.push({key:'setTransform',args:[a,b,c,d,e,f]});},
+    scale(x,y){matrix.a*=x;matrix.d*=y;calls.push({key:'scale',args:[x,y]});},
+    translate(x,y){matrix.e+=matrix.a*x;matrix.f+=matrix.d*y;calls.push({key:'translate',args:[x,y]});},
+    save(){stack.push({...matrix});calls.push({key:'save',args:[]});},
+    restore(){matrix=stack.pop()||matrix;calls.push({key:'restore',args:[]});}},{
     get:(target,key)=>key in target?target[key]:(...args)=>calls.push({key,args}),
   });
   return ctx;
@@ -54,6 +60,10 @@ test('foreground rendering can omit static terrain without omitting current proj
   drawVillageWorld(building,{terrainVisible:false,motion:false,projects:[{
     conversationId:'work',title:'工房',stage:'building',seed:7,x:230,y:180,
   }]});
-  assert.ok(building.calls.some(call=>call.key==='fillRect'),'current construction state still draws above the cached land');
-  assert.equal(building.calls.filter(call=>call.key==='drawImage').length,0,'static terrain is not painted a second time');
+  assert.ok(building.calls.some(call=>call.key==='fill')||building.calls.some(call=>call.key==='drawImage'),
+    'the current construction model still draws above the cached land');
+  assert.ok(building.calls.some(call=>call.key==='translate'&&call.args[0]===230&&call.args[1]===156),
+    'the construction model is anchored at its shared project coordinates');
+  assert.ok(building.calls.filter(call=>call.key==='drawImage').length<=1,
+    'only a cached building sprite may be painted; static terrain is not painted a second time');
 });

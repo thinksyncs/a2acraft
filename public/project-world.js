@@ -26,6 +26,8 @@ import { pointInIsland } from "./world-island.js";
 import { islandLandRoute, islandRouteWalkable } from "./world-island-travel.js";
 import { createResidents } from "./project-residents.js";
 import { mapStorage } from "./map-storage.js";
+import { mapWheelCamera, createMapInputFrame } from "./map-camera-input.js";
+import { characterPose } from "./world-model-descriptors.js";
 import { createWorld3D } from "./world-3d.js";
 import { villageDelegateActors, addDelegatesToScene } from "./village-delegates.js";
 import {
@@ -130,7 +132,9 @@ export function createProjectWorld({
     last = 0,
     clock = 0,
     paused = false,
-    saved = false;
+    saved = false,
+    inputSaveTimer = 0;
+  const inputFrame = createMapInputFrame(draw);
   let drag = null,
     signature = "",
     hits = [],
@@ -267,6 +271,8 @@ export function createProjectWorld({
   const noMotion = () =>
     paused || reduced.matches || document.body.dataset.motion === "reduced";
   function persist() {
+    clearTimeout(inputSaveTimer);
+    inputSaveTimer = 0;
     saved = true;
     try {
       mapStorage.setItem(key, JSON.stringify(camera));
@@ -686,14 +692,14 @@ export function createProjectWorld({
     const inhabitants = residents.filter(person => person.conversationId !== controlled?.id).map(resident => {
       const id = "resident:" + resident.conversationId;
       selection3D.set(id, () => talk(resident));
-      return {...resident, id, kind:"agent", color:worldPersonColor(resident)};
+      return {...characterPose(resident,{time:clock,motion}), id, kind:"agent", color:worldPersonColor(resident)};
     });
     for (const project of projects) for (const building of districtBuildings(project))
       selection3D.set("building:" + JSON.stringify([project.id, building.id]), () => enter(project, building));
     for (const facility of facilities)
       selection3D.set("facility:" + facility.id, () => visit(facility));
     const owner = residents.find(person => person.conversationId === controlled?.id);
-    const leader = projectLeaderPose(owner, travel.position, leaderHeading);
+    const leader = characterPose({...projectLeaderPose(owner, travel.position, leaderHeading),walking:Boolean(travel.route)},{time:clock,motion});
     inhabitants.push(leader);
     const scene = {...sceneGeometry(layout, projects, residents), people:inhabitants, leader};
     const delegatedScene = addDelegatesToScene(scene, projectDelegates(residents));
@@ -710,6 +716,7 @@ export function createProjectWorld({
     canvas3D.dataset.people = String(scene.people.length);
   }
   function draw() {
+    inputFrame.cancel();
     if (!visible || !size.w) return;
     const layout = places(),
       projects = getProjects(),
@@ -759,7 +766,8 @@ export function createProjectWorld({
     ctx.translate(size.w / 2, size.h / 2);
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     const residents = residentPoses(people.get({
       projects, chats:getChats(), places:layout, journeys:getWorld()?.journeys || {}, clock, moving,
     }));
@@ -1089,8 +1097,9 @@ export function createProjectWorld({
     if (!rect.width || !rect.height) return;
     size = { w: rect.width, h: rect.height };
     const dpr = Math.min(devicePixelRatio || 1, 2);
-    canvas.width = Math.round(size.w * dpr);
-    canvas.height = Math.round(size.h * dpr);
+    const pixelWidth = Math.round(size.w * dpr), pixelHeight = Math.round(size.h * dpr);
+    if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+    if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
     resizeInset();
     if (!saved) fit(false);
     draw();
@@ -1188,13 +1197,16 @@ export function createProjectWorld({
     (e) => {
       e.preventDefault();
       follow = false;
-      if (e.ctrlKey || e.metaKey) zoom(Math.exp(-e.deltaY * 0.005));
-      else {
-        camera.x += e.deltaX / camera.zoom;
-        camera.y += e.deltaY / camera.zoom;
-        persist();
-        draw();
-      }
+      const rect = canvas.getBoundingClientRect();
+      const geometry = geometryCache || sceneGeometry(places(), getProjects(), getResidents());
+      const overview = projectOverviewCamera(geometry.island.seaBounds, size.w, size.h);
+      camera = mapWheelCamera(camera, e, { width: size.w, height: size.h,
+        minZoom: overview.zoom, maxZoom: 2,
+        anchor: { x: e.clientX - rect.left, y: e.clientY - rect.top } });
+      saved = true;
+      clearTimeout(inputSaveTimer);
+      inputSaveTimer = setTimeout(persist, 300);
+      inputFrame.request();
     },
     { passive: false },
   );

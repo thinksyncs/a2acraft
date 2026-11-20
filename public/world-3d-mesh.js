@@ -1,135 +1,15 @@
-import {cross, normalize, subtract, finite, clamp, worldBounds} from './world-3d-math.js';
+import {sceneryObjectMesh} from './world-scenery-model.js';
+import {finite, clamp, worldBounds} from './world-3d-math.js';
 import {pointInIsland} from './world-island.js';
 import {biomeLandmarks} from './world-biomes.js';
 
-const PALETTE = ['#b99a72', '#c3aa85', '#d2bb8c', '#acb8a4', '#c6a895'];
-const CLOTHES = ['#c8794e', '#547e9a', '#8b6596', '#5d8c70', '#b59c58', '#537783'];
-export function hash(value) {
-  let result = 2166136261;
-  for (const char of String(value ?? '')) result = Math.imul(result ^ char.charCodeAt(0), 16777619);
-  return result >>> 0;
-}
-export function color(value, fallback = '#b99a72') {
-  if (Array.isArray(value) && value.length >= 3 && value.slice(0, 3).every(Number.isFinite))
-    return value.slice(0, 3).map(v => clamp(v, 0, 1));
-  const text = typeof value === 'string' ? value.trim() : fallback;
-  const short = /^#([\da-f])([\da-f])([\da-f])$/i.exec(text);
-  if (short) return short.slice(1).map(v => parseInt(v + v, 16) / 255);
-  if (/^#[\da-f]{6}$/i.test(text)) return [1, 3, 5].map(i => parseInt(text.slice(i, i + 2), 16) / 255);
-  return color(fallback);
-}
-function triangle(out, a, b, c, shade) {
-  const normal = normalize(cross(subtract(b, a), subtract(c, a)));
-  for (const point of [a, b, c]) out.push(...point, ...normal, ...shade);
-}
-function quad(out, a, b, c, d, shade) {
-  triangle(out, a, b, c, shade); triangle(out, a, c, d, shade);
-}
-function positioned(point, x, y, z, heading) {
-  const cosine = Math.cos(heading), sine = Math.sin(heading);
-  return [x + point[0] * cosine - point[2] * sine, y + point[1], z + point[0] * sine + point[2] * cosine];
-}
-export function box(out, x, y, z, width, height, depth, shade, heading = 0) {
-  const w = width / 2, d = depth / 2;
-  const vertices = [[-w, 0, -d], [w, 0, -d], [w, height, -d], [-w, height, -d],
-    [-w, 0, d], [w, 0, d], [w, height, d], [-w, height, d]]
-    .map(p => positioned(p, x, y, z, heading));
-  for (const face of [[1, 0, 3, 2], [4, 5, 6, 7], [0, 4, 7, 3], [5, 1, 2, 6], [3, 7, 6, 2], [0, 1, 5, 4]])
-    quad(out, ...face.map(i => vertices[i]), shade);
-}
-function roof(out, x, y, z, width, rise, depth, shade) {
-  const w = width / 2, d = depth / 2;
-  const [a, b, c, e, f, g] = [[-w, 0, -d], [w, 0, -d], [0, rise, -d], [-w, 0, d], [w, 0, d], [0, rise, d]]
-    .map(p => [p[0] + x, p[1] + y, p[2] + z]);
-  triangle(out, b, a, c, shade); triangle(out, e, f, g, shade);
-  // Tile courses are part of the original slopes, not coplanar overlays.
-  // This gives the roof depth up close without changing its footprint or
-  // introducing flickering extra surfaces at the island overview distance.
-  const rows=Math.max(3,Math.min(9,Math.round(Math.hypot(w,rise)/9)));
-  for(let row=0;row<rows;row++){
-    const start=row/rows,end=(row+1)/rows,seam=start+.08/rows;
-    for(const [low,high,tint]of [[start,seam,.83],[seam,end,row%3===0?.96:1.03]]){
-      const rowShade=shade.map(channel=>Math.min(1,channel*tint));
-      for(const side of [-1,1]){
-        const outer=[x+side*w*(1-low),y+rise*low],inner=[x+side*w*(1-high),y+rise*high];
-        const front=[outer[0],outer[1],z-d],back=[outer[0],outer[1],z+d],
-          upperFront=[inner[0],inner[1],z-d],upperBack=[inner[0],inner[1],z+d];
-        if(side<0)quad(out,front,back,upperBack,upperFront,rowShade);
-        else quad(out,front,upperFront,upperBack,back,rowShade);
-      }
-    }
-  }
-}
-function cone(out, x, y, z, radius, height, shade) {
-  const tip = [x, y + height, z];
-  for (let i = 0; i < 7; i++) {
-    const a = i * Math.PI * 2 / 7, b = (i + 1) * Math.PI * 2 / 7;
-    triangle(out, [x + Math.sin(a) * radius, y, z + Math.cos(a) * radius],
-      [x + Math.sin(b) * radius, y, z + Math.cos(b) * radius], tip, shade);
-  }
-}
-export function buildingShape(building = {}) {
-  const kind = building.kind || 'house';
-  return {x: finite(building.x), y: finite(building.y),
-    width: clamp(finite(building.width, kind === 'castle' ? 130 : 70), 12, 600),
-    depth: clamp(finite(building.depth, kind === 'castle' ? 100 : 58), 12, 600),
-    height: clamp(finite(building.height, kind === 'castle' ? 80 : 48), 10, 250),
-    stage: building.stage || 'finished', kind};
-}
-function buildingMesh(out, building) {
-  const {x, y: z, width: w, depth: d, height: h, stage, kind} = buildingShape(building);
-  const wall = color(building.color, PALETTE[hash(building.id) % PALETTE.length]);
-  const stone = color('#8e9a91'), wood = color('#795d41');
-  box(out, x, 0.6, z, w + 8, 3, d + 8, stone);
-  box(out, x, .65, z, w + 8, .8, d + 8, color('#707b6c'));
-  if (stage === 'planned' || stage === 'plan') {
-    for (const dx of [-w / 2, w / 2]) for (const dz of [-d / 2, d / 2]) box(out, x + dx, 3, z + dz, 3, 13, 3, wood);
-    box(out, x, 3, z, w - 6, 1, d - 6, color('#d2c69e'));
-    return;
-  }
-  const constructing = ['building', 'construction', 'implement'].includes(stage);
-  const wallHeight = constructing ? h * 0.62 : h;
-  box(out, x, 3, z, w, wallHeight, d, wall);
-  // Recessed-looking plaster panels, timber corners and an eave shadow give
-  // the same low-poly house a grounded facade; the model's bounds stay fixed.
-  const front=z+d/2;
-  for(const dx of [-w*.46,w*.46])box(out,x+dx,3,front+.35,2.2,wallHeight,.8,wood);
-  box(out,x,wallHeight+1,front+.4,w,2,.9,color('#65513c'));
-  box(out,x,3.2,front+.4,w,2,.9,color('#a7a18a'));
-  const doorColor = color('#594a3a'), glass = color('#8bc3c4');
-  box(out, x, 3, z + d / 2 + 0.5, Math.min(16, w / 4), wallHeight * 0.53, 1.2, doorColor);
-  for(const dx of [-.25,0,.25])box(out,x+dx*Math.min(16,w/4),3.5,front+1.15,.65,wallHeight*.5,.2,color('#796047'));
-  box(out,x+Math.min(5,w/12),wallHeight*.26+3,front+1.5,1.2,1.2,.5,color('#c2a366'));
-  for (const dx of [-w * 0.29, w * 0.29]) {
-    box(out, x + dx, 3 + wallHeight * 0.46, z + d / 2 + 0.7, w * 0.15, wallHeight * 0.23, 1, wood);
-    box(out, x + dx, 4 + wallHeight * 0.46, z + d / 2 + 1.4, w * 0.15 - 2, wallHeight * 0.23 - 2, 0.6, glass);
-    box(out,x+dx,4+wallHeight*.46,front+1.8,1,wallHeight*.23-2,.5,wood);
-    box(out,x+dx,4+wallHeight*.57,front+1.8,Math.max(1,w*.15-2),1,.5,wood);
-    box(out,x+dx,3+wallHeight*.46,front+1.6,w*.15+3,1.4,2,color('#c5b390'));
-  }
-  if (constructing) {
-    for (const dx of [-w / 2 - 5, w / 2 + 5]) for (const dz of [-d / 2 - 5, d / 2 + 5]) box(out, x + dx, 0, z + dz, 3, h + 12, 3, wood);
-    for (const level of [wallHeight * 0.5, wallHeight + 9]) {
-      box(out, x, level, z - d / 2 - 5, w + 14, 3, 3, wood);
-      box(out, x, level, z + d / 2 + 5, w + 14, 3, 3, wood);
-    }
-    roof(out, x, wallHeight + 3, z, w * 0.65, h * 0.32, d * 0.65, color('#bc9561'));
-  } else if (kind === 'castle') {
-    box(out, x, h + 3, z, w + 8, 7, d + 8, stone);
-    for (const dx of [-w * 0.43, w * 0.43]) for (const dz of [-d * 0.4, d * 0.4]) {
-      box(out, x + dx, 3, z + dz, w * 0.21, h * 1.3, d * 0.23, stone);
-      roof(out, x + dx, h * 1.3 + 3, z + dz, w * 0.25, h * 0.35, d * 0.27, color('#667d95'));
-    }
-  } else {
-    const roofColor = kind === 'weapon' || kind === 'shop' ? '#477d6d' : stage === 'testing' ? '#647c96' : '#a96047';
-    roof(out, x, h + 3, z, w + 12, h * 0.42, d + 12, color(roofColor));
-    box(out, x + w * 0.28, h + 10, z - d * 0.17, 9, h * 0.4, 9, color('#9b8b76'));
-  }
-  // A stage flag comes from the recorded state, never from elapsed animation time.
-  box(out, x + w / 2 + 9, 1, z + d / 2, 1.8, 30, 1.8, wood);
-  const flag = stage === 'testing' ? '#6ca5c1' : constructing ? '#daa259' : '#6d9b70';
-  box(out, x + w / 2 + 15, 22, z + d / 2, 12, 8, 0.8, color(flag));
-}
+import {hash,color,triangle,quad,box,roof,cone} from './world-model-primitives.js';
+import {buildingMesh} from './world-building-model.js';
+import {personMesh} from './world-character-model.js';
+import {cottageModel} from './world-model-descriptors.js';
+export {hash,color,box} from './world-model-primitives.js';
+export {buildingShape} from './world-building-model.js';
+
 function road(out, from, to, width, height = 0.16, rounded = false) {
   const dx = to.x - from.x, dz = to.y - from.y, length = Math.hypot(dx, dz);
   if (!length) return;
@@ -202,22 +82,9 @@ function islandShoreRectangles(island) {
 function sceneryMesh(out,item){
   const x=finite(item.x),z=finite(item.y),size=clamp(finite(item.size,finite(item.scale,1)),.1,4);
   if(item.kind==='woodland'||item.kind==='mountain-range'){
-    for(const marker of biomeLandmarks(item)){
-      const {x,y:z,width:w,depth:d,height:h}=marker;
-      if(marker.kind==='biome-tree'){
-        box(out,x,.06,z,w*.1,h*.38,d*.1,color('#6b543b'));
-        cone(out,x,h*.17,z,w*.5,h*.78,color('#274e38'));
-        cone(out,x,h*.43,z,w*.37,h*.57,color(marker.tone?'#547b49':'#467346'));
-      }else{
-        cone(out,x,.06,z,w*.5,h,color('#746c57'));
-        cone(out,x,h*.69,z,w*.15,h*.31,color('#d3ccb0'));
-      }
-    }
-  }else if(item.kind==='tree'||item.kind==='pine'){
-    const pine=item.kind==='pine',height=(pine?51:45)*size;
-    box(out,x,0,z,5*size,17*size,5*size,color('#71533b'));
-    cone(out,x,8*size,z,18*size,height-8*size,color(pine?'#426a49':item.tone?'#557849':'#467044'));
-    cone(out,x,22*size,z,13*size,height-22*size,color(pine?'#57794c':item.tone?'#719452':'#64884c'));
+    for(const marker of biomeLandmarks(item))sceneryObjectMesh(out,marker);
+  }else if(sceneryObjectMesh(out,item)){
+    return;
   }else if(item.kind==='well'){
     const stone=color('#b9b99b'),wood=color('#9a774b');
     box(out,x,1,z+4,28,5,24,stone);box(out,x,6,z+4,18,1,14,color('#3d696b'));
@@ -235,17 +102,8 @@ function sceneryMesh(out,item){
     }
     for(let col=0;col<w;col+=18)box(out,x+col,0,z+d+4,3,8,3,color('#c4ae74'));
     box(out,x+w/2,4,z+d+4,w,2,2,color('#a48e59'));
-  }else if(item.kind==='rock'){
-    box(out,x,0,z,19*size,7*size,13*size,color('#7d9073'));
-    cone(out,x,6*size,z,10*size,7*size,color('#a1aa8a'));
   }else if(item.kind==='cottage'){
-    const colors=['#a9563b','#416a71','#77724c','#665774'];
-    const center=z-10;
-    box(out,x,0,center,38,27,28,color('#d5c18a'));
-    box(out,x,0,z+4.5,10,16,1,color('#5c5941'));
-    box(out,x-10,10,z+4.6,7,7,1,color('#3f6766'));
-    roof(out,x,27,center,52,20,38,color(colors[Math.abs(Math.trunc(finite(item.tone)))%colors.length]));
-    box(out,x+14,27,center-5,6,19,6,color('#aa9870'));
+    buildingMesh(out,cottageModel(item));
   }else if(item.kind==='signpost'){
     const width=clamp(finite(item.width,39),8,80),height=clamp(finite(item.height,31),12,80),depth=clamp(finite(item.depth,4),1,12);
     box(out,x,0,z,4,height,4,color('#715738'));
@@ -389,40 +247,6 @@ export function staticMesh(scene) {
   }
   return new Float32Array(out);
 }
-function personMesh(out, person, hero = false) {
-  const x = finite(person.x), z = finite(person.y), heading = finite(person.heading);
-  const size = clamp(finite(person.scale, 1), 0.35, 1.25);
-  const cloth = color(person.color, hero ? '#457d94' : CLOTHES[hash(person.id) % CLOTHES.length]);
-  const skin = color('#dfb78d'), dark = color('#494b48');
-  const part = (dx, y, dz, w, h, d, c) => {
-    const [px, py, pz] = positioned([dx * size, y * size, dz * size], x, 0, z, heading);
-    box(out, px, py, pz, w * size, h * size, d * size, c, heading);
-  };
-  part(-2.5, 0, 0, 3.5, 7, 4, dark); part(2.5, 0, 0, 3.5, 7, 4, dark);
-  part(0, 6, 0, 8, 10, 5, cloth);
-  part(-5.5, 7, 0, 3, 8, 3, cloth); part(5.5, 7, 0, 3, 8, 3, cloth);
-  part(0, 16, 0, 6.5, 6.5, 6.5, skin);
-  part(0, 21, 0.5, 7.5, hero ? 3.5 : 2.5, 7.5, color(hero ? '#dfb953' : '#574b40'));
-  part(-1.6, 19.4, -3.35, 1.1, 1.1, 0.5, dark); part(1.6, 19.4, -3.35, 1.1, 1.1, 0.5, dark);
-  if (hero) part(0, 5, 3, 9, 10, 1.2, color('#c58355'));
-  if (person.kind === 'agent') {
-    // Main sessions have a shield and an upright pennant; helpers have a hood.
-    part(0, 21, 0, 8, 3, 8, color('#cbd1c6'));
-    part(-7, 6, -1.5, 4, 9, 2, cloth);
-    part(-7, 9.5, -2.7, 2.6, 1.5, .5, color('#f5e6bd'));
-    part(7, 3, 2, 1, 30, 1, color('#d6c694'));
-    part(10, 27, 2, 7, 5, .8, cloth);
-    part(10, 31, 2, 7, 1, 1, color('#f5e6bd'));
-  }
-  if (person.kind === 'subagent') {
-    cone(out,x,21*size,z,5*size,9*size,cloth);
-    const shade=color(person.statusColor,'#d1cfcb');
-    const points=[[0,36,0],[4,32,0],[0,28,0],[-4,32,0],[0,32,2],[0,32,-2]]
-      .map(p=>positioned(p.map(v=>v*size),x,0,z,heading));
-    for(const [a,b,c] of [[0,1,4],[1,2,4],[2,3,4],[3,0,4],[1,0,5],[2,1,5],[3,2,5],[0,3,5]])
-      triangle(out,points[a],points[b],points[c],shade);
-  }
-}
 export function visiblePeople(scene, eye, mode, limit = 320) {
   const leader = scene.leader || {}, people = (scene.people || []).filter(p =>
     Number.isFinite(p.x) && Number.isFinite(p.y) &&
@@ -435,8 +259,52 @@ export function visiblePeople(scene, eye, mode, limit = 320) {
   if (mode !== 'leader') shown.push({...leader, id: leader.id || '__leader', hero: true});
   return shown;
 }
+const personPoses = new Map(), MAX_PERSON_POSES = 512;
+const visualColor = value => typeof value === 'string' ? value :
+  Array.isArray(value) && value.length >= 3 && value.slice(0, 3).every(Number.isFinite) ? value.slice(0, 3) : undefined;
+function localPersonPose(person) {
+  // Cache only visual properties. Positions, headings and conversation contents
+  // never become keys or retained objects, and walking has three bounded poses.
+  const model = {
+    seed: String(person.seed ?? person.conversationId ?? person.id ?? ''),
+    color: visualColor(person.color),
+    kind: typeof person.kind === 'string' ? person.kind : undefined,
+    appearance: typeof person.appearance === 'string' ? person.appearance : person.appearance?.id,
+    role: String(person.role ?? ''), scale: clamp(finite(person.scale, 1), .35, 1.25),
+    hero: Boolean(person.hero), statusColor: visualColor(person.statusColor),
+    gait: Math.round(clamp(finite(person.gait), -1, 1)),
+  };
+  const key = JSON.stringify(model);
+  let pose = personPoses.get(key);
+  if (pose) personPoses.delete(key);
+  else {
+    const vertices = [];
+    personMesh(vertices, model, model.hero);
+    pose = new Float32Array(vertices);
+  }
+  personPoses.set(key, pose);
+  while (personPoses.size > MAX_PERSON_POSES) personPoses.delete(personPoses.keys().next().value);
+  return pose;
+}
 export function peopleMesh(people) {
-  const out = [];
-  for (const person of people) personMesh(out, person, Boolean(person.hero));
-  return new Float32Array(out);
+  const poses = people.map(localPersonPose);
+  const out = new Float32Array(poses.reduce((length, pose) => length + pose.length, 0));
+  let offset = 0;
+  for (let personIndex = 0; personIndex < people.length; personIndex++) {
+    const person = people[personIndex], pose = poses[personIndex];
+    const x = finite(person.x), z = finite(person.y), heading = finite(person.heading);
+    const cosine = Math.cos(heading), sine = Math.sin(heading);
+    for (let i = 0; i < pose.length; i += 9) {
+      out[offset++] = x + pose[i] * cosine - pose[i + 2] * sine;
+      out[offset++] = pose[i + 1];
+      out[offset++] = z + pose[i] * sine + pose[i + 2] * cosine;
+      out[offset++] = pose[i + 3] * cosine - pose[i + 5] * sine;
+      out[offset++] = pose[i + 4];
+      out[offset++] = pose[i + 3] * sine + pose[i + 5] * cosine;
+      out[offset++] = pose[i + 6];
+      out[offset++] = pose[i + 7];
+      out[offset++] = pose[i + 8];
+    }
+  }
+  return out;
 }

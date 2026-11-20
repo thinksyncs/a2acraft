@@ -4,6 +4,8 @@ import {createWorldIsland,pointInIsland} from '../public/world-island.js';
 import {worldBiomes,biomeLandmarks,BIOME_COLORS} from '../public/world-biomes.js';
 import {drawWorldBiomes,drawDevelopmentLandscape,drawVillageIslandBackground} from '../public/village-art.js';
 import {staticMesh,color} from '../public/world-3d-mesh.js';
+import {sceneryObjectMesh} from '../public/world-scenery-model.js';
+import {projectedModelFaces} from '../public/world-map-models.js';
 
 const core={left:-500,right:1000,top:-300,bottom:800};
 const options={regions:[core],roads:[{width:35,points:[{x:-4500,y:-1000},{x:4800,y:1600}]}],
@@ -49,10 +51,14 @@ test('enormous saved worlds keep natural scenery bounded instead of filling ever
 });
 
 function context(){
-  const fills=[],paths=[];let points=[];
-  return {fills,paths,fillStyle:'',fillRect(...values){fills.push({color:this.fillStyle,values});},
-    beginPath(){points=[];},moveTo(x,y){points.push({x,y});},lineTo(x,y){points.push({x,y});},closePath(){},
-    fill(){paths.push(points);},save(){},restore(){}};
+  const fills=[],paths=[],images=[],stack=[];let points=[],matrix={a:1,b:0,c:0,d:1,e:0,f:0};
+  const point=(x,y)=>({x:x*matrix.a+matrix.e,y:y*matrix.d+matrix.f});
+  return {fills,paths,images,fillStyle:'',fillRect(...values){fills.push({color:this.fillStyle,values});},
+    beginPath(){points=[];},moveTo(x,y){points.push(point(x,y));},lineTo(x,y){points.push(point(x,y));},closePath(){},
+    fill(){paths.push(points);},save(){stack.push({...matrix});},restore(){matrix=stack.pop()||matrix;},
+    setTransform(a,b,c,d,e,f){matrix={a,b,c,d,e,f};},
+    translate(x,y){matrix.e+=x*matrix.a;matrix.f+=y*matrix.d;},scale(x,y){matrix.a*=x;matrix.d*=y;},
+    getTransform(){return {...matrix};},drawImage(canvas,...args){images.push({canvas,args,matrix:{...matrix}});}};
 }
 const close=(a,b)=>Math.abs(a-b)<1e-4;
 
@@ -71,8 +77,14 @@ test('2D and 3D use the same ground footprints and forest/mountain landmark coor
   assert.equal(Math.min(...ground.map(p=>p.x)),100);assert.equal(Math.max(...ground.map(p=>p.x)),500);
   assert.equal(Math.min(...ground.map(p=>p.z)),200);assert.equal(Math.max(...ground.map(p=>p.z)),600);
   for(const patch of biomes.scenery)for(const marker of biomeLandmarks(patch)){
-    assert.ok(ctx.paths.some(path=>path.some(p=>Math.abs(p.x-marker.x)<=1&&Math.abs(p.y-(marker.y-marker.height))<=1)));
-    assert.ok(vertices.some(p=>close(p.x,marker.x)&&close(p.z,marker.y)&&Math.abs(p.h-marker.height)<.1));
+    const expected=[];sceneryObjectMesh(expected,marker);
+    const faces=projectedModelFaces(expected);
+    assert.ok(faces.length>0);
+    for(const face of faces)assert.ok(ctx.paths.some(path=>path.length===3&&path.every((p,i)=>
+      close(p.x,face.points[i][0])&&close(p.y,face.points[i][1]))),'map places every visible model face at the shared anchor');
+    for(let i=0;i<expected.length;i+=9)assert.ok(vertices.some(p=>close(p.x,expected[i])&&
+      close(p.h,expected[i+1])&&close(p.z,expected[i+2])),'eye view uses the same complete landmark geometry');
+    assert.equal(Math.max(...expected.filter((_,i)=>i%9===1)),marker.height);
   }
 });
 
@@ -119,12 +131,26 @@ test('close village travel repaints shared biome detail without rebuilding its o
   const viewport={left:3950,right:4500,top:-1700,bottom:-1100,zoom:.08};
   drawVillageIslandBackground(screen,island,{biomes,viewport});
   const count=allocated.length,operations=allocated.map(c=>c.context.fills.length+c.context.paths.length);
+  const overview=screen.images[0]?.canvas;
+  assert.ok(overview,'the distant terrain has one overview bitmap');
   assert.equal(screen.fills.length,0,'distant terrain uses only the overview bitmap');
   drawVillageIslandBackground(screen,island,{biomes,viewport:{...viewport,zoom:1}});
   assert.ok(screen.fills.some(fill=>fill.color==='#123456'));
   assert.ok(!screen.fills.some(fill=>fill.color==='#654321'),'near terrain remains viewport culled');
-  assert.ok(screen.paths.length>0,'landmark outlines are crisp at the current camera scale');
-  assert.equal(allocated.length,count,'zooming into exterior terrain allocates no bitmap');
-  assert.deepEqual(allocated.map(c=>c.context.fills.length+c.context.paths.length),operations,
+  const landmarks=biomeLandmarks(biomes.scenery[0]),detail=screen.images.filter(image=>image.canvas!==overview);
+  assert.equal(detail.length,landmarks.length,'close travel draws each visible shared landmark separately');
+  for(const marker of landmarks)assert.ok(detail.some(image=>image.matrix.e===marker.x&&image.matrix.f===marker.y),
+    'detail sprites retain their shared ground anchors');
+  for(const image of detail){
+    assert.ok(image.canvas.width>=image.args[2]&&image.canvas.height>=image.args[3],
+      'close detail has at least one source pixel per world unit at this camera scale');
+    assert.ok(image.canvas.width<=768&&image.canvas.height<=768,'individual detail sprites stay bounded');
+  }
+  assert.ok(allocated.length-count<=landmarks.length,'only the visible detail models can allocate new sprites');
+  assert.deepEqual(allocated.slice(0,count).map(c=>c.context.fills.length+c.context.paths.length),operations,
     'the distant artwork remains cached while close detail is painted separately');
+  const closeCount=allocated.length;
+  drawVillageIslandBackground(screen,island,{biomes,viewport:{...viewport,zoom:1}});
+  assert.equal(allocated.length,closeCount,'repeated close frames reuse their model sprites');
+  assert.deepEqual(screen.images.slice(-landmarks.length).map(image=>image.canvas),detail.map(image=>image.canvas));
 });

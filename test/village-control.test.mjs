@@ -12,7 +12,8 @@ import { villageBiomes } from "../public/village-3d-scene.js";
 import { sceneBuildingObstacles } from "../public/project-buildings.js";
 
 // Run the actual controller, animation and canvas drawing, without a browser,
-// external services or WebGL. The gold shadows locate the rendered party.
+// external services or WebGL. Character ground shadows locate the rendered
+// party; real canvas transforms keep viewport culling meaningful in the fixture.
 function fixture(t, { saved, demo = false, building = false, visible = true, extraChats = [] } = {}) {
   const frames = new Map(), storage = new Map(), navigations = [];
   const documentListeners = new Map();
@@ -23,10 +24,16 @@ function fixture(t, { saved, demo = false, building = false, visible = true, ext
       this.children = []; this.listeners = new Map(); this.attributes = new Map();
       this.classList = { add() {}, toggle() {} }; this.value = ""; this.open = false;
       this.clientWidth = 1000; this.clientHeight = 640; this.shadows = [];
+      let matrix={a:1,b:0,c:0,d:1,e:0,f:0};const states=[];
       this.context = new Proxy({canvas:this,
         measureText:text=>({width:String(text).length*6}),
-        getTransform:()=>({a:1,b:0,c:0,d:1,e:0,f:0}),
-        ellipse:(x,y)=>{if(this.context.fillStyle==="#e7c77d55")this.shadows.push({x,y:y-1});},
+        getTransform:()=>({...matrix}),
+        setTransform:(a,b,c,d,e,f)=>{matrix=typeof a==='object'?{...a}:{a,b,c,d,e,f};},
+        save:()=>states.push({matrix:{...matrix},fillStyle:this.context.fillStyle}),
+        restore:()=>{const state=states.pop();if(state){matrix=state.matrix;this.context.fillStyle=state.fillStyle;}},
+        translate:(x,y)=>{matrix.e+=matrix.a*x+matrix.c*y;matrix.f+=matrix.b*x+matrix.d*y;},
+        scale:(x,y)=>{matrix.a*=x;matrix.b*=x;matrix.c*=y;matrix.d*=y;},
+        ellipse:(x,y)=>{if(this.context.fillStyle==="#17382e60")this.shadows.push({x:x-1,y:y-1});},
         fillRect:(x,y,w,h)=>{if(x===0&&y===0&&w===1000&&h===640)this.shadows=[];},
       }, {get:(target,key)=>key in target ? target[key] : ()=>{}});
     }
@@ -171,7 +178,9 @@ const island=villageIsland(),terrain={water:[
 test("Reload can restore a dry position on the distant continent",t=>{
   const point=island.landPatches.map(r=>({x:(r.left+r.right)/2,y:(r.top+r.bottom)/2})).find(point=>
     Math.hypot(point.x,point.y)>3000&&islandRouteWalkable([point,point],island,terrain));
-  assert.ok(point);const f=fixture(t,{saved:{hero:{point,heading:1.2}}});
+  // A restored party is only painted when its saved camera covers that part of
+  // the continent; the renderer now correctly culls offscreen character models.
+  assert.ok(point);const f=fixture(t,{saved:{camera:{...point,zoom:1},hero:{point,heading:1.2}}});
   assert.deepEqual(f.hero(),{x:Number(point.x.toFixed(1)),y:Number(point.y.toFixed(1))});
   f.advance(4);assert.deepEqual(f.party(),Array(3).fill({x:Math.round(point.x),y:Math.round(point.y)}));
 });
