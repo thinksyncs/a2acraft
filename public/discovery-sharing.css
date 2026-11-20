@@ -1,0 +1,13 @@
+.discovery-sharing{display:flex;align-items:center;gap:14px;margin:14px 0;padding:14px;border:1px solid #526957;border-radius:12px;background:#172c28;color:#e4ede3}
+.discovery-workshop{flex:none;width:88px;height:80px}
+.discovery-workshop svg{width:100%;height:100%;overflow:visible}
+.workshop-wall{fill:#596850;stroke:#a0a583;stroke-width:2}.workshop-roof{fill:#614c3e;stroke:#ac9670;stroke-width:2}.workshop-door{fill:#263d34;stroke:#899071;stroke-width:2}.workshop-beam{fill:none;stroke:#a0a583;stroke-width:2}.workshop-window{fill:#223c36;stroke:#a0a583;stroke-width:2;transition:fill .4s,filter .4s}
+.discovery-sharing[data-lit=true] .workshop-window{fill:#ffe19a;filter:drop-shadow(0 0 7px #ffd47c)}
+.discovery-copy{flex:1;min-width:0}.discovery-copy>strong{font:600 14px/1.5 var(--font-ui)}.discovery-count{display:block;font:12px/1.5 var(--font-ui);color:#bbcfbd}
+.discovery-actions{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}.discovery-actions button{font:600 13px/1.4 var(--font-ui);padding:7px 10px;min-height:34px}
+.discovery-copy small{display:block;font:12px/1.5 var(--font-ui);color:#bbcfbd}.discovery-status,.discovery-error{font:13px/1.5 var(--font-ui);margin:6px 0 0}.discovery-error{color:#ffc6ad}.discovery-status[hidden],.discovery-error[hidden]{display:none}
+.discovery-import-dialog{width:min(480px,calc(100vw - 32px));max-height:80dvh;overflow:auto;padding:18px;border:1px solid #82967b;border-radius:12px;background:#172c28;color:#e4ede3}.discovery-import-dialog::backdrop{background:#0009}.discovery-import-dialog label{display:block;font:14px/1.5 var(--font-ui)}.discovery-import-dialog textarea{display:block;box-sizing:border-box;width:100%;margin:8px 0;padding:10px;font:13px/1.5 monospace;overflow-wrap:anywhere;resize:vertical;background:#10201d;color:#edf2e9;border:1px solid #718770;border-radius:7px}
+@keyframes discovery-arrival{50%{filter:drop-shadow(0 0 14px #ffe19a);transform:scale(1.03)}}
+.discovery-sharing[data-arrival=true] .discovery-workshop{animation:discovery-arrival 1.3s ease-out}
+@media(prefers-reduced-motion:reduce){.discovery-sharing[data-arrival=true] .discovery-workshop{animation:none}.workshop-window{transition:none}}
+@media(max-width:500px){.discovery-sharing{gap:9px;padding:10px}.discovery-workshop{width:62px;height:64px}.discovery-actions button{min-height:40px}}

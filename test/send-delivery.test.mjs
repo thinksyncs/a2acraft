@@ -4,6 +4,19 @@ import {deliverSend} from '../send-delivery.mjs';
 import {requestForSend,sendWasAccepted,recoverSendDrafts,restoreSendDraft} from '../public/send-delivery.js';
 
 const input={requestId:'request-1',kind:'send',text:'hello',model:'model',effort:'medium',attachmentIds:[]};
+test('a retry cannot silently switch resident companions or become ordinary chat',async()=>{
+  const chat={messages:[]},visit={source:'village',partyKey:'formation-a'};
+  let calls=0;
+  const request={...input,residentVisit:visit};
+  await deliverSend(chat,request,async delivery=>{calls++;chat.messages.push({role:'user',delivery});});
+  await deliverSend(chat,request,()=>{calls++;});
+  await assert.rejects(deliverSend(chat,{...request,residentVisit:{...visit,partyKey:'formation-b'}},()=>{}),/内容が変わ/);
+  await assert.rejects(deliverSend(chat,input,()=>{}),/内容が変わ/);
+  assert.equal(calls,1);
+  const records={};
+  requestForSend(records,'chat',request,()=> 'first');
+  assert.equal(requestForSend(records,'chat',{...request,residentVisit:{...visit,partyKey:'formation-b'}},()=> 'second'),'second');
+});
 test('lost HTTP response is recognized for text-only messages and replay does not dispatch again',async()=>{
   const chat={id:'chat',messages:[]};let calls=0;
   await deliverSend(chat,input,async delivery=>{calls++;chat.messages.push({role:'user',text:input.text,delivery});});

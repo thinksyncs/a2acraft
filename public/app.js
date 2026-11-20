@@ -17,6 +17,8 @@ import {initAdventure} from './adventure.js';
 import {initVillage} from './village.js';
 import {createResidentConversation} from './resident-conversation.js';
 import {residentDemoReply} from './resident-demo.js';
+import {residentVisitFor,companionRoster,buildResidentContext} from './resident-companions.js';
+import {initDiscoverySharing} from './discovery-sharing.js';
 import {initProjects} from './projects.js';
 import {createWorldRoom,button as roomButton} from './world-room.js';
 import {projectDemo} from './project-demo.js';
@@ -138,7 +140,7 @@ function partyActive(){return ['running','stopping'].includes(state.party?.quest
 const equipment=initEquipment({api,demo,storeKey,getChats:()=>chats,getSelected:()=>selected,onSelect:id=>select(id,'equipment'),onChat:chat=>{
   const index=chats.findIndex(item=>item.id===chat.id);if(index>=0)chats[index]=chat;renderChats();
 },onUse:()=>switchView('chat',()=>$('#prompt').focus()),isVisible:()=>!$('#workspace').hidden&&view==='equipment',isLocked:()=>partyActive()||boardActive(),onShopChange:shop=>town.setShop(shop)});
-const party=initParty({api,demo,storeKey,getChats:()=>chats,getState:()=>state.party,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canConnect:()=>demo||(!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'),onState:applyPartyState,onChat:chat=>{
+const party=initParty({api,demo,storeKey,getChats:()=>chats,getState:()=>villageSample?{...state.party,party:villageDemoActivityState(state).party.party}:state.party,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canConnect:()=>demo||(!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'),onState:applyPartyState,onChat:chat=>{
   const index=chats.findIndex(item=>item.id===chat.id);if(index>=0)chats[index]=chat;renderChats();
 },onSelect:id=>select(id),onDemoTurn:chat=>equipment.demoTurn(chat),onPersistQuest:quest=>todoView.syncDemoQuest(quest)});
 const castle=initCastle({api,demo,getPractice:practiceMode,getTodos:()=>state.todos,onTodo:id=>switchView('todos',()=>todoView.open(id)),getState:()=>state.party,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canConnect:()=>demo||(!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'),getPolicy:()=>demo?{ok:true}:state.policy,getDraft:()=>party.getQuestDraft(),setDraft:value=>party.setQuestDraft(value),onStart:value=>party.startQuest(value),onTavern:()=>switchView('tavern'),onTodos:()=>switchView('todos'),onProgress:()=>switchView('tavern')});
@@ -154,14 +156,17 @@ function visitVillageFacility(place){
 }
 const village=initVillage({api,demo,getState:()=>villageSample?villageDemoActivityState(state):state,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard()});
 const adventure=initAdventure({api,demo,getState:()=>state,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onState:applyAdventureState,onProgress:()=>switchView('tavern'),onTown:()=>{townSection('town');village.focus();},notify:toast});
+const discoveries=initDiscoverySharing({host:$('#adventure-world'),api,demo,getState:()=>state.discoveries,getAdventure:()=>state.adventure,onState:applyDiscoveryState,notify:toast});
 const projects=initProjects({api,demo,getState:()=>state,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onChat:openResidentChat,onMap:showProjectMap,onLegacy:()=>{townSection('town');village.focus();},onNavigate:place=>switchView(['tavern','castle'].includes(place)?place:'equipment',()=>{if(place==='weapon')equipment.open(place);}),onState:value=>{state.projects=value;projects.render();updateComposer();},notify:toast});
 // Panels are detached when switching a single-pane conversation. Keep the
 // question card itself reachable while its previous transcript is off-screen.
 const projectChatContext=$('#project-chat-context');
-const residentConversation=createResidentConversation({host:$('#chat-view'),demo,onReturn:()=>{
+const residentConversation=createResidentConversation({host:$('#chat-view'),demo,onParty:()=>switchView('tavern'),onReturn:()=>{
   const source=activeEncounter?.source;
   switchView('town',()=>{townSection(source==='projects'?'projects':'town');(source==='projects'?projects:village).focus();});
 }});
+function currentResidentParty(){return activeEncounter?.source==='projects'?null:(villageSample?villageDemoActivityState(state):state).party?.party;}
+function residentVisitForChat(id){return residentVisitFor(activeEncounter,id,currentResidentParty());}
 function scrollChatLatest(id){
   requestAnimationFrame(()=>{const list=panels.get(id)?.element.querySelector('.messages');if(list)list.scrollTop=list.scrollHeight;});
 }
@@ -243,9 +248,13 @@ function applyPartyState(value){
   if(!value||(value.revision||0)<(state.party?.revision||0))return;
   state.party=value;updateComposer();equipment.render();town.render();village.render();pluginView.render();
 }
+function applyDiscoveryState(value){
+  if(!value||(value.revision||0)<(state.discoveries?.revision||0))return;
+  state.discoveries=value;discoveries.render();
+}
 function applyAdventureState(value){
   if(!value||(value.revision||0)<(state.adventure?.revision||0))return;
-  state.adventure=value;adventure.render();town.render();
+  state.adventure=value;adventure.render();discoveries.render();town.render();
   updateAdventureReturn();
 }
 function updateAdventureReturn(){
@@ -454,7 +463,7 @@ function applyView(next) {
   town.setView(next);
   village.setVisible(next==='town'&&currentTownSection==='town',{preserveEncounter:activeEncounter?.source==='village'&&next==='chat'});
   projects.setVisible(next==='town'&&currentTownSection==='projects',{preserveEncounter:activeEncounter?.source==='projects'&&next==='chat'});
-  adventure.render();
+  adventure.render();discoveries.render();
   workspaceTabs.render();
 }
 function finishViewTransition() {
@@ -625,6 +634,9 @@ function updatePanel(chat, index) {
     let partyLabel=node.querySelector('.party-message-label');
     if(message.partyRole&&!partyLabel){partyLabel=document.createElement('div');partyLabel.className='party-message-label';node.querySelector('.msg-label').after(partyLabel);}
     if(partyLabel)partyLabel.textContent=message.partyRole?'PARTY · '+message.partyRole:'';
+    let visitLabel=node.querySelector('.resident-message-context');
+    if(message.residentContext&&!visitLabel){visitLabel=document.createElement('div');visitLabel.className='resident-message-context';node.querySelector('.msg-label').after(visitLabel);}
+    if(visitLabel)visitLabel.textContent=message.residentContext?.companions?.length?'同行：'+message.residentContext.companions.map(member=>member.name+'（'+member.role+'）').join('・'):'ひとりで相談';
     node.querySelector('.streaming-caret').hidden = message !== current || Boolean(demo && chat.project);
     if(list.children[index]!==node)list.insertBefore(node,list.children[index]||null);
   }
@@ -717,6 +729,10 @@ function updateComposer() {
     const atBottom=transcript.scrollHeight-transcript.scrollTop-transcript.clientHeight<60;
     transcript.append(questionCard);if(atBottom)transcript.scrollTop=transcript.scrollHeight;
   }
+  if(activeEncounter?.conversationId===selected){
+    try{residentConversation.updateCompanions(companionRoster(currentResidentParty(),chats,selected));}
+    catch(error){residentConversation.updateCompanions([],error.message);}
+  }
   setText('#target', activeEncounter?.name || (chat ? chat.title : '会話を作成してください'));
   setText('#chat-heading',activeEncounter?.name || chat?.characterName || chat?.title || '会話');
   const topic=(activeEncounter?.name||chat?.characterName)&&chat?.title!==$('#chat-heading').textContent?chat?.title:'';
@@ -750,7 +766,7 @@ function updateComposer() {
   connectionReadiness?.render();
   party.render();castle.render();for(const chat of chats){const panel=panels.get(chat.id);if(panel)party.renderPane(panel.element,chat);}
   todoView.render();
-  adventure.render();updateAdventureReturn();
+  adventure.render();discoveries.render();updateAdventureReturn();
   updateHud();
 }
 function select(id,nextView='chat',onSwitch) {
@@ -947,12 +963,12 @@ $('#prompt').onkeydown = event => {
   else if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!sendBlocked) $('#composer').requestSubmit(); }
 };
 function cancelDemoTimers() { clearTimeout(demoDelay); clearInterval(demoStream); }
-function startDemoResponse(chat) {
-  const resident=activeEncounter?.conversationId===chat.id;
+function startDemoResponse(chat,residentContext=null) {
+  const resident=Boolean(residentContext?.metadata);
   const lastText=chat.messages.filter(m=>m.role==='user').at(-1)?.text||'';
   demoDelay = setTimeout(() => {
     const response = {id:crypto.randomUUID(),role:'assistant',text:''}; chat.messages.push(response);
-    const output = resident ? residentDemoReply(chat,lastText) : 'これは画面確認用の応答です。\n実接続ではChatGPT認証済みのCodex App Serverが応答します。\n\n会話・下書きは各ペインで独立しています。実行中はSteerで補足を追加し、停止ボタンで処理を中断できます。';
+    const output = resident ? residentDemoReply(chat,lastText,residentContext?.metadata) : 'これは画面確認用の応答です。\n実接続ではChatGPT認証済みのCodex App Serverが応答します。\n\n会話・下書きは各ペインで独立しています。実行中はSteerで補足を追加し、停止ボタンで処理を中断できます。';
     let cursor = 0;
     demoStream = setInterval(() => { cursor += 7; response.text = output.slice(0,cursor); if (cursor >= output.length) { clearInterval(demoStream); chat.status = 'completed'; } renderChats(); },70);
   },900);
@@ -977,8 +993,10 @@ $('#composer').onsubmit = async event => {
     catch(error){toast(error.message);}finally{steerPending=false;updateComposer();}return;
   }
   const chat = chats.find(chat => chat.id === selected), text = $('#prompt').value.trim(), id = chat.id, isSteer = chat.status === 'running', expectedTurnId = chat.turnId;
+  let residentVisit;
+  try{residentVisit=residentVisitForChat(id);}catch(error){toast(error.message);return;}
   const model=$('#model').value,effort=$('#effort').value,previousStatus=chat.status,files=attachments.take(id);
-  const requestId=demo?null:requestForSend(sendRequests,id,{text,model,effort,attachmentIds:files.map(file=>file.id),kind:isSteer?'steer':'send',expectedTurnId:isSteer?expectedTurnId:null});
+  const requestId=demo?null:requestForSend(sendRequests,id,{...(residentVisit?{residentVisit}:{}),text,model,effort,attachmentIds:files.map(file=>file.id),kind:isSteer?'steer':'send',expectedTurnId:isSteer?expectedTurnId:null});
   let dispatched=false;pendingSends.add(id);
   drafts[id] = ''; $('#prompt').value = ''; persist(); chat.error = null;
   if (!isSteer) chat.status = 'starting'; else steerPending = true;
@@ -987,15 +1005,16 @@ $('#composer').onsubmit = async event => {
     if (demo) {
       if(files.length)await api('attachments/demo-send',{conversationId:id,attachmentIds:files.map(file=>file.id)});
       const pending = contextBoard.filter(entry => entry.targetId === id && entry.status === 'pending');
-      chat.messages.push({id:crypto.randomUUID(),role:'user',text,skills:equipment.demoTurn(chat),attachments:files,steer:isSteer,contextIds:pending.map(entry => entry.id)});
+      const residentContext=buildResidentContext({visit:residentVisit,conversation:chat,conversations:chats,party:currentResidentParty()});
+      chat.messages.push({id:crypto.randomUUID(),role:'user',text,...(residentContext.metadata?{residentContext:residentContext.metadata}:{}),skills:equipment.demoTurn(chat),attachments:files,steer:isSteer,contextIds:pending.map(entry => entry.id)});
       for (const entry of pending) entry.status = 'attached';
-      if (!isSteer) { chat.status = 'running'; chat.turnId = crypto.randomUUID(); startDemoResponse(chat); }
+      if (!isSteer) { chat.status = 'running'; chat.turnId = crypto.randomUUID(); startDemoResponse(chat,residentContext); }
       renderChats();return;
     }
     // Keep the retry identity durable before dispatching a desktop request.
     await desktopDrafts?.flush();
     dispatched=true;
-    await api(isSteer ? 'steer' : 'send',{id,text,attachmentIds:files.map(file=>file.id),expectedTurnId:isSteer?expectedTurnId:null,model,effort,requestId});
+    await api(isSteer ? 'steer' : 'send',{id,text,...(residentVisit?{residentVisit}:{}),attachmentIds:files.map(file=>file.id),expectedTurnId:isSteer?expectedTurnId:null,model,effort,requestId});
     delete sendRequests[id];persist();
   } catch (error) {
     let accepted=false;
@@ -1069,6 +1088,7 @@ function subscribeEvents() {
   eventStream.addEventListener('context-board',event => { contextBoard = JSON.parse(event.data); contextSharing.render(); });
   eventStream.addEventListener('skills-changed',()=>equipment.invalidate());
   eventStream.addEventListener('party',event=>applyPartyState(JSON.parse(event.data)));
+  eventStream.addEventListener('discoveries',event=>applyDiscoveryState(JSON.parse(event.data)));
   eventStream.addEventListener('adventure',event=>applyAdventureState(JSON.parse(event.data)));
   eventStream.addEventListener('village',event=>applyVillageState(JSON.parse(event.data)));
   eventStream.addEventListener('projects',event=>{state.projects=JSON.parse(event.data);projects.render();updateComposer();});

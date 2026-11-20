@@ -10,7 +10,8 @@ export async function deliverSend(conversation,input,execute){
   const fingerprint=createHash('sha256').update(JSON.stringify({
     kind:input.kind||'send',text:input.text,model:input.model||null,
     effort:input.effort||'medium',expectedTurnId:input.expectedTurnId||null,
-    attachmentIds:input.attachmentIds||[]
+    attachmentIds:input.attachmentIds||[],
+    ...(input.residentVisit?{residentVisit:input.residentVisit}:{})
   })).digest('hex');
   const receipt={requestId,fingerprint};
   const accepted=conversation.messages.find(message=>message.role==='user'&&message.delivery?.requestId===requestId);

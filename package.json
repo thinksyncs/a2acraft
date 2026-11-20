@@ -1,6 +1,6 @@
 {
   "name": "personal-chat-ui",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "private": true,
   "description": "A2ACraft by Toppy — conversations become worlds.",
   "author": "ToppyMicroServices",
@@ -84,6 +84,7 @@
           "teams-drafts.mjs",
           "work-quests.mjs",
           "adventure.mjs",
+          "discovery-store.mjs",
           "village.mjs",
           "projects.mjs",
           "project-workspaces.mjs",

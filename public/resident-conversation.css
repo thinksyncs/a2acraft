@@ -9,6 +9,13 @@
 #resident-conversation button:focus-visible,#resident-conversation summary:focus-visible{outline:2px solid #dfcd8a;outline-offset:-2px}
 #resident-conversation .resident-view-content{position:absolute;z-index:50;top:calc(100% + 4px);right:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;width:min(480px,100%);max-height:min(360px,65dvh);overflow:auto;overscroll-behavior:contain;padding:10px;border:1px solid #65776d;border-radius:9px;background:#1b2c2c;color:#f0eedf;box-shadow:0 10px 32px #0008}
 #resident-conversation details:not([open])>.resident-view-content{display:none}
+#resident-conversation .resident-companions{flex:1;min-width:0}
+#resident-conversation .resident-companions>summary{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#resident-conversation .resident-companions-panel{position:absolute;z-index:51;top:calc(100% + 4px);left:0;width:min(440px,100%);max-height:280px;overflow:auto;padding:12px;border:1px solid #65776d;border-radius:9px;background:#1b2c2c;box-shadow:0 10px 32px #0008}
+#resident-conversation .resident-companions:not([open])>.resident-companions-panel{display:none}
+#resident-conversation .resident-companions ul{margin:0;padding-left:18px;font:12px/1.6 var(--font-ui)}
+#resident-conversation>.resident-view-details{flex:none}
+.resident-message-context{font:11px/1.5 var(--font-ui);color:#bdd0c5;margin:3px 0 6px}
 #resident-conversation .resident-conversation-copy{grid-column:1/-1}
 #resident-conversation figure{margin:0;min-width:0;border:1px solid #526e6b;border-radius:8px;overflow:hidden;background:#11262b}
 #resident-conversation figcaption{font:12px/1.5 var(--font-ui);padding:6px 8px;color:#fff0cb}

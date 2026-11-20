@@ -7,6 +7,7 @@ import path from 'node:path';
 import {randomUUID,timingSafeEqual,createHash} from 'node:crypto';
 import {checkPlan} from './policy.mjs';
 import {deliverSend} from './send-delivery.mjs';
+import {buildResidentContext} from './public/resident-companions.js';
 import {ensureAgentWorkspace,standingAgentInstructions} from './codex-workspace-policy.mjs';
 import {ConversationWorkspaces,resolveWorkspaceDirectory} from './conversation-workspace.mjs';
 import {prepareCodexLaunch,verifyIsolatedConfig,verifyThreadPermissions,threadPermissionRequest} from './codex-launch.mjs';
@@ -23,6 +24,7 @@ import {TeamsService,teamsConfigurationKey} from './teams.mjs';
 import {TeamsDraftStore} from './teams-drafts.mjs';
 import {TodoStore} from './todos.mjs';
 import {AdventureStore,adventureRequest} from './adventure.mjs';
+import {DiscoveryStore} from './discovery-store.mjs';
 import {VillageStore} from './village.mjs';
 import {ProjectService} from './projects.mjs';
 import {WorldState} from './world-state.mjs';
@@ -192,7 +194,7 @@ let boardStarting=false,boardWork=Promise.resolve(),boardTickQueued=false,boardF
 const boardStops=new Set();
 const scheduledStops=new Set(),scheduledQuotaStops=new Map(),scheduledRuntime=new Map();
 function broadcast(type,payload){for(const res of clients)res.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`);}
-function publicState(){return {...state,agentBoard:agentBoard?.public()||{revision:0,count:0},world:world?.public()||null,projects:projects?.public()||{version:1,revision:0,items:[],concurrency:2,activeCount:0},persistenceError,policy:checkPlan(state.account,state.limits),chatGroups:groupsFor(conversations),party:parties.public(),adventure:adventure.public(),village:village.public(),plugins:plugins.public(),teams:teams.public(),teamsDrafts:teamsDrafts.public(),todos:todos.public(),media:media.public(),inbox:inbox.public(),schedules:schedules.public(),reports:reports.public(),boardDispatch:boardPublic(),workQuestPlanning:Boolean(workQuestWaiter),active:Boolean(projects?.active.size)||boardBusy()||hasScheduledRun()||Boolean(scheduledStarting)||Boolean(teamsWaiter)||Boolean(workQuestWaiter)||startingTodo||parties.active||conversations.some(c=>['starting','running','stopping'].includes(c.status))};}
+function publicState(){return {...state,agentBoard:agentBoard?.public()||{revision:0,count:0},world:world?.public()||null,projects:projects?.public()||{version:1,revision:0,items:[],concurrency:2,activeCount:0},persistenceError,policy:checkPlan(state.account,state.limits),chatGroups:groupsFor(conversations),party:parties.public(),adventure:adventure.public(),discoveries:discoveries.public(),village:village.public(),plugins:plugins.public(),teams:teams.public(),teamsDrafts:teamsDrafts.public(),todos:todos.public(),media:media.public(),inbox:inbox.public(),schedules:schedules.public(),reports:reports.public(),boardDispatch:boardPublic(),workQuestPlanning:Boolean(workQuestWaiter),active:Boolean(projects?.active.size)||boardBusy()||hasScheduledRun()||Boolean(scheduledStarting)||Boolean(teamsWaiter)||Boolean(workQuestWaiter)||startingTodo||parties.active||conversations.some(c=>['starting','running','stopping'].includes(c.status))};}
 function emit(){broadcast('state',publicState());}
 function changed(c){c.updatedAt=Date.now();if(['completed','failed','cancelled'].includes(c.status)&&c.activity&&!c.activity.completedAt)c.activity.completedAt=c.updatedAt;const saved=save();broadcast('conversation',c);if(['completed','failed','cancelled'].includes(c.status))saved.then(()=>{queueActivitySync();if(c.project||world?.value.links[c.id])world?.observe().catch(()=>{});}).catch(()=>{});return saved;}
 startupStage('local-stores');
@@ -208,6 +210,7 @@ let workQuestWaiter=null,workQuestGenerationTask=null;
 const todos=await new TodoStore(data,value=>{broadcast('todos',value);queueActivitySync();}).load();
 const boardDispatch=await new BoardDispatchStore(data,value=>{broadcast('board-dispatch',boardFault?{...value,enabled:false,runtimeError:boardFault}:value);if(activityReady)emit();}).load();
 const adventure=await new AdventureStore(data,value=>{broadcast('adventure',value);if(activityReady)emit();}).load();
+const discoveries=await new DiscoveryStore(data,value=>broadcast('discoveries',value)).load();
 const village=await new VillageStore(data,value=>{broadcast('village',value);if(activityReady)emit();}).load();
 const media=await new MediaStore(data,value=>broadcast('media',value)).load();
 let proc,ready,seq=0,authVersion=0,loginFailure=null,readinessPending=null,codexRequirements=null; const pending=new Map(),resumed=new Map();
@@ -359,7 +362,7 @@ function rememberScheduledQuotaStop(chat,reason){
  const attemptId=chat.activity?.schedule?.attemptId||(partyWaiter?.conversationId===chat.id?parties.state.quest?.schedule?.attemptId:null);
  if(attemptId)scheduledQuotaStops.set(attemptId,reason||'利用枠を確認できないため処理を停止しました。');
 }
-async function steer(c,text,expectedTurnId,attachmentIds=[],delivery=null){
+async function steer(c,text,expectedTurnId,attachmentIds=[],delivery=null,residentContext=null){
  assertBoardAvailable();
  if(scheduledStarting)throw Error('予約の開始を確認しています。完了後に操作してください。');
  if(workQuestWaiter)throw Error('お城でクエストを分解中です。完了後に送信してください。');
@@ -374,9 +377,9 @@ async function steer(c,text,expectedTurnId,attachmentIds=[],delivery=null){
  try{
   checkImageModel(rows,c.model);contexts=await contextBoard.reserve(c.id);
   const index=c.messages.length;
-  await rpc('turn/steer',{threadId:c.threadId,expectedTurnId,input:[...skillInput(skills),...attachments.input(rows),...contextInput(contexts,text)]});
+  await rpc('turn/steer',{threadId:c.threadId,expectedTurnId,input:[...(residentContext?.input||[]),...skillInput(skills),...attachments.input(rows),...contextInput(contexts,text)]});
   consumeShot(c,skills);
-  c.messages.splice(index,0,{id:randomUUID(),role:'user',text,createdAt:Date.now(),steer:true,...(delivery?{delivery}:{}),skills:skills.map(publicSkill),attachments:rows.map(row=>attachments.public(row)),contextIds:contexts.map(e=>e.id)});await changed(c);
+  c.messages.splice(index,0,{id:randomUUID(),role:'user',text,createdAt:Date.now(),steer:true,...(delivery?{delivery}:{}),...(residentContext?.metadata?{residentContext:residentContext.metadata}:{}),skills:skills.map(publicSkill),attachments:rows.map(row=>attachments.public(row)),contextIds:contexts.map(e=>e.id)});await changed(c);
   await commitAttachments(rows);await attachContexts(contexts);
  }finally{contextBoard.release(contexts);attachments.release(rows);}
 }
@@ -429,7 +432,7 @@ async function ensureThread(c,model,scope){
  }
  resumed.set(c.threadId,scope.key);
 }
-async function send(c,text,model,effort,attachmentIds=[],partyStep=null,scheduled=null,delivery=null){
+async function send(c,text,model,effort,attachmentIds=[],partyStep=null,scheduled=null,delivery=null,residentContext=null){
  if(historyImportIds.has(c.id))throw Error('履歴の更新を保存しています。完了後に送信してください。');
  const scope=conversationWorkspaces.snapshot(c,{readOnly:Boolean(partyStep||scheduled)});
  if(projects?.active.size)throw Error('projectの隊が作業中です。相談への回答はprojectの会話から送れます。');
@@ -461,10 +464,10 @@ async function send(c,text,model,effort,attachmentIds=[],partyStep=null,schedule
   const latestGate=checkPlan(state.account,state.limits);if(!state.connected||state.login||!latestGate.ok){rememberScheduledQuotaStop(c,latestGate.reason);throw Object.assign(Error(latestGate.reason||'Codexの接続状態を確認してください。'),{code:'quota'});}
   partyStep?.onTurnRequest();
   scheduled?.onTurnRequest();
-  const r=await rpc('turn/start',{threadId:c.threadId,input:[...importedInput,...skillInput(skills),...attachments.input(rows),...contextInput(contexts,text)],model,effort,...scope.turn});
+  const r=await rpc('turn/start',{threadId:c.threadId,input:[...importedInput,...(residentContext?.input||[]),...skillInput(skills),...attachments.input(rows),...contextInput(contexts,text)],model,effort,...scope.turn});
   if(c.migration)c.migration.contextSent=true;
   consumeShot(c,skills);
-  c.messages.splice(index,0,{id:randomUUID(),role:'user',text,createdAt:Date.now(),...(delivery?{delivery}:{}),...(scheduled?{scheduleId:scheduled.id,scheduleAttemptId:scheduled.attemptId}:{}),...(partyStep?{partyQuestId:partyStep.questId,partyStepId:partyStep.stepId,partyRole:partyStep.role}:{}),skills:skills.map(publicSkill),attachments:rows.map(row=>attachments.public(row)),contextIds:contexts.map(e=>e.id)});c.model=model;await changed(c);
+  c.messages.splice(index,0,{id:randomUUID(),role:'user',text,createdAt:Date.now(),...(delivery?{delivery}:{}),...(residentContext?.metadata?{residentContext:residentContext.metadata}:{}),...(scheduled?{scheduleId:scheduled.id,scheduleAttemptId:scheduled.attemptId}:{}),...(partyStep?{partyQuestId:partyStep.questId,partyStepId:partyStep.stepId,partyRole:partyStep.role}:{}),skills:skills.map(publicSkill),attachments:rows.map(row=>attachments.public(row)),contextIds:contexts.map(e=>e.id)});c.model=model;await changed(c);
   await commitAttachments(rows);await attachContexts(contexts);
   if(c.status==='starting'){c.turnId=r.turn.id;c.status='running';changed(c);}
   return r.turn.id;
@@ -1060,6 +1063,8 @@ const server=http.createServer(async(req,res)=>{
    if(p==='/api/projects/revise')return json(res,200,await projects.revise(b));
    if(p==='/api/projects/read')return json(res,200,await projects.read(b));
    if(p==='/api/projects/answer')return json(res,200,await projects.answer(b));
+   if(p==='/api/discoveries/copy')return json(res,200,await discoveries.copy(adventure.value.journal,b.questId));
+   if(p==='/api/discoveries/import')return json(res,200,await discoveries.import(b.code));
    if(p==='/api/adventure/start')return json(res,200,await startAdventure(b));
    if(p==='/api/adventure/accept')return json(res,200,await adventure.accept(b.questId));
    if(p==='/api/adventure/discard')return json(res,200,await adventure.discard(b.questId));
@@ -1157,9 +1162,9 @@ const server=http.createServer(async(req,res)=>{
     changed(c);return json(res,200,c);
    }
    if(p==='/api/send'&&c.project){if(b.attachmentIds?.length)throw Error('projectの相談には本文で回答してください。');const project=projects.find(c.project.id),event=project.events.find(e=>e.conversationId===c.id&&e.kind!=='progress'&&e.status==='open');if(!event)throw Error('この会話には回答待ちの相談がありません。');await projects.answer({id:project.id,eventId:event.id,text:b.text,requestId:b.requestId});return json(res,200,{ok:true});}
-   if(p==='/api/send'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('メッセージまたは添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'send'},delivery=>send(c,b.text.trim(),b.model,b.effort||'medium',b.attachmentIds,null,null,delivery));return json(res,200,{ok:true});}
+   if(p==='/api/send'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('メッセージまたは添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'send'},delivery=>send(c,b.text.trim(),b.model,b.effort||'medium',b.attachmentIds,null,null,delivery,buildResidentContext({visit:b.residentVisit,conversation:c,conversations,party:parties.state.party})));return json(res,200,{ok:true});}
    if(p==='/api/steer'&&c.project)throw Error('この隊への回答は相談が届いてから送信してください。');
-   if(p==='/api/steer'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('追加指示または添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'steer'},delivery=>steer(c,b.text.trim(),b.expectedTurnId,b.attachmentIds,delivery));return json(res,200,{ok:true});}
+   if(p==='/api/steer'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('追加指示または添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'steer'},delivery=>steer(c,b.text.trim(),b.expectedTurnId,b.attachmentIds,delivery,buildResidentContext({visit:b.residentVisit,conversation:c,conversations,party:parties.state.party})));return json(res,200,{ok:true});}
    if(p==='/api/stop'&&c.project){await projects.configure({id:c.project.id,action:'pause'});return json(res,200,{ok:true});}
    if(p==='/api/stop'){await interrupt(c);return json(res,200,{ok:true});}
    return json(res,404,{error:'Not found'});
@@ -1195,7 +1200,7 @@ async function shutdown(){
  for(const item of schedules.public().items)if(['starting','running'].includes(item.status))await schedules.finish({...scheduleIdentity(item),status:'uncertain',error:'アプリの終了前の結果を確認してください。自動では再実行しません。',errorCode:'shutdown'}).catch(()=>{});
  await activityWork;
  await inbox.operations;
- await Promise.allSettled([writing,contextBoard.writing,attachments.writing,parties.writing,plugins.writing,teamsDrafts.writing,todos.writing,media.writing,inbox.writing,schedules.writing,reports.writing,boardDispatch.writing,adventure.writing,village.writing,projects?.writing,agentBoard?.writing,world?.observing,world?.writing,world?.artifacts.writing]);process.exit(0);
+ await Promise.allSettled([writing,contextBoard.writing,attachments.writing,parties.writing,plugins.writing,teamsDrafts.writing,todos.writing,media.writing,inbox.writing,schedules.writing,reports.writing,boardDispatch.writing,adventure.writing,discoveries.writing,village.writing,projects?.writing,agentBoard?.writing,world?.observing,world?.writing,world?.artifacts.writing]);process.exit(0);
 }
 process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);if(process.connected)process.on('disconnect',shutdown);
 if(process.env.CHAT_UI_READY_STDOUT==='1'){process.stdin.resume();process.stdin.on('end',shutdown);}

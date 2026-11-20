@@ -1,6 +1,45 @@
-# A2ACraft 0.4.14 — Mac preview status
+# A2ACraft 0.4.15 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+Version 0.4.15 adds minimal discovery exchange and companion-aware village
+conversation. The two sharing actions copy one code and import one code. Its
+only fields are opaque quest ID, discovery ID and kind; request text, model
+output, names, paths and files are excluded. Import writes the minimal record
+before lighting the workshop. Duplicate imports, including concurrent requests
+and imports after restart, do not advance the count or revision. Workshop
+discoveries are separate from accepted local quest progress. Folder sync and
+Google sign-in are not included.
+
+Village sends now use the saved accompanying party's roles and recent user/
+assistant conversation excerpts (up to 2,000 characters per member and 8,000
+total). Only the selected companions are included, excluding the recipient;
+tool records and attachments are excluded. The compact roster shows who will
+inform the next reply, and messages retain roster provenance without another
+copy of the excerpts. Instructions apply only to the submitted turn. Ordinary
+chat sends are unchanged; the project map's single travelling actor uses solo
+context. Changed formations reject a stale send; accepted retries cannot send
+again or silently substitute another roster. The sample map and tavern now use
+the same initial party.
+
+Browser UI checks on 2026-11-20 verified a sample discovery lighting the workshop,
+a repeated import remaining at one, and persistence across reload. The copy
+button reported success; the control tool's separate virtual clipboard returned
+empty, so an equivalent explicit sample code was entered for the import check.
+Clipboard fallback and outbound-code validation passed handler tests. Changing
+the sample party from research/writing/review to implementation changed the
+scripted answer to the same question. Actual send/steer route tests inspected
+the outgoing Codex input, but a live model comparison and two-person play test
+have not been performed.
+
+All 483 automated tests and the module-size check passed. The arm64 package
+passed strict ad-hoc signature verification; 185 packaged
+backend/frontend/Electron files matched source. Native Mac launch, map and
+sharing controls were observed. Display Diagnostics reported 0.4.15, a loaded
+renderer, a visible window inside the display work area, and no crash/load
+error. Two control-tool calls timed out; reacquiring the exact app restored
+access. This does not establish their cause. No SSH/Proton protection or system
+permission was changed. No model request was dispatched by this verification.
 
 Version 0.4.14 removes a startup dependency on the diagnostic IPC callback.
 Application loading now proceeds even if delivery of a progress notification

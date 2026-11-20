@@ -21,6 +21,7 @@ async function fixture({write,files=[]}={}){
   const desktopDrafts=write?createDraftPersistence({write}):null;
   context=vm.createContext({
     $:selector=>({'#composer':composer,'#prompt':prompt,'#model':{value:'model'},'#effort':{value:'medium'}})[selector],
+    residentVisitForChat:()=>null,
     demo:false,sendBlocked:false,pendingSends:new Set(),selected:'chat',drafts:{chat:'original'},sendRequests:{},steerPending:false,
     chats:[{id:'chat',status:'idle',messages:[]}],state:{policy:{ok:true}},desktopDrafts,
     requestForSend:(...args)=>requestForSend(...args,()=> 'request-'+(++sequence)),sendWasAccepted,restoreSendDraft,
@@ -34,6 +35,15 @@ async function fixture({write,files=[]}={}){
   vm.runInContext(source.slice(start,end),context);
   return {context,prompt,pending,calls,notices,restores,snapshots,server,desktopDrafts,fetchCount:()=>fetchCount,submit:()=>composer.onsubmit({preventDefault(){}})};
 }
+
+test('resident visits reach the API and durable retry identity with the submitted formation',async()=>{
+  const f=await fixture(),visit={source:'village',partyKey:'current-party'};
+  f.context.residentVisitForChat=id=>id==='chat'?visit:null;
+  const response=f.submit();await tick();
+  assert.deepEqual(f.calls[0].data.residentVisit,visit);
+  assert.deepEqual(JSON.parse(f.context.sendRequests.chat.fingerprint).residentVisit,visit);
+  f.pending.resolve({ok:true});await response;
+});
 
 test('lost HTTP acknowledgement recognizes a text-only receipt without restoring it over a newer draft',async()=>{
   const f=await fixture(),response=f.submit();await tick();
