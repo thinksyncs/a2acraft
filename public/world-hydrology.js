@@ -7,7 +7,7 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const empty=()=>({water:[],rivers:[],outlets:[],source:null,mouth:null,bankWidth:10});
 
 function gridFor(island){
- const b=island?.bounds,cell=island?.gridSize;
+ const b=island?.gridBounds||island?.bounds,cell=island?.gridSize;
  if(!b||![b.left,b.right,b.top,b.bottom,cell].every(Number.isFinite)||cell<=0||
   b.right<=b.left||b.bottom<=b.top||!Array.isArray(island.landPatches))return null;
  const cols=Math.ceil((b.right-b.left)/cell),rows=Math.ceil((b.bottom-b.top)/cell);
@@ -150,6 +150,25 @@ export function worldHydrology(island,{roads=[],obstacles=[]}={}){
   current=next[0];cells.push(current);
  }
  const course=soften(cells.map(center),island,cell,radius,solids),mouth={...outlet.point};
+ if(island.islets){
+  // The catchment uses a coarse dry-cell grid. Place its mouth on the actual
+  // curved shore along the last downstream face.
+  const origin=center(outlet.id),direction=outlet.normal;
+  let nearest=Infinity,normal=direction;
+  for(let i=0;i<island.coast.length;i++){
+   const a=island.coast[i],b=island.coast[(i+1)%island.coast.length];
+   const dx=b.x-a.x,dy=b.y-a.y,denominator=direction.x*dy-direction.y*dx;
+   if(denominator<=0)continue;
+   const x=a.x-origin.x,y=a.y-origin.y;
+   const t=(x*dy-y*dx)/denominator,u=(x*direction.y-y*direction.x)/denominator;
+   if(t<0||u<0||u>1||t>=nearest)continue;
+   nearest=t;const length=Math.hypot(dx,dy);normal={x:dy/length,y:-dx/length};
+  }
+  if(Number.isFinite(nearest)){
+   mouth.x=origin.x+direction.x*nearest;mouth.y=origin.y+direction.y*nearest;
+   outlet.normal=normal;
+  }
+ }
  const end={x:mouth.x+outlet.normal.x*cell*.25,y:mouth.y+outlet.normal.y*cell*.25};
  const full=[...course,mouth,end],length=full.slice(1).reduce((sum,p,i)=>sum+distance(full[i],p),0);
  const count=Math.min(760,Math.max(40,Math.ceil(length/10))),sample=samplePath(full,count),points=sample.points;
@@ -178,6 +197,10 @@ export function worldHydrology(island,{roads=[],obstacles=[]}={}){
  // without banks, so the sea and river have a genuinely open shared mouth.
  const outletWater=water.flatMap(rect=>{
   const cut={...rect};
+  if(island.islets){
+   const farX=outlet.normal.x>0?cut.right:cut.left,farY=outlet.normal.y>0?cut.bottom:cut.top;
+   return (farX-mouth.x)*outlet.normal.x+(farY-mouth.y)*outlet.normal.y>=-shoreReach?[cut]:[];
+  }
   if(outlet.normal.x>0)cut.left=Math.max(cut.left,mouth.x-shoreReach);
   else if(outlet.normal.x<0)cut.right=Math.min(cut.right,mouth.x+shoreReach);
   else if(outlet.normal.y>0)cut.top=Math.max(cut.top,mouth.y-shoreReach);

@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('desktop', Object.freeze({
+// The startup page shares the native window, but only the product's loopback
+// document receives a desktop bridge. Main-process IPC also verifies the exact origin.
+if (location.protocol === 'http:' && location.hostname === '127.0.0.1') contextBridge.exposeInMainWorld('desktop', Object.freeze({
   isElectron: true,
   platform: process.platform,
   version: process.versions.electron,

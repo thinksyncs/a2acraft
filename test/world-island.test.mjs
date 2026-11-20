@@ -26,7 +26,7 @@ test('one coastline encloses districts, facilities and every saved travel segmen
     assert.ok(pointInIsland({x:point.x+dx,y:point.y+dy},island),'beach leaves protected work on grass');
 });
 
-test('the island is deterministic, stepped and surrounded by sea independent of input order',()=>{
+test('the island is deterministic, curved and surrounded by sea independent of input order',()=>{
   const input=fixtures(),island=createWorldIsland(input);
   assert.deepEqual(island,createWorldIsland({...input,regions:[...input.regions].reverse(),
     roads:[...input.roads].reverse().map(road=>({...road,points:[...road.points].reverse()})),buildings:[...input.buildings].reverse()}));
@@ -37,19 +37,23 @@ test('the island is deterministic, stepped and surrounded by sea independent of 
   assert.equal(pointInIsland({x:NaN,y:0},island),false);
 });
 
-test('a protected rectangular world gains tiled capes and inlets without moving its contents',()=>{
+test('a protected rectangular world gains curved capes and inlets without moving its contents',()=>{
   const bounds={left:-700,right:2100,top:-400,bottom:1700},island=createWorldIsland({regions:[bounds]});
   assert.ok(island.coast.length>24,'the coastline must have more than four rounded corners');
   assert.ok(island.bounds.right-island.bounds.left>=(bounds.right-bounds.left)*3);
   assert.ok(island.bounds.bottom-island.bounds.top>=(bounds.bottom-bounds.top)*3);
   for(const point of corners(bounds))assert.ok(pointInIsland(point,island),'the saved world remains fully protected');
-  let inlets=0;
+  let inlets=0,diagonals=0,maxTurn=0;
   for(let i=0;i<island.coast.length;i++){
     const a=island.coast[i],b=island.coast[(i+1)%island.coast.length],c=island.coast[(i+2)%island.coast.length];
-    assert.ok(a.x===b.x||a.y===b.y,'every edge follows the shared tile grid');
-    assert.ok(Number.isInteger(a.x/island.gridSize)&&Number.isInteger(a.y/island.gridSize));
+    if(a.x!==b.x&&a.y!==b.y)diagonals++;
+    const dot=(b.x-a.x)*(c.x-b.x)+(b.y-a.y)*(c.y-b.y);
+    const lengths=Math.hypot(b.x-a.x,b.y-a.y)*Math.hypot(c.x-b.x,c.y-b.y);
+    maxTurn=Math.max(maxTurn,Math.acos(Math.max(-1,Math.min(1,dot/lengths))));
     if((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)<0)inlets++;
   }
+  assert.ok(diagonals>island.coast.length*.90,'the shore runs smoothly across cell edges');
+  assert.ok(maxTurn<Math.PI/2,'no stair-step right angles on the coast');
   assert.ok(inlets>=4,'real concave inlets must replace the former convex hull');
 });
 
@@ -71,7 +75,7 @@ test('work occupies a small part of a physically larger world with broad sea-con
   }
   assert.ok(rows.some(intervals=>intervals.length>=2&&intervals.some((interval,i)=>i&&interval[0]-intervals[i-1][1]>width*.18)),
     'a broad bay must separate large peninsulas rather than adding one-cell edge noise');
-  assert.ok(island.coast.length>100,'the wider world retains detailed tile shores');
+  assert.ok(island.coast.length>100,'the wider world retains detailed shores');
 });
 
 test('sparse large worlds retain finite bounded-complexity coastline geometry',()=>{
@@ -154,11 +158,17 @@ test('3D ocean, beach, grass, geographic ground and river partition their footpr
   assert.equal(coloredArea(island.seaColor),area(seaBounds)-landArea,'the ocean ends at the coast instead of extending under land');
 });
 
-test('the 3D land patches and general 2D coastline cover exactly the same tiled island without overlaps',()=>{
+test('land picking matches the contours of the mainland and offshore islets',()=>{
   const island=createWorldIsland({regions:[region]}),step=island.gridSize;
   for(let y=island.bounds.top-step/2;y<=island.bounds.bottom+step/2;y+=step)
     for(let x=island.bounds.left-step/2;x<=island.bounds.right+step/2;x+=step)
-      assert.equal(pointInIsland({x,y},island),pointInIsland({x,y},{coast:island.coast}),JSON.stringify({x,y}));
+      assert.equal(pointInIsland({x,y},island),[island.coast,...island.islets].some(coast=>pointInIsland({x,y},{coast})),JSON.stringify({x,y}));
+  assert.ok(island.islets.length>=1);
+  for(const ring of island.islets){
+    const center={x:ring.reduce((sum,p)=>sum+p.x,0)/ring.length,y:ring.reduce((sum,p)=>sum+p.y,0)/ring.length};
+    assert.ok(pointInIsland(center,island));
+    assert.ok(!pointInIsland(center,{coast:island.coast}),'each offshore islet is separate from the mainland');
+  }
   for(let i=0;i<island.landPatches.length;i++)for(let j=i+1;j<island.landPatches.length;j++){
     const a=island.landPatches[i],b=island.landPatches[j];
     assert.ok(a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top,'no coplanar patch interiors overlap');

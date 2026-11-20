@@ -1,3 +1,4 @@
+import {coastalFootprintDry} from './world-coast.js';
 import {islandLandRoute,islandRouteWalkable,islandSegmentOnLand} from './world-island-travel.js';
 import {meanderRoad} from './world-road-shape.js';
 
@@ -14,6 +15,7 @@ export function villageMountainObstacles(biomes={}) {
 }
 
 function dryRectangle(area,island) {
+  if(island.islets)return coastalFootprintDry(area,island)&&island.landPatches.some(p=>area.left<p.right&&area.right>p.left&&area.top<p.bottom&&area.bottom>p.top);
   const total=(area.right-area.left)*(area.bottom-area.top);
   let covered=0;
   for(const p of island.landPatches||[])covered+=Math.max(0,Math.min(area.right,p.right)-Math.max(area.left,p.left))*Math.max(0,Math.min(area.bottom,p.bottom)-Math.max(area.top,p.top));

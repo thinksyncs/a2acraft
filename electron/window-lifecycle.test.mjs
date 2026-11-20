@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import {fitWindowBounds, fitWindowToWorkArea, revealWindow, revealForDialog, waitForWindowLoad, createStartupWindow} from './window-lifecycle.mjs';
+import {fitWindowBounds, fitWindowToWorkArea, revealWindow, revealForDialog, waitForWindowLoad, startupPageURL, beginWindowSession} from './window-lifecycle.mjs';
 import {createCloseCoordinator} from './close-coordinator.mjs';
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((ok,no)=>{resolve=ok;reject=no;});return {promise,resolve,reject};};
@@ -216,24 +216,20 @@ test('a synchronous load failure also cleans up, and a destroyed window is never
   assert.deepEqual(closed.urls,[]);assert.deepEqual(closed.calls,[]);
 });
 
-test('startup has a visible isolated window before its page is ready and delegates closing',async()=>{
-  let closed=0;
-  const window=createStartupWindow(WindowFixture,{onClose:()=>{closed++;}});
+test('the visible startup window can navigate to the product without replacing its native handle',async()=>{
+  const window=new WindowFixture();
+  const startupURL=startupPageURL();
+  assert.match(startupURL,/^data:text\/html;charset=utf-8,/);
+  const html=decodeURIComponent(startupURL.slice(startupURL.indexOf(',')+1));
+  assert.match(html,/default-src 'none'/);
+  assert.doesNotMatch(html,/<script\b|<iframe\b/i);
+  const navigate=beginWindowSession(window);
   assert.equal(window.visible,true);
-  const prefs=window.options.webPreferences;
-  assert.equal(prefs.nodeIntegration,false);assert.equal(prefs.contextIsolation,true);
-  assert.equal(prefs.sandbox,true);assert.equal(prefs.webSecurity,true);
-  assert.equal(prefs.preload,undefined);
-  assert.equal(typeof prefs.partition,'string');assert.ok(prefs.partition.length>0);
-  assert.doesNotMatch(prefs.partition,/^persist:/);
-  assert.deepEqual(window.openHandler({url:'https://unrelated.example'}),{action:'deny'});
-  assert.match(window.urls[0],/^data:text\/html;charset=utf-8,/);
-  const html=decodeURIComponent(window.urls[0].split(',').slice(1).join(','));
-  assert.match(html,/default-src 'none'/);assert.doesNotMatch(html,/<script\b/i);
-  let navigationPrevented=false;
-  window.webContents.emit('will-navigate',{preventDefault(){navigationPrevented=true;}},'https://unrelated.example');
-  assert.equal(navigationPrevented,true);
-  let prevented=false;window.emit('close',{preventDefault(){prevented=true;}});
-  assert.equal(prevented,true);assert.equal(closed,1);assert.equal(window.destroyed,false);
-  window.load.resolve();await tick();
+  const productURL='http://127.0.0.1:4317/?desktop=1';
+  const loaded=navigate(productURL);
+  window.load.resolve();
+  await loaded;
+  assert.deepEqual(window.urls,[startupURL,productURL]);
+  assert.equal(window.visible,true);
+  assert.equal(window.destroyed,false);
 });

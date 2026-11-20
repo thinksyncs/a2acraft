@@ -1,3 +1,4 @@
+import {smoothCoast, offshoreIslets, onCoastalLand} from './world-coast.js';
 // Display geometry only. Existing work, routes and saved world positions stay put.
 const finitePoint = point => point && Number.isFinite(point.x) && Number.isFinite(point.y);
 const cross = (a,b,c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
@@ -59,7 +60,10 @@ function tileCoast(bounds,protectedHull) {
   for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
     const rect={left:left+x*cell,right:left+(x+1)*cell,top:top+y*cell,bottom:top+(y+1)*cell};
     const point={x:(rect.left+rect.right)/2,y:(rect.top+rect.bottom)/2};
-    const protectedCell=touchesConvex(rect,protectedHull);
+    // Keep the smoothed fringe clear of the saved world's convex footprint.
+    const buffer=cell*.65;
+    const protectedCell=touchesConvex({left:rect.left-buffer,right:rect.right+buffer,
+      top:rect.top-buffer,bottom:rect.bottom+buffer},protectedHull);
     const nx=(point.x-center.x)/halfWidth,ny=(point.y-center.y)/halfHeight;
     const roughness=(seed(Math.floor((left/cell+x)/3)+':'+Math.floor((top/cell+y)/2))%13-6)*.012;
     const continent=continents.some(shape=>ellipse(nx,ny,...shape)<=1+roughness);
@@ -102,7 +106,7 @@ function tileCoast(bounds,protectedHull) {
   const start=[...edges.keys()].map(id=>id.split(',').map(Number)).sort((a,b)=>a[0]-b[0]||a[1]-b[1])[0];
   const vertices=[];let point=start;
   do {vertices.push(point);point=edges.get(key(...point));} while(point&&key(...point)!==key(...start)&&vertices.length<=edges.size);
-  const coast=vertices.filter((b,index)=>{
+  const gridOutline=vertices.filter((b,index)=>{
     const a=vertices[(index+vertices.length-1)%vertices.length],c=vertices[(index+1)%vertices.length];
     return (b[0]-a[0])*(c[1]-b[1])!==(b[1]-a[1])*(c[0]-b[0]);
   }).map(([x,y])=>({x:left+x*cell,y:top+y*cell}));
@@ -117,7 +121,9 @@ function tileCoast(bounds,protectedHull) {
     }
     active=next;
   }
-  return {coast,landPatches,gridSize:cell};
+  const gridBounds=boundsOf(gridOutline);
+  const coast=smoothCoast(vertices,cell,{left,top}),islets=offshoreIslets(coast,cell,gridBounds);
+  return {coast,islets,landPatches,gridSize:cell,gridBounds};
 }
 
 /** One stable coastline encloses every district, facility and recorded road. */
@@ -141,9 +147,11 @@ export function createWorldIsland({regions=[],roads=[],buildings=[],bounds,paddi
   const height=Math.max(12800,(protectedBounds.bottom-protectedBounds.top)*3.6+margin*2);
   const cx=(protectedBounds.left+protectedBounds.right)/2,cy=(protectedBounds.top+protectedBounds.bottom)/2;
   const world={left:cx-width/2,right:cx+width/2,top:cy-height/2,bottom:cy+height/2};
-  const {coast,landPatches,gridSize}=tileCoast(world,protectedHull),coastBounds=boundsOf(coast);
+  const {coast,islets,landPatches,gridSize,gridBounds}=tileCoast(world,protectedHull);
+  const coastBounds={left:Math.min(gridBounds.left,...coast.map(p=>p.x)),right:Math.max(gridBounds.right,...coast.map(p=>p.x)),
+    top:Math.min(gridBounds.top,...coast.map(p=>p.y)),bottom:Math.max(gridBounds.bottom,...coast.map(p=>p.y))};
   const seaMargin=Math.max(320,Math.hypot(coastBounds.right-coastBounds.left,coastBounds.bottom-coastBounds.top)*.07);
-  return {coast,landPatches,gridSize,bounds:coastBounds,protectedBounds,
+  return {coast,islets,landPatches,gridSize,gridBounds,bounds:coastBounds,protectedBounds,
     seaBounds:{left:coastBounds.left-seaMargin,right:coastBounds.right+seaMargin,
       top:coastBounds.top-seaMargin,bottom:coastBounds.bottom+seaMargin},
     seaColor:'#315e75',sandColor:'#c7bb83',landColor:'#78924f',shoreWidth:18};
@@ -152,6 +160,7 @@ export function createWorldIsland({regions=[],roads=[],buildings=[],bounds,paddi
 export function pointInIsland(point,island) {
   const coast=island?.coast;
   if(!finitePoint(point)||!Array.isArray(coast)||coast.length<3)return false;
+  if(island.islets)return onCoastalLand(point,island);
   if(Array.isArray(island.landPatches))return island.landPatches.some(rect=>
     point.x>=rect.left-1e-6&&point.x<=rect.right+1e-6&&point.y>=rect.top-1e-6&&point.y<=rect.bottom+1e-6);
   let inside=false;

@@ -1,6 +1,12 @@
-# A2ACraft 0.4.16 — Mac preview status
+# A2ACraft 0.4.17 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+In 0.4.17 the startup page and the product share a native window. Capture and accessibility clients can retain the original window handle when the map loads. Previously the startup window was destroyed after opening a second window.
+
+The village and project map use the same curved coastline for the overhead view, the leader view and walking. The sample world has two offshore islets. The village walk demo follows the central lane, approaches a resident and opens their speech bubble. In the browser sample we recorded the walk to ヴィオ・ベル and the arrival with both views visible.
+
+The Apple Silicon build passed strict ad-hoc signature verification and 514 automated tests passed. In the verification session, selecting 0.4.16 for capture timed out (`-10005`). Launch Services reported `-10827` for both 0.4.16 and 0.4.17 despite an executable being present. The 0.4.16 executable also exited with SIGABRT when started directly in that session. The window fix addresses the disappearing handle. Native recording still requires a successful launch on the Mac.
 
 Version 0.4.16 replaces the map's front-facing character/building stamps with
 an oblique projection of the same original 3D meshes used by the eye view.

@@ -20,17 +20,19 @@ test('the wider world adds substantial usable land instead of expanding only its
   }
 });
 
-test('translated and elongated work areas keep one connected landmass with the same 2D and 3D coverage',()=>{
+test('translated and elongated work areas keep a connected mainland with matching mainland and islet coverage',()=>{
   for(const [dx,dy,width,height] of [[0,0,2800,2050],[1731,-2047,3600,2600],
     [-32000,48000,7000,1000],[45000,-29000,1300,6400],[120000,80000,6000,5000]]){
     const island=createWorldIsland({regions:[{left:dx,right:dx+width,top:dy,bottom:dy+height}]}),
-      step=island.gridSize,cols=Math.round((island.bounds.right-island.bounds.left)/step),
-      rows=Math.round((island.bounds.bottom-island.bounds.top)/step),land=new Set();
+      step=island.gridSize,grid=island.gridBounds,cols=Math.round((grid.right-grid.left)/step),
+      rows=Math.round((grid.bottom-grid.top)/step),land=new Set();
     for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
-      const point={x:island.bounds.left+(col+.5)*step,y:island.bounds.top+(row+.5)*step};
+      const point={x:grid.left+(col+.5)*step,y:grid.top+(row+.5)*step};
       const inside=pointInIsland(point,island);
-      assert.equal(inside,pointInIsland(point,{coast:island.coast}),'2D coast and 3D rectangles must cover the same cells');
-      if(inside)land.add(col+','+row);
+      const mainland=pointInIsland(point,{coast:island.coast});
+      assert.equal(inside,mainland||island.islets.some(coast=>pointInIsland(point,{coast})),
+        'the shared terrain covers the mainland and detached islets');
+      if(mainland)land.add(col+','+row);
     }
     const seen=new Set(),queue=[[...land][0]];
     for(let index=0;index<queue.length;index++){

@@ -1,11 +1,14 @@
+import {coastLoops} from './world-coast.js';
 // Both map scales draw the same coast. Zoom changes the view, not the island.
 function coastPath(ctx, island) {
   const coast = island?.coast || [];
   if (coast.length < 3) return false;
   ctx.beginPath();
-  ctx.moveTo(coast[0].x, coast[0].y);
-  for (const point of coast.slice(1)) ctx.lineTo(point.x, point.y);
-  ctx.closePath();
+  for(const ring of coastLoops(island)){
+    ctx.moveTo(ring[0].x,ring[0].y);
+    for(let i=1;i<ring.length;i++)ctx.lineTo(ring[i].x,ring[i].y);
+    ctx.closePath();
+  }
   return true;
 }
 
@@ -41,7 +44,7 @@ export function clipIslandLand(ctx, island) {
 export function drawIslandCoast(ctx, island) {
   if (!coastPath(ctx, island)) return;
   ctx.save();
-  ctx.lineJoin = 'miter';
+  ctx.lineJoin = 'round';
   ctx.miterLimit = 2;
   ctx.strokeStyle = '#8bc3bb';
   ctx.lineWidth = 25;

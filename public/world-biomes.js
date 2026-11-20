@@ -1,3 +1,4 @@
+import {coastalFootprintDry} from './world-coast.js';
 // Natural scenery for the wider world, shared by the atlas and 3D projection.
 // These places never create work, residents, buildings or progress.
 export const BIOME_COLORS = Object.freeze({woodland:'#456f45',mountain:'#a79c78',moor:'#aaa16d'});
@@ -58,7 +59,7 @@ export function worldBiomes(island, {regions=[],roads=[],facilities=[],water=[]}
     const row=[];
     for(let gx=Math.floor(bounds.left/step);gx<Math.ceil(bounds.right/step);gx++){
       const rect={left:gx*step,right:(gx+1)*step,top:gy*step,bottom:(gy+1)*step};
-      if(!coveredByLand(rect,island.landPatches)||clearings.some(area=>overlaps(rect,area))||
+      if((island.islets?!coastalFootprintDry(rect,island):!coveredByLand(rect,island.landPatches))||clearings.some(area=>overlaps(rect,area))||
         rivers.some(area=>overlaps(rect,area))||segments.some(segment=>crossesRoad(rect,segment)))continue;
       const wet=Math.sin(gx*.23)+Math.cos(gy*.31)*.6+Math.sin((gx-gy)*.17)*.35;
       const ridge=Math.sin(gx*.31+Math.sin(gy*.16)*1.8);

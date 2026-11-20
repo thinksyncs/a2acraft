@@ -1,5 +1,3 @@
-import {randomUUID} from 'node:crypto';
-
 // The caller supplies the work area of the window's own display. Preserve its
 // size where possible and support displays to the left/above the main display.
 export function fitWindowBounds(bounds, workArea) {
@@ -85,24 +83,9 @@ export async function waitForWindowLoad(window, url, {timeoutMs = 30000, canReve
   }
 }
 
-// A visible, inert native window covers settings/backend startup as well as a
-// delayed first renderer frame. Its session is ephemeral, with no preload,
-// application IPC or network content.
-export function createStartupWindow(BrowserWindow, {onClose} = {}) {
-  const window = new BrowserWindow({
-    width: 540, height: 320, resizable: false, minimizable: true,
-    title: 'A2ACraft · 起動中', backgroundColor: '#142426', show: true,
-    autoHideMenuBar: true,
-    webPreferences: {partition: 'a2acraft-startup-' + randomUUID(),
-      contextIsolation: true, nodeIntegration: false,
-      sandbox: true, webSecurity: true, webviewTag: false, devTools: false}
-  });
-  window.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
-  window.webContents.on('will-navigate', event => event.preventDefault());
-  window.webContents.on('will-attach-webview', event => event.preventDefault());
-  window.on('close', event => {
-    if (onClose) { event.preventDefault(); onClose(); }
-  });
+// Keep the same native window across startup, navigation and activation so
+// accessibility and capture clients can track it by its original window ID.
+export function startupPageURL() {
   const html = `<!doctype html><html lang="ja"><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>A2ACraft · 起動中</title><style>
@@ -110,7 +93,13 @@ html{color-scheme:dark;background:#142426;color:#f4e8c5;font:15px -apple-system,
 body{margin:0;min-height:240px;display:grid;place-content:center;text-align:center;gap:12px}
 h1{font-size:23px;margin:0}p{color:#bccfc7;margin:0;line-height:1.8}
 </style><h1>A2ACraft</h1><p>保存した会話と地図を読み込んでいます…</p></html>`;
-  // The native title/window remains visible even if this static page fails.
-  void window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html)).catch(() => {});
-  return window;
+  return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+}
+
+// The returned navigation is bound to the same native window that the OS sees
+// during launch, even if startup takes several seconds to prepare the session.
+export function beginWindowSession(window, reveal = revealWindow) {
+  reveal(window);
+  void window.loadURL(startupPageURL()).catch(() => {});
+  return (url, options) => waitForWindowLoad(window, url, options);
 }

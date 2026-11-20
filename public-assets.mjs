@@ -110,6 +110,7 @@ const sourceFiles = [
   "world-hydrology-art.js",
   "world-hydrology.js",
   "world-interiors.css",
+  "world-coast.js",
   "world-island-art.js",
   "world-island-travel.js",
   "world-island.js",

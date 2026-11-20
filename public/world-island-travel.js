@@ -1,3 +1,4 @@
+import {coastalSegmentDry} from './world-coast.js';
 import {pointInIsland} from './world-island.js';
 import {avoidBuildings} from './world-travel.js';
 
@@ -48,6 +49,7 @@ export function islandRouteWalkable(route,island,{obstacles=[],water=[],bridges=
 // Sampling endpoints alone would let a straight walk cut across a narrow bay.
 export function islandSegmentOnLand(a,b,island) {
   if(!finite(a)||!finite(b)||!pointInIsland(a,island)||!pointInIsland(b,island))return false;
+  if(island.islets)return coastalSegmentDry(a,b,island);
   const spans=[];
   for(const patch of island.landPatches||[]){
     let from=0,to=1;
@@ -65,7 +67,7 @@ export function islandSegmentOnLand(a,b,island) {
 }
 
 function islandGrid(island) {
-  const bounds=island.bounds,cell=island.gridSize;
+  const bounds=island.gridBounds||island.bounds,cell=island.gridSize;
   if(!bounds||!Number.isFinite(cell)||cell<=0)return null;
   const shape=JSON.stringify([bounds,cell,island.landPatches]);
   const saved=cache.get(island);if(saved?.shape===shape)return saved;
@@ -89,7 +91,7 @@ function islandGrid(island) {
     }
     return null;
   };
-  const result={shape,land,cols,rows,center,locate};cache.set(island,result);return result;
+  const result={shape,land,cols,rows,center,locate,bounds};cache.set(island,result);return result;
 }
 
 /** Free exploration on the existing continent; it never changes saved roads. */
@@ -114,7 +116,7 @@ export function islandLandRoute(start,target,island,{obstacles=[],water=[],bridg
   const link=(a,b)=>{if(!links.has(a))links.set(a,[]);links.get(a).push(b);};
   const attach=point=>{
     const id=nextId++;nodes.set(id,point);
-    const cx=Math.floor((point.x-island.bounds.left)/island.gridSize),cy=Math.floor((point.y-island.bounds.top)/island.gridSize);
+    const cx=Math.floor((point.x-grid.bounds.left)/island.gridSize),cy=Math.floor((point.y-grid.bounds.top)/island.gridSize);
     for(let y=cy-1;y<=cy+1;y++)for(let x=cx-1;x<=cx+1;x++){
       const cell=y*grid.cols+x;
       if(x<0||x>=grid.cols||y<0||y>=grid.rows||!grid.land.has(cell))continue;

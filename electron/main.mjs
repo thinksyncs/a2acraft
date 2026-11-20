@@ -2,7 +2,7 @@ import { app, BrowserWindow, session, ipcMain, shell, dialog, Menu, screen } fro
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile, mkdir, rename, stat, access } from 'node:fs/promises';
-import { constants } from 'node:fs';
+import { constants, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {startPreviewServer} from './preview-server.mjs';
@@ -12,7 +12,7 @@ import {createCloseCoordinator} from './close-coordinator.mjs';
 import {createMapStateStore} from './map-state.mjs';
 import {bundledCodexPath,resolveCodexExecutable} from './codex-runtime.mjs';
 import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
-import {createStartupWindow,revealWindow,revealForDialog,waitForWindowLoad,fitWindowToWorkArea} from './window-lifecycle.mjs';
+import {beginWindowSession,startupPageURL,revealWindow,revealForDialog,fitWindowToWorkArea} from './window-lifecycle.mjs';
 import {createWindowDiagnostics} from './window-diagnostics.mjs';
 import {createSavedReload,createWindowStateFlusher} from './saved-reload.mjs';
 import { isTrustedExternal, isAppUrl, isMainFrame } from './security.mjs';
@@ -23,7 +23,9 @@ app.setPath('userData',path.join(app.getPath('appData'),'personal-chat-ui'));
 app.setName('A2ACraft');
 const demo = process.argv.includes('--demo');
 const smoke = process.argv.includes('--smoke-test');
+const recordSampleWalk=process.argv.includes('--record-sample-walk');
 const validationPath=process.argv.find(value=>value.startsWith('--validation-data-dir='))?.slice('--validation-data-dir='.length);
+if(recordSampleWalk&&(!demo||smoke||validationPath))throw Error('Walk recording requires an isolated demo');
 if(validationPath){
   if(!path.isAbsolute(validationPath))throw Error('Validation data directory must be absolute');
   app.setPath('userData',validationPath);
@@ -31,6 +33,11 @@ if(validationPath){
 if(demo){
   const previewPath=process.argv.find(value=>value.startsWith('--preview-data-dir='))?.slice('--preview-data-dir='.length);
   if(previewPath&&!path.isAbsolute(previewPath))throw Error('Preview data directory must be absolute');
+  if(recordSampleWalk){
+    if(!previewPath)throw Error('Walk recording requires a new absolute preview directory');
+    // Fail if the requested directory already exists, before loading any UI state.
+    mkdirSync(previewPath,{mode:0o700});
+  }
   app.setPath('userData',previewPath||path.join(app.getPath('userData'),'Demo'));
 }
 if (smoke) {
@@ -38,7 +45,7 @@ if (smoke) {
   if (!smokePath || !path.isAbsolute(smokePath)) throw Error('Smoke test requires an isolated absolute data directory');
   app.setPath('userData', smokePath);
 }
-let window, startupWindow, backend, previewServer, origin, settings = {}, quitting = false, starting = true, restartRequired = false;
+let window, backend, previewServer, origin, settings = {}, quitting = false, starting = true, restartRequired = false;
 let relaunchRequested = false;
 let settingsWriting = Promise.resolve();
 let rendererFlushReady = false, rendererFlushWaiter = null;
@@ -91,7 +98,7 @@ const flushWindowState=createWindowStateFlusher({flushRenderer:flushRendererDraf
 
 const coordinatedClose = createCloseCoordinator({
   flush: async () => {
-    if (window && !window.isDestroyed()) {
+    if (!starting && window && !window.isDestroyed()) {
       await flushWindowState();
     }
     try { await settingsWriting; } catch { await writeSettings(); }
@@ -153,7 +160,7 @@ const recoverRuntime=createRuntimeRecovery({
     const options={type:'error',title:'A2ACraft',message:'アプリの画面を表示できません。',
       detail:detail+'\n保存済みの会話と設定は保持します。再起動して接続し直してください。',
       buttons:['再起動','終了'],defaultId:0,cancelId:1,noLink:true};
-    const parent=!starting&&window&&!window.isDestroyed()?window:startupWindow;
+    const parent=window;
     if(revealAppWindow(parent))return (await dialog.showMessageBox(parent,options)).response;
     return (await dialog.showMessageBox(options)).response;
   },
@@ -294,15 +301,14 @@ function installIpc() {
   handle('settings:set-workspace', directory => saveWorkDirectory(directory));
 }
 
-async function startBackend() {
+async function startBackend(token) {
   const backendRoot = app.isPackaged ? path.join(process.resourcesPath, 'backend') : app.getAppPath();
-  const token = randomBytes(32).toString('hex');
   if(demo){
     const {staticFiles}=await import(pathToFileURL(path.join(backendRoot,'public-assets.mjs')).href);
     if(quitting)return;
     previewServer=await startPreviewServer({root:path.join(backendRoot,'public'),assets:staticFiles,token});
     origin=previewServer.origin;
-    return createDesktopSession(token);
+    return;
   }
   const dataDir = path.join(app.getPath('userData'), 'data');
   await mkdir(dataDir, { recursive: true, mode: 0o700 });
@@ -326,16 +332,19 @@ async function startBackend() {
     if (!starting)reportRuntimeFailure('GUIサーバーとの接続が終了しました。 '+processDiagnostic({code,signal}));
   });
   child.on('error', error=>reportRuntimeFailure('GUIサーバーとの接続でエラーが発生しました。 '+processDiagnostic({code:error?.code})));
-  return createDesktopSession(token);
+
 }
 
-async function createDesktopSession(token){
+function createDesktopSession(){
   const desktopSession = session.fromPartition('chat-ui-' + randomBytes(12).toString('hex'));
-  await desktopSession.cookies.set({ url: origin, name: 'chat_ui_session', value: token, path: '/', httpOnly: true, sameSite: 'strict' });
   desktopSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   desktopSession.setPermissionCheckHandler(() => false);
   desktopSession.on('will-download', event => event.preventDefault());
-  desktopSession.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !isAppUrl(details.url, origin) }));
+  const startupURL = startupPageURL();
+  desktopSession.webRequest.onBeforeRequest((details, callback) => {
+    const isStartupPage = !origin && details.resourceType === 'mainFrame' && details.url === startupURL;
+    callback({cancel: !isStartupPage && !isAppUrl(details.url, origin)});
+  });
   return desktopSession;
 }
 
@@ -344,7 +353,7 @@ async function stopBackend() {
   await stopOwnedChild(backend);
 }
 
-async function createWindow(desktopSession) {
+function createWindow(desktopSession) {
   window = new BrowserWindow({
     width: 1560, height: 1060, minWidth: 920, minHeight: 620,
     title: 'A2ACraft · Toppy', backgroundColor: '#060b12',
@@ -361,24 +370,26 @@ async function createWindow(desktopSession) {
   fitOwnedWindow(window);
   const fittedWindow=window;
   fittedWindow.on('show',()=>fitOwnedWindow(fittedWindow));
-  windowDiagnostics?.observe(window);
   window.on('close', event => {
     if (quitting) return;
     event.preventDefault(); closeWithSavedDrafts();
   });
   window.webContents.on('did-start-loading', () => { rendererFlushReady = false; });
   window.webContents.on('did-fail-load',(_event,code,_description,_url,isMainFrame)=>{
-    if(isMainFrame&&code!==-3)reportRuntimeFailure('画面の読み込みに失敗しました。 '+processDiagnostic({code}),{rendererLost:true});
+    if(origin&&isMainFrame&&code!==-3)reportRuntimeFailure('画面の読み込みに失敗しました。 '+processDiagnostic({code}),{rendererLost:true});
   });
   window.webContents.on('render-process-gone',(_event,details)=>{
     reportRuntimeFailure('画面の処理が終了しました。 '+processDiagnostic({code:details?.exitCode}),{rendererLost:true});
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
-    openTrustedExternal(url).catch(() => {});
+    if (isAppUrl(window.webContents.getURL(), origin)) openTrustedExternal(url).catch(() => {});
     return { action: 'deny' };
   });
   window.webContents.on('will-navigate', (event, url) => {
-    if (!isAppUrl(url, origin)) { event.preventDefault(); openTrustedExternal(url).catch(() => {}); }
+    if (!isAppUrl(url, origin)) {
+      event.preventDefault();
+      if (isAppUrl(window.webContents.getURL(), origin)) openTrustedExternal(url).catch(() => {});
+    }
   });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
   window.webContents.on('will-frame-navigate', (event, details) => {
@@ -387,15 +398,24 @@ async function createWindow(desktopSession) {
   });
   const windowState = () => { if (!window.isDestroyed()) window.webContents.send('window:state', { maximized: window.isMaximized() }); };
   window.on('maximize', windowState); window.on('unmaximize', windowState);
-  const createdWindow=window;
+  // Provide an app-owned surface immediately and keep its native identity for
+  // the entire session, including a slow settings or backend startup.
+  return beginWindowSession(window, revealAppWindow);
+}
+
+async function loadProductWindow(navigate) {
   const url = new URL(origin);
   url.searchParams.set('desktop', '1');
   if (demo) { url.searchParams.set('demo', '1'); url.searchParams.set('village', 'sample'); url.searchParams.set('projects','sample'); url.searchParams.set('subagents','sample'); }
-  await waitForWindowLoad(createdWindow,url.href,{canReveal:()=>!quitting});
+  if(recordSampleWalk){url.searchParams.delete('projects');url.searchParams.set('walk','resident');}
+  await navigate(url.href,{canReveal:()=>!quitting});
   if(quitting)return;
   starting = false;
-  if(startupWindow&&!startupWindow.isDestroyed())startupWindow.destroy();
-  startupWindow=null;
+  if(recordSampleWalk){
+    const {captureSampleWalk}=await import('./sample-walk-capture.mjs');
+    const ok=await captureSampleWalk(window,{origin,profile:app.getPath('userData'),version:app.getVersion()});
+    if(!ok)process.exitCode=1;
+  }
   if (smoke) await smokeCheck();
 }
 
@@ -438,8 +458,7 @@ if (!gotLock) app.quit();
 else {
   const revealApp=()=>{
     if(quitting)return;
-    if(starting)revealAppWindow(startupWindow);
-    else if(!revealAppWindow(window))revealAppWindow(startupWindow);
+    revealAppWindow(window);
   };
   app.on('second-instance',revealApp);
   app.on('activate',revealApp);
@@ -449,8 +468,8 @@ else {
     event.preventDefault(); closeWithSavedDrafts();
   });
   app.whenReady().then(async () => {
-    startupWindow=createStartupWindow(BrowserWindow,{onClose:closeWithSavedDrafts});
-    fitOwnedWindow(startupWindow);
+    const desktopSession=createDesktopSession();
+    const navigate = createWindow(desktopSession);
     await mkdir(app.getPath('userData'), { recursive: true, mode: 0o700 });
     if(quitting)return;
     await readSettings();
@@ -487,9 +506,13 @@ else {
       const item=Menu.getApplicationMenu()?.getMenuItemById('screen-reading');
       if(item)item.checked=enabled;
     });
-    const desktopSession = await startBackend();
+    windowDiagnostics.observe(window);
+    const token=randomBytes(32).toString('hex');
+    await startBackend(token);
     if(quitting)return;
-    await createWindow(desktopSession);
+    await desktopSession.cookies.set({url:origin,name:'chat_ui_session',value:token,path:'/',httpOnly:true,sameSite:'strict'});
+    if(quitting)return;
+    await loadProductWindow(navigate);
   }).catch(error => {
     process.exitCode=1;
     reportRuntimeFailure(error.publicDiagnostic||'アプリを起動できませんでした。 '+processDiagnostic({code:error?.code}));

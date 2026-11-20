@@ -13,7 +13,7 @@ import {projectVillageActivities} from './village-activity.js';
 import {VILLAGE_WORLD,VILLAGE_PLACES} from './village-world.js';
 import {PartyTravel} from './world-travel.js';
 import {sceneBuildingObstacles} from './project-buildings.js';
-import {villageRiverWater,villageBridge} from './world-terrain.js';
+import {villageRiverWater,villageBridge,villageRoadRects} from './world-terrain.js';
 import {residentReport,acknowledgeResidentReport} from './world-dialogue.js';
 import {renderMessageMarkdown} from './message-markdown.js';
 import {renderConversationDetails} from './conversation-details.js';
@@ -637,6 +637,30 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function setVisible(value,{preserveEncounter=false}={}){const next=Boolean(value);root.hidden=!next;if(next===visible){if(next)render();else if(!preserveEncounter)endEncounter({redraw:false});return;}visible=next;world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(!visible){saveView();cancelTravel();clearTimeout(projectionTimer);projectionTimer=0;if(detail.open)detail.close();closeSpeech(false,{preserveEncounter});syncAnimation();return;}updateProjection();if(!insetInitialized)setInsetVisible(insetVisible);resize();syncAnimation();}
  function focus(){title.focus({preventScroll:true});root.scrollIntoView({block:'start'});}
+ // Optional sample itinerary. Each leg uses the same travel controller and
+ // encounter as selecting ground or a resident on the map.
+ function walkToSampleResident(){
+  if(!demo||!visible||new URLSearchParams(location.search).get('village')!=='sample')return;
+  const street=villageRoadRects().find(road=>road.x===0&&!road.vertical),y=street.y+street.h/2;
+  const locals=[...squadScenes.flatMap(squad=>squad.members),...positions].filter(person=>
+   /^village-demo-\d+$/.test(person.conversationId)&&person.x>street.x+20&&person.x<street.x+street.w-20);
+  // A resident near the main lane with enough room to see the party approach.
+  const score=person=>Math.abs(person.y-y)+Math.abs(Math.abs(person.x-heroPoint.x)-210)*.45;
+  const person=locals.sort((a,b)=>score(a)-score(b))[0];
+  if(!person)return;
+  const label=person.name+'へ移動中';
+  neighborhoodContext.element.open=false;
+  setInsetVisible(true);
+  const walk=(x,atY,arrived)=>moveHero(x,atY,()=>queueMicrotask(arrived),{follow:true,label});
+  walk(Math.max(35,Math.min(street.w-30,heroPoint.x)),y,()=>{
+   if(!visible)return;
+   walk(person.x,y,()=>{if(visible)openSpeech(person.conversationId);});
+  });
+ }
+ if(demo&&new URLSearchParams(location.search).get('walk')==='resident'){
+  const watch=button('village-walk-sample','小道を歩く',walkToSampleResident);
+  previewNote.append(watch);
+ }
  function dispose(){saveView();disposed=true;visible=false;inputFrame.cancel();endEncounter({redraw:false});clearTimeout(projectionTimer);if(frameId)cancelAnimationFrame(frameId);world3D?.destroy();observer.disconnect();insetObserver.disconnect();modalObserver.disconnect();media.removeEventListener('change',motionChanged);removeEventListener('chat-ui-motion',motionChanged);document.removeEventListener('visibilitychange',motionChanged);detail.remove();}
  addEventListener('pagehide',dispose,{once:true});
  return {render,setVisible,focus,dispose,getEncounter,endEncounter,saveView};

@@ -1,3 +1,4 @@
+import {coastalFaces} from './world-coast.js';
 import {sceneryObjectMesh} from './world-scenery-model.js';
 import {finite, clamp, worldBounds} from './world-3d-math.js';
 import {pointInIsland} from './world-island.js';
@@ -171,12 +172,30 @@ export function staticMesh(scene) {
     for(let i=1;i<points.length-1;i++)triangle(out,[points[0].x,height,points[0].y],
       [points[i+1].x,height,points[i+1].y],[points[i].x,height,points[i].y],shade);
   };
+  const coastSurface=(rect,material,height,shade)=>coastalFaces(island,rect,material,points=>{
+    // Clipping at a tangent can repeat a vertex. Emit only upward faces.
+    for(let i=1;i<points.length-1;i++){
+      const a=points[0],b=points[i],c=points[i+1];
+      if((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)>1e-6)surface([a,b,c],height,shade);
+    }
+  });
   if(island){
     const frame=island.seaBounds||bounds;
     // seaBounds frames the overview; the ocean itself continues to the fog
     // horizon, as the 2D background does, instead of ending at that frame.
     const horizon=Math.max(3000,Math.hypot(frame.right-frame.left,frame.bottom-frame.top)*3);
     const sea={left:frame.left-horizon,right:frame.right+horizon,top:frame.top-horizon,bottom:frame.bottom+horizon};
+    if(island.islets){
+      for(const patch of cutGroundRectangles([sea],outletWater))
+        coastSurface(patch,'sea',-2.8,color(island.seaColor));
+      for(const patch of cutGroundRectangles([island.bounds],wetGround)){
+        coastSurface(patch,'sand',-.3,color(island.sandColor));
+        for(const dry of cutGroundRectangles([patch],[...biomeGround,...clearingGround]))
+          coastSurface(dry,'grass',0,color(island.landColor));
+      }
+      for(const patch of [...biomeSurfaces,...clearingSurfaces])coastSurface(patch,'grass',.035,color(patch.color));
+      biomeSurfaces=[];clearingSurfaces=[];
+    }else{
     const land=island.landPatches||[];
     // Every visible ground type owns its footprint. Even a few world units of
     // height separation disappear in the depth buffer of a distant camera.
@@ -193,6 +212,7 @@ export function staticMesh(scene) {
         {x:patch.right,y:patch.bottom},{x:patch.left,y:patch.bottom}],0,color(island.landColor,'#78924f'));
     biomeSurfaces=cutGroundRectangles(intersectGroundRectangles(biomeGround,dryInnerLand),clearingGround);
     clearingSurfaces=intersectGroundRectangles(clearingGround,dryInnerLand);
+    }
   }else for (const patch of groundRectangles(bounds, [...wetGround,...biomeGround,...clearingGround]))
       box(out, (patch.left + patch.right) / 2, -2, (patch.top + patch.bottom) / 2,
         patch.right - patch.left, 2, patch.bottom - patch.top, color('#749568'));
@@ -201,7 +221,9 @@ export function staticMesh(scene) {
     if(!rect)continue;
     // One upward surface: a thin box's bottom competes with its top in the
     // depth buffer at overview distances when both faces are rendered.
-    if(island)for(const patch of island.landPatches||[]){
+    if(island?.islets){
+      for(const part of cutGroundRectangles([rect],outletWater))coastSurface(part,'land',.12,color(water.color,'#5e9eab'));
+    }else if(island)for(const patch of island.landPatches||[]){
       const clipped={left:Math.max(rect.left,patch.left),right:Math.min(rect.right,patch.right),
         top:Math.max(rect.top,patch.top),bottom:Math.min(rect.bottom,patch.bottom)};
       if(clipped.left<clipped.right&&clipped.top<clipped.bottom)for(const part of cutGroundRectangles([clipped],outletWater))surface([

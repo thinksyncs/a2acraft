@@ -1,3 +1,4 @@
+import {coastalFootprintDry} from './world-coast.js';
 import {pointInIsland} from './world-island.js';
 import {islandSegmentOnLand} from './world-island-travel.js';
 import {avoidBuildings} from './world-travel.js';
@@ -43,7 +44,7 @@ const roadTouches=(rect,roads)=>roads.some(road=>(road.points||[]).slice(1).some
 function terrainFor(island,hydrology,biomes,obstacles){
  const land=island?.landPatches||[],water=(hydrology?.water||[]).map(r=>grow(r,14));
  const mountains=(biomes?.ground||[]).filter(p=>p.kind==='mountain').map(p=>({left:p.x,right:p.x+p.width,top:p.y,bottom:p.y+p.depth}));
- return {land,water,mountains,dry:(rect,foothills=false)=>covered(grow(rect,12),land)&&
+ return {land,water,mountains,dry:(rect,foothills=false)=>covered(grow(rect,12),land)&&(!island?.islets||coastalFootprintDry(grow(rect,12),island))&&
   !water.some(r=>overlap(rect,r))&&!obstacles.some(r=>overlap(grow(rect,12),r))&&
   (foothills||!mountains.some(r=>overlap(rect,r)))};
 }

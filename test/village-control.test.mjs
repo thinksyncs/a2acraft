@@ -10,11 +10,12 @@ import { buildVillageSemanticLayout } from "../public/village-semantic-layout.js
 import { projectVillage } from "../public/village-model.js";
 import { villageBiomes } from "../public/village-3d-scene.js";
 import { sceneBuildingObstacles } from "../public/project-buildings.js";
+import { villageDemoActivityState, villageDemoChats } from "../public/village-demo.js";
 
 // Run the actual controller, animation and canvas drawing, without a browser,
 // external services or WebGL. Character ground shadows locate the rendered
 // party; real canvas transforms keep viewport culling meaningful in the fixture.
-function fixture(t, { saved, demo = false, building = false, visible = true, extraChats = [] } = {}) {
+function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [] } = {}) {
   const frames = new Map(), storage = new Map(), navigations = [];
   const documentListeners = new Map();
   let nextFrame = 0, now = 0, view, root;
@@ -62,7 +63,7 @@ function fixture(t, { saved, demo = false, building = false, visible = true, ext
   }
   const body = new Element("body");
   const globals = {
-    location:{search:""}, devicePixelRatio:1,
+    location:{search:sampleWalk?'?demo=1&village=sample&walk=resident':''}, devicePixelRatio:1,
     document:{body,hidden:false,activeElement:null,createElement:tag=>new Element(tag),
       createDocumentFragment:()=>new Element('fragment'),createTextNode:text=>Object.assign(new Element('text'),{textContent:text}),
       createElementNS:(_,tag)=>new Element(tag),querySelector:selector=>body.querySelector(selector),
@@ -87,7 +88,7 @@ function fixture(t, { saved, demo = false, building = false, visible = true, ext
     village:{overrides:building?[{conversationId:"a",kind:"software",stage:"building"}]:[]}};
   const start=()=>{
     root=new Element();root.id="history-village";body.replaceChildren(root);
-    view=initVillage({getChats:()=>chats,getState:()=>state,demo,onNavigate:id=>navigations.push(id)});
+    view=initVillage({getChats:()=>chats,getState:()=>sampleWalk?villageDemoActivityState(state):state,demo,onNavigate:id=>navigations.push(id)});
     if(visible)view.setVisible(true);return view;
   };
   start();
@@ -113,6 +114,19 @@ test("Island overview changes the camera without cancelling the party walk",t=>{
 });
 
 const distantChat={id:'distant',title:'北の天文台の観測記録',characterName:'天文台の人',messages:[{id:'u1',role:'user',text:'星空の観測日時と望遠鏡の記録をまとめたい。'}]};
+test('sample outing follows the main footpath and reaches a resident through the normal encounter',async t=>{
+  const f=fixture(t,{demo:true,sampleWalk:true,extraChats:villageDemoChats()});
+  f.element('village-walk-sample').click();
+  const lanePositions=[];
+  for(let i=0;i<100&&f.root.dataset.encounterStatus!=='talking';i++){
+    f.advance(1,300);await Promise.resolve();
+    const hero=f.hero();
+    if(Math.abs(hero.y-400.5)<2)lanePositions.push(hero.x);
+  }
+  assert.ok(Math.max(...lanePositions)-Math.min(...lanePositions)>80,'a continuous part of the trip traverses the visible lane');
+  assert.equal(f.root.dataset.encounterStatus,'talking');
+  assert.match(f.root.dataset.speechResident,/^village-demo-\d+$/);
+});
 test("A distant resident walk follows the party, survives overview, resumes following and arrives",t=>{
   const f=fixture(t,{extraChats:[distantChat],saved:{hero:{point:{x:-2635,y:2224}}}});const start=f.hero();f.talk(distantChat.id);
   assert.equal(f.root.dataset.encounterStatus,'approaching');assert.equal(f.root.dataset.cameraFollowing,'true');

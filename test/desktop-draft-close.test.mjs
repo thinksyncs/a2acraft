@@ -65,7 +65,7 @@ test('preload acknowledges renderer save failure and resumes the renderer when c
     on:(name,callback)=>listeners.set(name,callback),
     removeListener:(name,callback)=>{if(listeners.get(name)===callback)listeners.delete(name);}
   };
-  vm.runInNewContext(source,{require:()=>({ipcRenderer,contextBridge:{exposeInMainWorld:(_name,value)=>{desktop=value;}}}),process:{platform:'darwin',versions:{electron:'fixture'}}});
+  vm.runInNewContext(source,{location:new URL('http://127.0.0.1:4317/'),require:()=>({ipcRenderer,contextBridge:{exposeInMainWorld:(_name,value)=>{desktop=value;}}}),process:{platform:'darwin',versions:{electron:'fixture'}}});
   const states=[];
   const unsubscribe=desktop.onBeforeClose(async closing=>{states.push(closing);if(closing)throw Error('Disk full');});
   await listeners.get('ui:flush')({notExposed:true},'request-id');
@@ -73,6 +73,14 @@ test('preload acknowledges renderer save failure and resumes the renderer when c
   assert.equal(calls[1].name,'ui:flush-complete');assert.equal(calls[1].value.id,'request-id');assert.equal(calls[1].value.error,'Disk full');
   listeners.get('ui:close-cancelled')();await tick();assert.deepEqual(states,[true,false]);
   unsubscribe();assert.equal(listeners.size,0);
+});
+
+test('the inert startup page cannot access the desktop bridge', async () => {
+  const source = await readFile(new URL('../electron/preload.cjs',import.meta.url),'utf8');
+  vm.runInNewContext(source, {
+    location: new URL('data:text/html,A2ACraft'),
+    require: () => ({contextBridge: {exposeInMainWorld: assert.fail}})
+  });
 });
 
 const validState=()=>({drafts:{chat:'draft'},sendRequests:{chat:{requestId:'123-request',fingerprint:'{"text":"draft"}'}},selected:'chat',layout:1,motion:'system'});
