@@ -13,6 +13,7 @@ function fixture({layout=4,encounter=true}={}){
     constructor(){this.children=[];this.dataset={};this.classes=new Set();this.value='First unsent draft';this.scrollTop=120;this.classList={toggle:(name,on)=>on?this.classes.add(name):this.classes.delete(name)};}
     setAttribute(name,value){this[name]=String(value);}
     append(node){node.parent=this;this.children.push(node);}
+    insertBefore(node,before){node.remove();node.parent=this;this.children.splice(before?this.children.indexOf(before):this.children.length,0,node);}
     contains(node){return this.children.includes(node);}
     remove(){if(this.parent)this.parent.children=this.parent.children.filter(child=>child!==this);this.parent=null;}
   }
@@ -42,6 +43,26 @@ test('a resident-origin conversation respects the existing four-pane workspace',
   assert.equal(f.node('#chat-view').classes.has('multi-chat'),true);
   assert.equal(f.buttons[2]['aria-pressed'],'true');
   assert.equal(f.context.activeEncounter.conversationId,'chat-0');
+});
+
+test('talking on the map shows the selected resident and keeps their draft and workspace layout when expanded',()=>{
+  const f=fixture();
+  f.context.view='town';
+  f.context.selected='chat-2';
+  f.context.activeEncounter={conversationId:'chat-2'};
+  f.node('#prompt').value='この小道について\nもう少し教えて';
+  f.context.renderChats();
+  assert.deepEqual(f.node('#grid').children.map(node=>node.dataset.select),['chat-2']);
+  assert.equal(f.context.layout,4);
+  assert.equal(f.node('#grid').classes.has('layout-1'),true);
+  const residentPanel=f.node('#grid').children[0];
+  f.context.view='chat';
+  f.context.renderChats();
+  assert.deepEqual(f.node('#grid').children.map(node=>node.dataset.select),['chat-0','chat-1','chat-2','chat-3']);
+  assert.ok(f.node('#grid').children.includes(residentPanel));
+  assert.equal(f.context.activeEncounter.conversationId,'chat-2');
+  assert.equal(f.node('#prompt').value,'この小道について\nもう少し教えて');
+  assert.equal(f.node('#grid').classes.has('layout-4'),true);
 });
 
 test('selecting another visible pane changes the composer without replacing panes or losing drafts',()=>{

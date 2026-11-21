@@ -1,3 +1,4 @@
+import {mapTranscriptText} from './world-dialogue.js';
 import {villageDelegation} from './village-delegates.js';
 
 // A local, conservative reading of saved conversations. These stages describe
@@ -31,7 +32,7 @@ function timestamp(value){
 // Bound each inspected message, while retaining earlier milestones. Sampling
 // only recent turns would erase buildings after unrelated follow-up messages.
 function inspectedMessages(messages){
-  return messages.map((message,index)=>({role:message.role,text:string(message.text).slice(0,index<messages.length-24?2000:4000)}));
+  return messages.map((message,index)=>({role:message.role,text:mapTranscriptText(message.text).slice(0,index<messages.length-24?2000:4000)}));
 }
 
 function narrative(value,{quotes=false}={}){
@@ -260,7 +261,7 @@ export function projectVillage(chats,overrides=[]){
     const messages=(Array.isArray(chat.messages)?chat.messages:[]).filter(message=>['user','assistant'].includes(message?.role));
     if(!messages.length&&override?.kind!=='software'&&!manualStage)continue;
     seen.add(chat.id);
-    const title=bounded(chat.title,120)||'会話',name=bounded(chat.characterName,80)||title;
+    const title=bounded(mapTranscriptText(chat.title),120)||'会話',name=bounded(mapTranscriptText(chat.characterName),80)||title;
     const status=string(chat.status)||'idle',activity=activities.has(status)?'working':status==='failed'?'attention':'resting';
     const times=[timestamp(chat.updatedAt),...messages.map(message=>timestamp(message.createdAt))].filter(value=>value!==null);
     const seed=hash(chat.id),resident={id:chat.id,conversationId:chat.id,name,title,status,activity,seed,appearance:appearances[seed%appearances.length],messageCount:messages.length,updatedAt:times.reduce((latest,time)=>latest===null||time>latest?time:latest,null),projectId:null,delegation:villageDelegation(chat)};

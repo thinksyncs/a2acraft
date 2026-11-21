@@ -33,3 +33,37 @@
 .project-residents-menu{margin:10px 0;color:#f0eedf}
 .project-residents-menu summary{cursor:pointer;padding:8px 0}
 .project-residents-menu select{max-width:75%;min-height:42px;padding:8px;margin-right:8px;background:#1a302f;color:#f0eedf;border:1px solid #718b78;border-radius:6px}
+
+/* Use the original map and transcript side by side. On a phone, reserve a
+   separate row for the map so the keyboard and composer cannot cover it. */
+body[data-view="town"] #town-view.with-resident-chat{
+  display:grid;grid-template-columns:minmax(0,3fr) minmax(310px,2fr);
+  grid-template-rows:minmax(0,1fr);grid-template-areas:"map chat";min-height:0;
+}
+#town-view.with-resident-chat>:not(#history-village,#project-village,#chat-view){display:none!important}
+#town-view.with-resident-chat>:is(#history-village,#project-village){
+  grid-area:map;min-width:0;min-height:0;height:100%;max-height:100%;padding:0;overflow:hidden;
+}
+#town-view.with-resident-chat #project-village>.project-map-frame{height:100%;min-height:0}
+#town-view.with-resident-chat #project-village>:not(.project-map-frame){display:none}
+#town-view.with-resident-chat .world-3d-inset{top:8px;right:8px}
+#town-view.with-resident-chat .world-3d-inset-close{display:none}
+#town-view.with-resident-chat #chat-view{
+  grid-area:chat;min-height:0;min-width:0;overflow:hidden;padding:0 8px 4px;
+  background:#142225;
+}
+#town-view.with-resident-chat #chat-view :is(#chat-layout,#chat-navigation,#chat-actions,.resident-view-details),
+#town-view.with-resident-chat #history-village :is(.village-context,.village-heading,.village-statistics,.village-preview-note,.village-wayfinding,.village-legend,.project-world-access,.village-services,.village-controls,.village-map-controls){
+  display:none;
+}
+#town-view.with-resident-chat #chat-view .chat-grid{min-height:0;flex:1}
+#town-view.with-resident-chat #chat-view #chat-heading{display:block;flex:none}
+#town-view.with-resident-chat #chat-view #chat-topic{flex:1}
+@media(max-width:850px){
+  body[data-view="town"] #town-view.with-resident-chat{
+    grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(95px,35%) minmax(0,1fr);
+    grid-template-areas:"map" "chat";
+  }
+  #town-view.with-resident-chat #chat-view{padding:0 2px 2px}
+  #town-view.with-resident-chat .world-3d-inset{width:min(25%,24dvh)}
+}

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import {mapTranscriptText} from '../public/world-dialogue.js';
 
 const source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
 const start=source.indexOf('function streamingMessage(chat) {');
@@ -42,7 +43,7 @@ function fixture(){
     selected:'imported',demo:false,subagentSample:false,activeEncounter:null,
     active:chat=>['starting','running','stopping'].includes(chat.status),
     statusLabels:{failed:'エラー',completed:'完了'},
-    attachments:{renderMessage(){}},equipment:{renderMessage(){},renderPane(){}},party:{renderPane(){}},renderAgentDelegation(){},
+    mapTranscriptText, attachments:{renderMessage(el,files){el.files=files;}},equipment:{renderMessage(){},renderPane(){}},party:{renderPane(){}},renderAgentDelegation(){},
     renderMessageMarkdown(element,source){element.textContent=source;},
     desktop:null,toast(){},
     createPanel(){throw Error('The existing transcript must be retained');}});
@@ -75,4 +76,35 @@ test('a long imported transcript stays keyboard-addressable through an error and
   assert.equal(f.list.children.length,524);
   assert.equal(f.list.children[523].querySelector('.msg-text').textContent,'The new response');
   assert.equal(f.element.querySelector('.panel-error').hidden,true);
+});
+
+test('resident chat shows visible text in order and restores the original transcript outside the encounter',()=>{
+  const f=fixture(), wrapper='<external_codex_apps_selected_page_part_1_of_1>Companion Page snapshot\n{"page_id":null}\n</external_codex_apps_selected_page_part_1_of_1>';
+  const example='\x60\x60\x60xml\n'+wrapper+'\n\x60\x60\x60';
+  const chat={id:'imported',title:'橋の修復',status:'running',messages:[
+    {id:'mixed',role:'user',text:wrapper+'\n橋を直したい。'},
+    {id:'internal',role:'user',text:wrapper},
+    {id:'example',role:'assistant',text:example},
+    {id:'file',role:'user',text:wrapper,attachments:[{name:'bridge.png'}]},
+    {id:'stream',role:'assistant',text:''},
+  ]};
+  const original=structuredClone(chat.messages);
+  const order=()=>f.list.children.map(el=>el.dataset.message).filter(Boolean);
+  const body=id=>f.panel.messages.get(id).querySelector('.msg-text').textContent;
+  f.context.updatePanel(chat,0);
+  f.context.activeEncounter={conversationId:chat.id,name:'リナ'};
+  f.context.updatePanel(chat,0);
+  assert.deepEqual(order(),['mixed','example','file','stream']);
+  assert.equal(body('mixed'),'橋を直したい。');
+  assert.equal(body('example'),example);
+  assert.equal(body('file'),'');
+  assert.deepEqual(f.panel.messages.get('file').querySelector('.message-attachments').files,[{name:'bridge.png'}]);
+  assert.equal(f.panel.messages.get('stream').querySelector('.streaming-caret').hidden,false);
+  assert.match(f.element.querySelector('.panel-count').textContent,/4件/);
+  f.context.activeEncounter=null;
+  f.context.updatePanel(chat,0);
+  assert.deepEqual(order(),['mixed','internal','example','file','stream']);
+  assert.equal(body('mixed'),original[0].text);
+  assert.equal(body('internal'),wrapper);
+  assert.deepEqual(chat.messages,original);
 });

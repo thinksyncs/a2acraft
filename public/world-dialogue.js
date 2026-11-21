@@ -1,14 +1,56 @@
+// Imported histories may store Codex's ambient UI records under a conversational
+// role. Filter recognized envelopes for map display while leaving the saved
+// transcript, user-authored XML, Markdown examples and attachments intact.
+export function mapTranscriptText(value) {
+  if (typeof value !== 'string') return '';
+  // Codex adds this header to image/file prompts. Display the user's request
+  // without showing the machine's temporary attachment paths.
+  if (value.startsWith('# Files mentioned by the user:')) {
+    const mark = /^## My request:[ \t]*\r?$/m.exec(value);
+    if (mark) value = value.slice(mark.index + mark[0].length).trimStart();
+  }
+  if (!/<(?:external_codex_apps_selected_page|in-app-browser-context|environment_context)[\s_>]/i.test(value)) return value.trim() ? value : '';
+  const kept = [];
+  let closing = '', fence = '';
+  for (let line of value.split(/\r?\n/)) {
+    if (!closing) {
+      const mark = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+      if (fence) {
+        kept.push(line);
+        if (mark?.startsWith(fence) && line.trim() === mark) fence = '';
+        continue;
+      }
+      if (mark) { fence = mark; kept.push(line); continue; }
+    }
+    while (line) {
+      if (!closing) {
+        const tag = /^\s*<(external_codex_apps_selected_page(?:_part_\d+_of_\d+)?|in-app-browser-context|environment_context)(?:\s[^>]*)?>/i.exec(line);
+        if (!tag) break;
+        closing = '</' + tag[1].toLowerCase() + '>';
+        line = line.slice(tag[0].length);
+      }
+      const end = line.toLowerCase().indexOf(closing);
+      if (end < 0) { line = ''; break; }
+      line = line.slice(end + closing.length);
+      closing = '';
+    }
+    if (!closing) kept.push(line);
+  }
+  return kept.join('\n').trim();
+}
+
 const clean = (value) =>
-  String(value || "")
+  mapTranscriptText(value)
     .replace(/\s+/g, " ")
     .slice(0, 220);
 
 export function conversationMessageText(message) {
-  if (typeof message?.text === 'string' && message.text.trim()) return message.text;
+  const text = mapTranscriptText(message?.text);
+  if (text) return text;
   const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
   if (attachments.length) return '添付ファイル: ' + attachments.map((item,index) =>
     String(item?.name || 'ファイル ' + (index + 1)).replace(/([\\`*_{}\[\]()#+.!|<>-])/g,'\\$1')).join('、');
-  return message?.role === 'user' ? '本文のない依頼' : '';
+  return message?.role === 'user' && !String(message.text || '').trim() ? '本文のない依頼' : '';
 }
 const versionOf = (value) => {
   const raw = JSON.stringify(value);

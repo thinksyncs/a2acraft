@@ -115,7 +115,11 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 .map-conversation-details{font-size:14px;line-height:1.7;overflow-wrap:anywhere}
 .map-conversation-details>section+section{margin-top:20px;padding-top:14px;border-top:1px solid #7d917544}
 .map-conversation-details h3{font-size:14px;margin:0 0 8px;color:inherit}
-#village-speech-source{display:block;color:#617051;font-size:12px;line-height:1.5}
+.resident-encounter-context section+section{margin-top:8px}
+.resident-encounter-context section>strong{display:block;font-size:12px;line-height:1.4;opacity:.8}
+.resident-encounter-context section .message-markdown{margin:2px 0 0;font-weight:500}
+.resident-encounter-context .message-markdown>:first-child{margin-top:0}
+.resident-encounter-context .message-markdown>:last-child{margin-bottom:0}
 .village-speech-actions{position:relative;z-index:1;display:flex;gap:8px;margin-top:14px}
 .history-village .village-speech-actions button{flex:1;padding:8px 10px;background:#e7d7af;color:#2a412f;border-color:#b5b385;box-shadow:none}
 .history-village .village-speech-actions button.primary{background:#395a3b;border-color:#395a3b;color:#fff2ca}
@@ -240,3 +244,9 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 @media(max-width:700px) and (max-height:600px){
  .history-village .village-quest-peek{max-height:calc(100% - 24px)}
 }
+
+#village-ambient{position:absolute;z-index:5;left:50%;bottom:70px;transform:translateX(-50%);width:max-content;max-width:min(440px,calc(100% - 24px));padding:7px 12px;border:1px solid #abbd8c;border-radius:9px;background:#183026f2;color:#f1f1dc;font-size:12px;line-height:1.5;pointer-events:none}
+#village-ambient p{margin:0;overflow-wrap:anywhere}
+#village-ambient p+p{margin-top:3px;color:#dfebbf}
+.history-village #village-ambient-toggle{margin-top:5px;min-height:28px;padding:2px 7px;font:inherit;background:transparent;color:#d9e5c7;border:1px solid #72876c;border-radius:5px;box-shadow:none}
+#village-ambient-toggle[aria-pressed=true]::before{content:'✓ ';}

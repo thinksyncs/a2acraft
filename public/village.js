@@ -6,6 +6,7 @@ import {buildConversationAffinity} from './conversation-affinity.js';
 import {buildVillageSemanticLayout} from './village-semantic-layout.js';
 import {buildResidentPatrols,residentPatrolPosition} from './village-resident-motion.js';
 import {createVillageContext} from './village-context.js';
+import {createAmbientNotice} from './village-ambient.js';
 import {projectVillage,VILLAGE_STAGES} from './village-model.js';
 import {drawVillageWorld,drawVillageIslandBackground,drawVillageConversationFocus,worldPersonColor} from './village-art.js';
 import {delegationCacheKey,delegationSummary,villageDelegateActors} from './village-delegates.js';
@@ -15,8 +16,7 @@ import {PartyTravel} from './world-travel.js';
 import {sceneBuildingObstacles} from './project-buildings.js';
 import {villageRiverWater,villageBridge,villageRoadRects} from './world-terrain.js';
 import {residentReport,acknowledgeResidentReport} from './world-dialogue.js';
-import {renderMessageMarkdown} from './message-markdown.js';
-import {renderConversationDetails} from './conversation-details.js';
+import {renderConversationDetails,renderEncounterContext} from './conversation-details.js';
 import {createWorld3D} from './world-3d.js';
 import {village3DScene,readVillageView,villageFacing,villageEncounterActors,villageEncounterApproach,villageEncounterSightline,villageSpeechPlacement,villageIsland,villageOverviewCamera,villageResidentCamera,villageBiomes,VILLAGE_MIN_ZOOM} from './village-3d-scene.js';
 import {drawIslandWater,clipIslandLand,drawIslandCoast} from './world-island-art.js';
@@ -58,8 +58,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const questSites=make('div',undefined,'village-quest-sites');questSites.setAttribute('aria-label','村にいるパーティ');
  const speech=make('section',undefined,'village-speech');speech.id='village-speech';speech.hidden=true;speech.setAttribute('role','dialog');speech.setAttribute('aria-modal','false');speech.setAttribute('aria-labelledby','village-speech-name');
  const speechName=make('strong');speechName.id='village-speech-name';const speechClose=button('village-speech-close','×',()=>closeSpeech());speechClose.setAttribute('aria-label','吹き出しを閉じる');
- const speechText=make('div');speechText.id='village-speech-text';const speechSource=make('small');speechSource.id='village-speech-source';
- const speechActions=make('div',undefined,'village-speech-actions');speechActions.append(button('village-speech-chat','話す',()=>{const id=speechId,snapshot=getEncounter();closeSpeech(false,{preserveEncounter:true});if(id)onOpenChat?.(id,snapshot);},'primary'),button('village-speech-detail','詳しく',()=>{const id=speechId;closeSpeech(false);if(id)openResident(id);}));speech.append(speechName,speechClose,speechText,speechSource,speechActions);
+ const speechText=make('div');speechText.id='village-speech-text';
+ const speechActions=make('div',undefined,'village-speech-actions');speechActions.append(button('village-speech-chat','話す',()=>{const id=speechId,snapshot=getEncounter();closeSpeech(false,{preserveEncounter:true});if(id)onOpenChat?.(id,snapshot);},'primary'),button('village-speech-detail','詳しく',()=>{const id=speechId;closeSpeech(false);if(id)openResident(id);}));speech.append(speechName,speechClose,speechText,speechActions);
  const empty=make('div',undefined,'village-empty');empty.id='village-empty';empty.append(make('strong','最初の村人を迎えましょう'),make('p','このアプリにある過去の会話が、村の住民になります。'));
  empty.append(button('village-import','会話の履歴を開く',()=>onOpenHistory?.(),'primary'));
  const places=make('div',undefined,'village-places');places.setAttribute('aria-label','道の先にある施設');
@@ -184,6 +184,11 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let encounter=null,latestScene=null;const residentPauses=new Map();
  try{const rows=JSON.parse(mapStorage.getItem(layoutKey)||'[]'),used=new Set();if(Array.isArray(rows))for(const row of rows.slice(0,20000)){if(Array.isArray(row)&&typeof row[0]==='string'&&row[0].length<=512&&Number.isSafeInteger(row[1])&&row[1]>=0&&row[1]<20000&&!used.has(row[1])){assignments.set(row[0],row[1]);used.add(row[1]);}}}catch{}
  const chatCache=new Map();
+ const ambientKey=demo?'chat-ui-demo-village-ambient':'chat-ui-village-ambient';
+ const updateAmbient=createAmbientNotice({frame,controls:neighborhoodContext.element,
+  getChat:id=>chatCache.get(id)?.chat,
+  readEnabled:()=>{try{return mapStorage.getItem(ambientKey)!=='off';}catch{return true;}},
+  saveEnabled:value=>{try{mapStorage.setItem(ambientKey,value?'on':'off');}catch{}}});
  let locallyPaused=false,zoom=1,automaticZoom=true,camera={x:500,y:320},dimensions={width:0,height:0},transform={scale:1,x:0,y:0};
  const viewKey=demo?'chat-ui-demo-village-view':'chat-ui-village-view';
  let savedView=readVillageView(null),savedHero=null,insetVisible=true,insetInitialized=false,insetCamera=null,world3D=null,viewSaveTimer=0,leaderHeading=0,leaderPrevious=null;
@@ -248,7 +253,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   world3D?.setMode('leader');world3D?.reset();
   speechId=id;speechAnchor=residentPosition(resident);speech.dataset.conversationId=id;root.dataset.speechResident=id;speechName.textContent=resident.name;
   const chat=getChats().find(c=>c.id===id),report=residentReport(chat||{id,title:resident.title,messages:[]},null,heard[id]);
-  renderMessageMarkdown(speechText,report.text);speechSource.textContent=report.label+' · '+resident.title;speechSource.title=resident.title;
+  renderEncounterContext(speechText,chat || {title:resident.title},report);
   speech.hidden=false;heard[id]=acknowledgeResidentReport(heard[id],report);try{mapStorage.setItem('chat-ui-resident-heard'+(demo?'-demo':''),JSON.stringify(heard));}catch{}speechClose.focus({preventScroll:true});draw();
  }
  function projectFor(resident){
@@ -552,6 +557,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(projection.residents.length>RESIDENT_LIMIT&&residentCameraCell!==Math.floor(camera.x/320)+':'+Math.floor(camera.y/320))refreshNearbyResidents();
   positions=shownResidents.map(residentPosition);updateSquadScenes();
   const actors=villageEncounterActors({residents:positions,hero:heroScene,squads:squadScenes,heading:leaderHeading,encounter});positions=actors.residents.map(person=>({...person,kind:'agent',identityFocused:person.conversationId===(speechId||selected)}));heroScene=actors.hero;squadScenes=actors.squads;leaderHeading=actors.heading;
+  updateAmbient({time:elapsed,party:heroScene,residents:positions,viewport,
+   blocked:Boolean(travel||encounter||speechId||document.hidden||!motionEnabled()||detail.open||directory.open||!questDrawer.hidden||!questPeek.hidden)});
   const delegateOwners=new Map(projection.residents.map(resident=>[resident.conversationId,resident]));
   const delegateParents=[...positions.map(person=>({...person,delegation:delegateOwners.get(person.conversationId)?.delegation,color:worldPersonColor(person)})),
    ...[...squadScenes,...(heroScene?[heroScene]:[])].flatMap(group=>group.members.map((person,index)=>({...person,

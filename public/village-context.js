@@ -1,3 +1,5 @@
+import {latestConversationExchange} from './conversation-details.js';
+
 const excerpt = value => {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
   return text.length > 96 ? text.slice(0, 95) + '…' : text;
@@ -5,11 +7,9 @@ const excerpt = value => {
 
 // Display the user's actual request, never a fabricated description or a tool log.
 export function villageConversationContext(chat = {}) {
-  const messages = Array.isArray(chat.messages) ? chat.messages : [];
-  const request = messages.filter(message => message?.role === 'user' && String(message.text || '').trim()).at(-1);
-  const reply = messages.filter(message => message?.role === 'assistant' && String(message.text || '').trim()).at(-1);
-  return request ? {label:'直近の依頼', text:excerpt(request.text)} :
-    reply ? {label:'直近の返答', text:excerpt(reply.text)} : {label:'会話', text:'履歴を開いて内容を確認できます。'};
+  const [current] = latestConversationExchange(chat);
+  return current ? {label:current.label === '最新の依頼' ? '直近の依頼' : '直近の返答', text:excerpt(current.text)} :
+    {label:'会話', text:'履歴を開いて内容を確認できます。'};
 }
 
 export function nearbyVillageConversations({residents = [], homes, point, limit = 2}) {

@@ -36,6 +36,23 @@ async function bounded(operation,limit,message){
   finally{clearTimeout(timer);}
 }
 
+// Sample the entire time available for the walk. A fast compositor can easily
+// produce 240 frames before a long approach reaches the resident.
+export async function recordWalkingFrames(readMap, captureFrame, {now = () => performance.now(), wait = delay} = {}) {
+  const duration = 75_000;
+  const frameLimit = 240;
+  const interval = Math.ceil(duration / (frameLimit - 1));
+  const deadline = now() + duration;
+  for (let index = 0; index < frameLimit; index++) {
+    const map = await readMap();
+    if (!map) throw Error('Lost the visible sample or leader view during the walk');
+    await captureFrame(map.arrived ? 'arrival' : 'walk', map);
+    const remaining = deadline - now();
+    if (map.arrived || remaining <= 0) return;
+    await wait(Math.min(interval, remaining));
+  }
+}
+
 export async function captureSampleWalk(window,{profile,origin,version}){
   const directory=path.join(profile,'recording');
   await mkdir(directory,{mode:0o700});
@@ -64,14 +81,7 @@ export async function captureSampleWalk(window,{profile,origin,version}){
     if(!map)throw Error('Sample map and WebGL leader view did not become visible');
     await state('overview');await delay(350);await frame('overview',await state());
     await state('start');
-    const walkStart=performance.now();
-    while(performance.now()-walkStart<75000&&frames.length<241){
-      const map=await state();
-      if(!map)throw Error('Lost the visible sample or leader view during the walk');
-      await frame(map.arrived?'arrival':'walk',map);
-      if(map.arrived)break;
-      await delay(160);
-    }
+    await recordWalkingFrames(state,frame);
     const walked=frames.filter(f=>f.phase==='walk'&&f.following);
     const moved=walked.some(f=>Math.hypot(f.x-walked[0].x,f.y-walked[0].y)>12);
     if(!moved||!frames.at(-1)?.arrived)throw Error('Could not verify movement and arrival at a resident');

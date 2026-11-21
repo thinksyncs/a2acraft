@@ -72,7 +72,7 @@ for(const count of [26,168])test(`${count} fictional conversations keep repeated
   const chats=count===26?villageDemoChats().slice(16,42):villageDemoChats();
   const projection=projectVillage(chats),affinity=buildConversationAffinity(chats),base=village3DScene({population:chats.length});
   const layout=buildVillageSemanticLayout({...projection,affinity,island:villageIsland(),terrain:base,obstacles:sceneBuildingObstacles(base),biomes:villageBiomes()});
-  const daily=chats.map(chat=>({id:chat.id,topic:chat.messages[0].text.match(/私は(.+)に関心があります/)?.[1]})).filter(chat=>chat.topic);
+  const daily=chats.map(chat=>({id:chat.id,topic:chat.title.match(/^(.+) · \d+$/u)?.[1]})).filter(chat=>chat.topic);
   const related=[],unrelated=[];
   for(let i=0;i<daily.length;i++)for(let j=0;j<i;j++){
     const a=daily[i],b=daily[j],distance=separation(layout.homes.get(a.id),layout.homes.get(b.id));
@@ -80,5 +80,6 @@ for(const count of [26,168])test(`${count} fictional conversations keep repeated
   }
   const median=values=>values.sort((a,b)=>a-b)[Math.floor(values.length/2)];
   assert.equal(layout.homes.size,chats.length);
+  assert.ok(related.length>0&&unrelated.length>0,'compare both repeated topics and different topics');
   assert.ok(median(related)<median(unrelated)/3,'terrain snapping must preserve the visible relationship between topic and distance');
 });

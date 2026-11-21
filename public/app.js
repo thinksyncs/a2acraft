@@ -1,6 +1,7 @@
 import {initContextSharing} from './context-sharing.js';
 import {initAttachments} from './attachments.js';
 import {renderMessageMarkdown} from './message-markdown.js';
+import {mapTranscriptText} from './world-dialogue.js';
 import {initEquipment} from './equipment.js';
 import {initParty} from './party.js';
 import {initCastle} from './castle.js';
@@ -127,14 +128,15 @@ try {
 if (![1,2,4].includes(layout)) layout = 1;
 if (!drafts || typeof drafts !== 'object' || Array.isArray(drafts)) drafts = {};
 if (!sendRequests || typeof sendRequests !== 'object' || Array.isArray(sendRequests)) sendRequests = {};
+const chatVisible=()=>!$('#workspace').hidden&&!$('#chat-view').hidden;
 const contextSharing = initContextSharing({
   getChats:() => chats, getBoard:() => contextBoard,
   onBoard:entries => { contextBoard = entries; renderChats(); },
-  api, demo, available:() => !$('#workspace').hidden && view === 'chat',
+  api, demo, available:chatVisible,
   notify:toast
 });
 
-const attachments=initAttachments({getSelected:()=>selected,onChange:()=>updateComposer(),notify:toast,isAvailable:()=>!$('#workspace').hidden && view==='chat' && Boolean(selected),demo});
+const attachments=initAttachments({getSelected:()=>selected,onChange:()=>updateComposer(),notify:toast,isAvailable:()=>chatVisible()&&Boolean(selected),demo});
 function boardActive(){return ['gathering','starting','running'].includes(state.boardDispatch?.active?.status);}
 function partyActive(){return ['running','stopping'].includes(state.party?.quest?.status);}
 const equipment=initEquipment({api,demo,storeKey,getChats:()=>chats,getSelected:()=>selected,onSelect:id=>select(id,'equipment'),onChat:chat=>{
@@ -161,7 +163,9 @@ const projects=initProjects({api,demo,getState:()=>state,getChats:()=>chats,getM
 // Panels are detached when switching a single-pane conversation. Keep the
 // question card itself reachable while its previous transcript is off-screen.
 const projectChatContext=$('#project-chat-context');
-const residentConversation=createResidentConversation({host:$('#chat-view'),demo,onParty:()=>switchView('tavern'),onReturn:()=>{
+const residentConversation=createResidentConversation({host:$('#chat-view'),onParty:()=>switchView('tavern'),onExpand:()=>{
+  switchView('chat',()=>{if(!$('#composer').hidden)$('#prompt').focus({preventScroll:true});});
+},onReturn:()=>{
   const source=activeEncounter?.source;
   switchView('town',()=>{townSection(source==='projects'?'projects':'town');(source==='projects'?projects:village).focus();});
 }});
@@ -172,14 +176,24 @@ function scrollChatLatest(id){
 }
 function endResidentConversation(){
   if(!activeEncounter)return;
+  residentConversation.undock();
+  $('#chat-view').hidden=view!=='chat';
   const source=activeEncounter.source==='projects'?projects:village;
   if(source.getEncounter()?.conversationId===activeEncounter.conversationId)source.endEncounter();
   activeEncounter=null;residentConversation.show(null);queueConversationRender();
 }
 function openResidentChat(id,encounter){
+  if(!chats.some(chat=>chat.id===id)){toast('この会話を開けませんでした。');return;}
   if(activeEncounter?.source!==encounter?.source||activeEncounter?.conversationId!==id)endResidentConversation();
-  if(encounter?.scene){activeEncounter=encounter;residentConversation.show(encounter,{recordOnly:Boolean(chats.find(c=>c.id===id)?.project)});}
-  select(id,'chat',()=>{$('#prompt').focus();scrollChatLatest(id);});queueConversationRender();
+  const focusChat=()=>{if(!$('#composer').hidden)$('#prompt').focus({preventScroll:true});scrollChatLatest(id);};
+  if(!encounter?.scene){select(id,'chat',focusChat);return;}
+  select(id,'town',()=>{
+    activeEncounter=encounter;
+    residentConversation.show(encounter,{recordOnly:Boolean(chats.find(chat=>chat.id===id)?.project)});
+    const sourceMap=encounter.source==='projects'?'#project-village':'#history-village';
+    residentConversation.dockIn($('#town-view'),$(sourceMap));
+    renderChats(); focusChat();
+  });
 }
 function showProjectMap(){switchView('town',()=>{townSection('projects');projects.focus();});}
 function openPartyMap(onOpen){
@@ -439,6 +453,7 @@ const active = chat => ['starting','running','stopping'].includes(chat?.status);
 let pendingView = null, pendingViewFocus, viewTransitionTimer;
 const viewTransition = $('#view-transition');
 function applyView(next) {
+  residentConversation.undock();
   if(next!=='chat')endResidentConversation();
   if(next==='backlog'&&!pluginView.enabled())next='settings';
   if(next==='teams'&&!pluginView.teamsEnabled())next='settings';
@@ -465,6 +480,7 @@ function applyView(next) {
   projects.setVisible(next==='town'&&currentTownSection==='projects',{preserveEncounter:activeEncounter?.source==='projects'&&next==='chat'});
   adventure.render();discoveries.render();
   workspaceTabs.render();
+  if(next==='chat'&&activeEncounter)renderChats();
 }
 function finishViewTransition() {
   clearTimeout(viewTransitionTimer);
@@ -603,7 +619,6 @@ function updatePanel(chat, index) {
   notice.querySelector('summary').textContent = chat.migration ? '移行した会話 · 元の作業環境は引き継ぎません' : '保存した履歴から会話を再開しています';
   notice.querySelector('p').textContent = chat.migration ? (chat.migration.method==='local'?'Codexから移行した会話です。送信すると元の履歴を複製して続けます。':'ファイルから移行した会話です。最初の送信で過去の本文を新しい会話に渡します。添付の実体・ツール結果は引き継ぎません。')+' 作業場所はこのアプリ専用のフォルダです。元のプロジェクトは開きません。' : chat.threadRecovery ? '履歴を引き継いだ新しい接続で続けています。元の会話は保持しています。' : '';
   element.querySelector('.panel-model').textContent = chat.model || 'モデル未選択';
-  element.querySelector('.panel-count').textContent = (demo ? 'DEMO' : 'CODEX PLAN') + ' · ' + chat.messages.length + '件のメッセージ';
   const list = element.querySelector('.messages');
   // A focusable region lets keyboard and assistive-technology users reach the
   // scrollable history. Imported transcripts must not become live announcements.
@@ -612,8 +627,13 @@ function updatePanel(chat, index) {
   list.setAttribute('aria-label', chat.title + 'の会話履歴');
   const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
   const current = streamingMessage(chat), ids = new Set();
-  if (chat.messages.length) list.querySelector('.empty')?.remove();
+  const residentView = activeEncounter?.conversationId === chat.id;
+  let visibleCount = 0;
   for (const [index, message] of chat.messages.entries()) {
+    const body = residentView ? mapTranscriptText(message.text) : message.text;
+    // Only omit records whose entire body was internal context. Keep blank
+    // streaming placeholders and messages with attachments or equipped skills.
+    if (residentView && !body && message.text?.trim() && !message.attachments?.length && !message.skills?.length) continue;
     const id = message.id || `${chat.id}:${index}:${message.role}`;
     ids.add(id);
     let node = panel.messages.get(id);
@@ -628,7 +648,7 @@ function updatePanel(chat, index) {
     }
     node.querySelector('.msg-label b').textContent = message.role === 'user' ? (message.steer ? 'YOU · STEER' : 'YOU') + (message.contextIds?.length ? ' · CONTEXT ' + message.contextIds.length : '') : activeEncounter?.conversationId===chat.id ? activeEncounter.name+(demo?' · デモ':' · Codex') : 'CODEX';
     const text = node.querySelector('.msg-text');
-    renderMessageMarkdown(text, message.text, {openLink:desktop ? url=>desktop.openExternal(url) : undefined,onLinkError:error=>toast(error.message)});
+    renderMessageMarkdown(text, body, {openLink:desktop ? url=>desktop.openExternal(url) : undefined,onLinkError:error=>toast(error.message)});
     attachments.renderMessage(node.querySelector('.message-attachments'),message.attachments || []);
     equipment.renderMessage(node,message.skills||[]);
     let partyLabel=node.querySelector('.party-message-label');
@@ -638,10 +658,14 @@ function updatePanel(chat, index) {
     if(message.residentContext&&!visitLabel){visitLabel=document.createElement('div');visitLabel.className='resident-message-context';node.querySelector('.msg-label').after(visitLabel);}
     if(visitLabel)visitLabel.textContent=message.residentContext?.companions?.length?'同行：'+message.residentContext.companions.map(member=>member.name+'（'+member.role+'）').join('・'):'ひとりで相談';
     node.querySelector('.streaming-caret').hidden = message !== current || Boolean(demo && chat.project);
-    if(list.children[index]!==node)list.insertBefore(node,list.children[index]||null);
+    if(list.children[visibleCount]!==node)list.insertBefore(node,list.children[visibleCount]||null);
+    visibleCount++;
   }
   for (const [id, node] of panel.messages) if (!ids.has(id)) { node.remove(); panel.messages.delete(id); }
-  if (!chat.messages.length && !list.querySelector('.empty')) {
+  panel.visibleMessageCount = visibleCount;
+  element.querySelector('.panel-count').textContent = (demo ? 'DEMO' : 'CODEX PLAN') + ' · ' + visibleCount + '件のメッセージ';
+  if (visibleCount) list.querySelector('.empty')?.remove();
+  else if (!list.querySelector('.empty')) {
     const empty = document.createElement('div'); empty.className = 'empty';
     empty.innerHTML = '<div class="empty-icon" aria-hidden="true">＋</div><p>この会話へ入力できます</p><small>下の入力欄から相談を始めましょう</small>';
     list.prepend(empty);
@@ -689,14 +713,18 @@ function renderChats() {
     renderedNavigation = navigation;
     if (focusedChat) $((focusedChat.tab ? '.chat-tab' : '.conversation-link') + '[data-select="' + CSS.escape(focusedChat.id) + '"]')?.focus({preventScroll:true});
   }
-  // A resident opens the same saved workspace; the chosen layout still applies.
-  const paneLayout=layout;
+  // Show only the person being addressed beside the map. Expanding the
+  // conversation restores the workspace layout without changing its setting.
+  const paneLayout=activeEncounter&&view==='town'?1:layout;
   const selectedIndex = Math.max(0,groupChats.findIndex(chat => chat.id === selected)), count = paneLayout === 1 ? 1 : paneLayout === 2 ? 2 : 4;
   const start = Math.floor(selectedIndex / count) * count, shown = groupChats.slice(start,start + count), grid = $('#grid');
   for (const value of [1,2,4]) grid.classList.toggle('layout-' + value, paneLayout === value);
   $('#chat-view').classList.toggle('multi-chat',paneLayout>1);
   for (const child of [...grid.children]) if (!shown.some(chat => chat.id === child.dataset.select)) child.remove();
-  shown.forEach(chat => { const panel = updatePanel(chat,chats.indexOf(chat)); if (!grid.contains(panel)) grid.append(panel); });
+  shown.forEach((chat,index) => {
+    const panel=updatePanel(chat,chats.indexOf(chat));
+    if(grid.children[index]!==panel)grid.insertBefore(panel,grid.children[index]||null);
+  });
   for (const id of panels.keys()) if (!chats.some(chat => chat.id === id)) panels.delete(id);
   $$('[data-layout]').forEach(button => { const on = +button.dataset.layout === layout; button.classList.toggle('selected',on); button.setAttribute('aria-pressed',on); });
   updateComposer(); persist(); contextSharing.render();workspaceTabs.render();town.render();history.render();village.render();
@@ -738,7 +766,7 @@ function updateComposer() {
   const topic=(activeEncounter?.name||chat?.characterName)&&chat?.title!==$('#chat-heading').textContent?chat?.title:'';
   setText('#chat-topic',topic||'');$('#chat-topic').hidden=!topic;$('#chat-topic').title=topic||'';
   setText('#chat-status',demo?'デモ':chat?(statusLabels[chat.status]||chat.status):'');
-  setText('#chat-information',chat?(chat.model||'モデル未選択')+' · '+chat.messages.length+'件のメッセージ · 会話ごとに下書きを保存':'履歴を選ぶか、新しい会話を作成してください。');
+  setText('#chat-information',chat?(chat.model||'モデル未選択')+' · '+(panels.get(chat.id)?.visibleMessageCount??chat.messages.length)+'件のメッセージ · 会話ごとに下書きを保存':'履歴を選ぶか、新しい会話を作成してください。');
   $('#chat-share').disabled=!chat;
   const files=attachments.get(selected),model=state.models.find(item=>item.model===(steering?chat?.model:$('#model').value));
   const unsupportedImage=files.some(file=>file.kind==='image')&&Array.isArray(model?.inputModalities)&&!model.inputModalities.includes('image');
@@ -902,9 +930,10 @@ document.addEventListener('click', event => {
   // A transcript control owns its action. Only the conversation selector itself
   // (including a tab's nested text) should also select a chat.
   if(control&&control!==target)return;
+  if(view==='town'&&activeEncounter&&target.classList.contains('chat-panel'))return;
   select(target.dataset.select);
 });
-document.addEventListener('keydown', event => { if (event.target.matches('.chat-panel') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); select(event.target.dataset.select); } });
+document.addEventListener('keydown', event => { if (event.target.matches('.chat-panel') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); if(view!=='town'||!activeEncounter)select(event.target.dataset.select); } });
 $$('[data-layout]').forEach(button => button.onclick = () => {
   if (layout === +button.dataset.layout) return;
   const before = new Map($$('.chat-panel').map(panel => [panel.dataset.select,panel.getBoundingClientRect()]));

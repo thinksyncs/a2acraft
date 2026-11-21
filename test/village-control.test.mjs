@@ -211,3 +211,21 @@ for(const [label,point] of [["sea",{x:1e6,y:1e6}],["river",{x:(water.left+water.
     const f=fixture(t,{building:true,saved:{hero:{point}}});assert.deepEqual(f.hero(),{x:490,y:430});
     assert.deepEqual(f.party(),Array(3).fill({x:490,y:430}));
   });
+
+test('a companion speaks to a nearby villager after the encounter closes and the player can silence it', t => {
+  const f = fixture(t, {extraChats:[distantChat]});
+  f.talk(distantChat.id);
+  for (let i = 0; i < 180 && f.root.dataset.encounterStatus === 'approaching'; i++) f.advance(1, 1000);
+  assert.equal(f.root.dataset.encounterStatus, 'talking');
+  const notice = f.element('village-ambient');
+  assert.equal(notice.hidden, true);
+  f.element('village-speech-close').click();
+  for (let i = 0; i < 12 && notice.hidden; i++) f.advance(1, 1000);
+  assert.equal(notice.hidden, false);
+  assert.match(notice.children[0].textContent, /^[bc]　.*北の天文台/);
+  assert.match(notice.children[1].textContent, /天文台の人.*星空の観測日時/);
+  f.element('village-ambient-toggle').click();
+  assert.equal(notice.hidden, true);
+  assert.equal(f.storage.get('chat-ui-village-ambient'), 'off');
+  assert.equal(f.root.dataset.encounterStatus, undefined);
+});

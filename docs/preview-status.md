@@ -1,6 +1,12 @@
-# A2ACraft 0.4.17 — Mac preview status
+# A2ACraft 0.4.18 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+In 0.4.18, approaching a villager shows the topic and the last request with its matching reply. Talking opens the resident's existing chat beside the live map, or below it on narrow windows. Companions can start a short conversation with a nearby villager while the player watches. The villager quotes a saved exchange. This ambient interaction runs locally.
+
+The browser sample was exercised through a footpath walk with both the overhead and leader views visible, a face-to-face meeting, sending and receiving a demo reply in the map, returning to the village, and an unsolicited exchange between two named characters. The recorder now spaces samples across the whole walking deadline so a long approach can reach the arrival frame.
+
+On the verification Mac, 0.4.17's direct executable aborted during AppKit's registration with the desktop before the application loaded. Launch Services and WindowServer lookups were denied in that launch context. Version 0.4.18 checks for a graphics session before starting Electron. Direct launch in the affected context now exits with a diagnostic (69). The offline Node entry for the backend and strict signature verification both passed. Both executables use the existing bundle identifier. Launch Services still returned `-10827` and native window acquisition timed out in that context. The walkthrough above was captured in the browser. A recorded walk from a logged-in Mac desktop remains pending.
 
 In 0.4.17 the startup page and the product share a native window. Capture and accessibility clients can retain the original window handle when the map loads. Previously the startup window was destroyed after opening a second window.
 

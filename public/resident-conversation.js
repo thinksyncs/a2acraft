@@ -2,13 +2,26 @@ import {createWorld3D} from './world-3d.js';
 import {drawWorldPerson} from './village-art.js';
 
 // Display the same encounter snapshot as the town; never creates a model session.
-export function createResidentConversation({host, onReturn, onParty, demo}) {
+export function createResidentConversation({host, onReturn, onParty, onExpand}) {
   const root = document.createElement('section');
   root.id = 'resident-conversation'; root.hidden = true;
   root.setAttribute('aria-label', '街の人と対話');
   root.innerHTML = '<button type="button" class="outline">← 街へ戻る</button><details class="resident-view-details"><summary>相手の目線を見る</summary><div class="resident-view-content"><div class="resident-conversation-copy"><h2></h2><p class="resident-facing-status"></p><small></small></div><figure class="resident-plan"><figcaption>2D · 向き合う二人</figcaption><canvas role="img" aria-label="会話相手とリーダーの位置と目線"></canvas></figure><figure class="resident-eye"><figcaption>3D · リーダーの目線</figcaption><canvas role="img" aria-label="リーダーに向き合う会話相手"></canvas><p hidden></p></figure></div></details>';
   host.prepend(root);
   root.querySelector('button').onclick = onReturn;
+  const expand = document.createElement('button');
+  expand.type = 'button'; expand.textContent = '会話を広げる'; expand.hidden = true;
+  expand.onclick = onExpand; root.append(expand);
+  const originalPosition = document.createComment('chat workspace');
+  host.before(originalPosition);
+  let dock = null, map = null;
+  function undock() {
+    if (!dock) return;
+    originalPosition.after(host);
+    dock.classList.remove('with-resident-chat');
+    map.inert = false;
+    dock = null; map = null; expand.hidden = true;
+  }
   const companions=document.createElement('details');companions.className='resident-companions';
   const companionsLabel=document.createElement('summary');companionsLabel.textContent='ひとりで話す';
   const companionsPanel=document.createElement('div');companionsPanel.className='resident-companions-panel';
@@ -63,6 +76,16 @@ export function createResidentConversation({host, onReturn, onParty, demo}) {
   const observer = new ResizeObserver(resize);observer.observe(root);
   observer.observe(root.querySelector('.resident-view-content'));
   return {
+    dockIn(town, sourceMap) {
+      undock();
+      dock = town; map = sourceMap;
+      dock.classList.add('with-resident-chat');
+      dock.append(host); host.hidden = false; expand.hidden = false;
+      // Hold the face-to-face encounter while typing. The original map and
+      // leader canvas keep rendering, with their camera and actor state intact.
+      map.inert = true;
+    },
+    undock,
     show(value, {recordOnly = false} = {}) {
       if (!value || encounter?.conversationId !== value.conversationId) {closeView();companions.open=false;}
       companions.hidden=recordOnly;
@@ -82,6 +105,6 @@ export function createResidentConversation({host, onReturn, onParty, demo}) {
       companionsList.replaceChildren(...roster.map(member=>{const item=document.createElement('li');item.textContent=member.name+' · '+member.role+' — '+member.title;return item;}));
       companionsHint.textContent=error||(roster.length?'同行者の役割と直近の会話を、この相談の参考にします。':'同行者はいません。この村人の会話を続けます。');
     },
-    destroy(){observer.disconnect();details.removeEventListener('toggle',refreshView);document.removeEventListener('pointerdown',closeOutside);document.removeEventListener('keydown',closeOnEscape,true);renderer?.destroy();host.classList.remove('resident-chat-active');root.remove();}
+    destroy(){undock();originalPosition.remove();observer.disconnect();details.removeEventListener('toggle',refreshView);document.removeEventListener('pointerdown',closeOutside);document.removeEventListener('keydown',closeOnEscape,true);renderer?.destroy();host.classList.remove('resident-chat-active');root.remove();}
   };
 }
