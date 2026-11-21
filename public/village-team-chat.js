@@ -16,7 +16,7 @@ export function createTeamChat({target, messaging}) {
   }
   const form = node('form', 'form'), label = node('label', 'label'), history = node('div', 'recent');
   const controls = node('div', 'controls'), input = node('textarea', 'input'), send = node('button', 'send');
-  const hint = node('small', 'hint');
+  const hint = node('small', 'hint'), refresh = node('button', 'refresh');
   form.id = 'village-team-chat';
   input.id = 'village-team-message';
   input.rows = 1;
@@ -28,9 +28,13 @@ export function createTeamChat({target, messaging}) {
   hint.setAttribute('role', 'status');
   input.setAttribute('aria-describedby', hint.id);
   controls.append(input, send);
-  form.append(label, history, controls, hint);
+  refresh.id = 'village-team-quota-refresh';
+  refresh.type = 'button';
+  refresh.textContent = '残量を更新';
+  refresh.hidden = true;
+  form.append(label, history, controls, hint, refresh);
   form.hidden = true;
-  let shown = null, historyKey = '';
+  let shown = null, historyKey = '', refreshing = false;
 
   function render(fresh = false) {
     shown = messaging ? target(fresh) : null;
@@ -58,14 +62,25 @@ export function createTeamChat({target, messaging}) {
       }));
     }
     history.hidden = !messages.length;
-    const {draft, reason} = messaging.read(chat.id);
+    const {draft, reason, refreshQuota} = messaging.read(chat.id);
     if (input.value !== draft) input.value = draft;
     const unavailable = permitted ? reason : 'この隊は現在、閲覧のみです。';
     input.readOnly = !permitted || Boolean(chat.project);
     hint.textContent = unavailable || '';
     hint.hidden = !unavailable;
-    send.disabled = Boolean(unavailable) || !input.value.trim();
+    refresh.hidden = !permitted || !refreshQuota || !messaging.refreshQuota;
+    refresh.disabled = refreshing;
+    refresh.textContent = refreshing ? '更新中…' : '残量を更新';
+    send.disabled = Boolean(unavailable) || refreshing || !input.value.trim();
   }
+  refresh.onclick = async () => {
+    render(true);
+    if (form.hidden || refresh.hidden || refreshing) return;
+    refreshing = true;
+    render();
+    try { await messaging.refreshQuota(); }
+    finally { refreshing = false; render(true); }
+  };
   input.oninput = () => {
     if (!shown || input.readOnly) return;
     messaging.write(shown.chat.id, input.value);
@@ -82,7 +97,7 @@ export function createTeamChat({target, messaging}) {
     // A runner can start, finish, or change its current worker while this card is open.
     render(true);
     if (!shown || before?.squadId !== shown.squadId || before.chat.id !== shown.chat.id || send.disabled) return;
-    try { await messaging.send(shown.chat.id); }
+    try { await messaging.send(shown.chat.id, shown.squadId); }
     finally { render(); }
   };
   return {element: form, render};

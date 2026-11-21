@@ -8,6 +8,9 @@ import {randomUUID,timingSafeEqual,createHash} from 'node:crypto';
 import {checkPlan} from './policy.mjs';
 import {deliverSend} from './send-delivery.mjs';
 import {buildResidentContext} from './public/resident-companions.js';
+import {projectVillageActivities} from './public/village-activity.js';
+import {villageControlTarget} from './public/village-party-control.js';
+import {teamChatRecipient} from './public/village-team-chat.js';
 import {ensureAgentWorkspace,standingAgentInstructions} from './codex-workspace-policy.mjs';
 import {ConversationWorkspaces,resolveWorkspaceDirectory} from './conversation-workspace.mjs';
 import {prepareCodexLaunch,verifyIsolatedConfig,verifyThreadPermissions,threadPermissionRequest} from './codex-launch.mjs';
@@ -434,11 +437,34 @@ async function ensureThread(c,model,scope){
 }
 function residentTurnContext(visit,conversation){
  return buildResidentContext({visit,conversation,conversations,party:parties.state.party,
-  getVillageState:()=>({party:parties.public(),todos:todos.public(),boardDispatch:boardPublic()})});
+  getVillageState:currentVillageState});
 }
-async function send(c,text,model,effort,attachmentIds=[],partyStep=null,scheduled=null,delivery=null,residentContext=null){
+function currentVillageState(){
+ return {party:parties.public(),todos:todos.public(),boardDispatch:boardPublic()};
+}
+function assertMapChatRecipient(squadId,conversation){
+ if(squadId===undefined)return;
+ const squad=villageControlTarget(projectVillageActivities(currentVillageState(),conversations),squadId);
+ if(!squad||squad.activityId||teamChatRecipient(squad,conversations)!==conversation)throw Error('隊の状態または担当者が変わりました。地図で隊を選び直してください。');
+ if(conversation.project||conversation.workMode==='work')throw Error('地図では会話モードの担当者にだけ送信できます。');
+}
+async function submitConversation(c,b){
+ const fromMap=b.mapSquadId!==undefined;
+ if(!fromMap&&c.project){
+  if(b.attachmentIds?.length)throw Error('projectの相談には本文で回答してください。');
+  const project=projects.find(c.project.id),event=project.events.find(e=>e.conversationId===c.id&&e.kind!=='progress'&&e.status==='open');
+  if(!event)throw Error('この会話には回答待ちの相談がありません。');
+  await projects.answer({id:project.id,eventId:event.id,text:b.text,requestId:b.requestId});return;
+ }
+ if(fromMap&&(b.residentVisit!=null||b.attachmentIds?.length))throw Error('地図の隊へのメッセージは本文だけを送れます。');
+ if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('メッセージまたは添付ファイルを入力してください。');
+ const text=b.text.trim();
+ await deliverSend(c,{...b,text,kind:'send'},delivery=>send(c,text,b.model,b.effort||'medium',b.attachmentIds,null,null,delivery,residentTurnContext(b.residentVisit,c),b.mapSquadId));
+}
+async function send(c,text,model,effort,attachmentIds=[],partyStep=null,scheduled=null,delivery=null,residentContext=null,mapSquadId){
  if(historyImportIds.has(c.id))throw Error('履歴の更新を保存しています。完了後に送信してください。');
- const scope=conversationWorkspaces.snapshot(c,{readOnly:Boolean(partyStep||scheduled)});
+ assertMapChatRecipient(mapSquadId,c);
+ const scope=conversationWorkspaces.snapshot(c,{readOnly:Boolean(partyStep||scheduled)||mapSquadId!==undefined});
  if(projects?.active.size)throw Error('projectの隊が作業中です。相談への回答はprojectの会話から送れます。');
  assertBoardAvailable(partyStep?.questId===parties.currentId?parties.state.quest?.board?.attemptId:null);
  const allowedAttempt=scheduled?.attemptId||(partyStep?.questId===parties.currentId?parties.state.quest?.schedule?.attemptId:null);
@@ -466,6 +492,8 @@ async function send(c,text,model,effort,attachmentIds=[],partyStep=null,schedule
   if(partyStep&&!partyStep.canContinue())throw Error('クエストの停止を要求したため、この役割は開始しませんでした。');
   if(scheduled&&!scheduled.canContinue())throw Object.assign(Error('予約の開始を停止しました。自動では再実行しません。'),{code:'stopped'});
   const latestGate=checkPlan(state.account,state.limits);if(!state.connected||state.login||!latestGate.ok){rememberScheduledQuotaStop(c,latestGate.reason);throw Object.assign(Error(latestGate.reason||'Codexの接続状態を確認してください。'),{code:'quota'});}
+  // Creating or resuming a thread can outlast a change of squad or recipient.
+  assertMapChatRecipient(mapSquadId,c);
   partyStep?.onTurnRequest();
   scheduled?.onTurnRequest();
   const r=await rpc('turn/start',{threadId:c.threadId,input:[...importedInput,...(residentContext?.input||[]),...skillInput(skills),...attachments.input(rows),...contextInput(contexts,text)],model,effort,...scope.turn});
@@ -1165,10 +1193,9 @@ const server=http.createServer(async(req,res)=>{
     if(b.arm)c.armedSkillId=skill.id;
     changed(c);return json(res,200,c);
    }
-   if(p==='/api/send'&&c.project){if(b.attachmentIds?.length)throw Error('projectの相談には本文で回答してください。');const project=projects.find(c.project.id),event=project.events.find(e=>e.conversationId===c.id&&e.kind!=='progress'&&e.status==='open');if(!event)throw Error('この会話には回答待ちの相談がありません。');await projects.answer({id:project.id,eventId:event.id,text:b.text,requestId:b.requestId});return json(res,200,{ok:true});}
-   if(p==='/api/send'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('メッセージまたは添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'send'},delivery=>send(c,b.text.trim(),b.model,b.effort||'medium',b.attachmentIds,null,null,delivery,residentTurnContext(b.residentVisit,c)));return json(res,200,{ok:true});}
+   if(p==='/api/send'){await submitConversation(c,b);return json(res,200,{ok:true});}
    if(p==='/api/steer'&&c.project)throw Error('この隊への回答は相談が届いてから送信してください。');
-   if(p==='/api/steer'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('追加指示または添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'steer'},delivery=>steer(c,b.text.trim(),b.expectedTurnId,b.attachmentIds,delivery,residentTurnContext(b.residentVisit,c)));return json(res,200,{ok:true});}
+   if(p==='/api/steer'){if(b.mapSquadId!==undefined)throw Error('地図の隊から実行中の会話に追加指示は送れません。');if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('追加指示または添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'steer'},delivery=>steer(c,b.text.trim(),b.expectedTurnId,b.attachmentIds,delivery,residentTurnContext(b.residentVisit,c)));return json(res,200,{ok:true});}
    if(p==='/api/stop'&&c.project){await projects.configure({id:c.project.id,action:'pause'});return json(res,200,{ok:true});}
    if(p==='/api/stop'){await interrupt(c);return json(res,200,{ok:true});}
    return json(res,404,{error:'Not found'});

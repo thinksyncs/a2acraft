@@ -330,8 +330,12 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const nextAssignments=JSON.stringify([...assignments]);if(nextAssignments!==previousAssignments)try{mapStorage.setItem(layoutKey,nextAssignments);}catch{}
   population.textContent=String(projection.stats.population);projectCount.textContent=String(projection.stats.projects);finished.textContent=String(projection.stats.stages.complete||0);
   root.dataset.population=String(projection.stats.population);root.dataset.projectCount=String(projection.stats.projects);
-  directorySummary.textContent='村の名簿 · '+projection.residents.length+'人';empty.hidden=projection.residents.length>0;
+  directorySummary.textContent='村の名簿 · '+projection.residents.length+'人';updateEmptyNotice();
   district=clamp(district,0,districtCount()-1);syncDistrict();renderDirectory();renderActivities();if(detail.open)refreshDetail();const heldId=encounter?.conversationId||speechId;if(heldId&&!projection.residents.some(item=>item.conversationId===heldId))closeSpeech(false);
+ }
+ function updateEmptyNotice(){
+  const hasPeople=projection.residents.length>0||activities.allSquads.some(squad=>squad.members.length>0);
+  empty.hidden=hasPeople||camera.x<0||camera.x>1000||camera.y<0||camera.y>640;
  }
  function districtCount(){return Math.max(1,semanticLayout?.neighborhoods.length||1);}
  function syncDistrict(){
@@ -652,7 +656,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const island=villageIsland(),halfWidth=width/(2*scale),halfHeight=height/(2*scale),bounds=island.seaBounds;
   camera.x=halfWidth*2>=bounds.right-bounds.left?(bounds.left+bounds.right)/2:clamp(camera.x,bounds.left+halfWidth,bounds.right-halfWidth);
   camera.y=halfHeight*2>=bounds.bottom-bounds.top?(bounds.top+bounds.bottom)/2:clamp(camera.y,bounds.top+halfHeight,bounds.bottom-halfHeight);
-  empty.hidden=projection.residents.length>0||camera.x<0||camera.x>1000||camera.y<0||camera.y>640;
+  updateEmptyNotice();
   root.dataset.cameraX=camera.x.toFixed(1);root.dataset.cameraY=camera.y.toFixed(1);root.dataset.zoom=zoom.toFixed(2);
   const nextContextKey=[Math.floor(camera.x/160),Math.floor(camera.y/160),encounter?.status||'',signature].join(':');
   if(contextKey!==nextContextKey){contextKey=nextContextKey;neighborhoodContext.update({residents:projection.residents,homes:semanticLayout?.homes,point:camera,chats:getChats(),hidden:Boolean(encounter),revision:signature});}

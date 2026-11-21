@@ -11,7 +11,8 @@ export async function deliverSend(conversation,input,execute){
     kind:input.kind||'send',text:input.text,model:input.model||null,
     effort:input.effort||'medium',expectedTurnId:input.expectedTurnId||null,
     attachmentIds:input.attachmentIds||[],
-    ...(input.residentVisit?{residentVisit:input.residentVisit}:{})
+    ...(input.residentVisit?{residentVisit:input.residentVisit}:{}),
+    ...(input.mapSquadId!==undefined?{mapSquadId:input.mapSquadId}:{})
   })).digest('hex');
   const receipt={requestId,fingerprint};
   const accepted=conversation.messages.find(message=>message.role==='user'&&message.delivery?.requestId===requestId);

@@ -5,6 +5,9 @@ import vm from 'node:vm';
 import {randomUUID} from 'node:crypto';
 import {buildResidentContext, residentPartyKey} from '../public/resident-companions.js';
 import {deliverSend} from '../send-delivery.mjs';
+import {projectVillageActivities} from '../public/village-activity.js';
+import {villageControlTarget} from '../public/village-party-control.js';
+import {teamChatRecipient} from '../public/village-team-chat.js';
 
 const plain = value => JSON.parse(JSON.stringify(value));
 // Execute the actual routes and send/steer functions with in-memory storage
@@ -31,7 +34,7 @@ async function fixture({running = false} = {}) {
   const todos = {public: () => ({items: [alternate]})};
   const calls = [], saves = [], released = [];
   const context = vm.createContext({
-    buildResidentContext, deliverSend, randomUUID, conversations, parties, todos, boardPublic: () => ({}), c: recipient,
+    buildResidentContext, deliverSend, projectVillageActivities, villageControlTarget, teamChatRecipient, randomUUID, conversations, parties, todos, boardPublic: () => ({}), c: recipient,
     historyImportIds: new Set(), conversationWorkspaces: {snapshot: () => ({turn: {sandboxPolicy: {type: 'readOnly'}}})},
     projects: {active: new Map()}, assertBoardAvailable() {}, hasScheduledRun: () => false,
     scheduledStarting: null, workQuestWaiter: null, teamsWaiter: null, startingTodo: false,
@@ -138,4 +141,66 @@ test('an unknown or no longer available squad cannot send using another roster o
   await assert.rejects(f.dispatch('/api/send',input('todo:waiting')), /隊の操作権限/);
   assert.equal(f.calls.length, 0);
   assert.equal(f.recipient.messages.length, 0);
+});
+
+async function mapFixture() {
+  const f = await fixture(), {residentVisit, ...message} = f.body;
+  f.alternate.assignee.conversationId = f.recipient.id;
+  return {...f, message:{...message, mapSquadId:'todo:waiting'}};
+}
+
+test('live map send targets the current team, stays read-only and replays after a roster change', async () => {
+  const f = await mapFixture(), scopes = [];
+  f.context.conversationWorkspaces.snapshot = (_chat, options) => {
+    scopes.push(plain(options));
+    return {turn:{sandboxPolicy:{type:options.readOnly?'readOnly':'workspaceWrite'}}};
+  };
+  await f.dispatch('/api/send', f.message);
+  assert.deepEqual(scopes, [{readOnly:true}]);
+  assert.equal(f.calls[0].method, 'turn/start');
+  assert.equal(f.calls[0].params.sandboxPolicy.type, 'readOnly');
+  assert.deepEqual(f.calls[0].params.input, [{type:'text',text:f.body.text}]);
+  assert.equal(f.alternate.status, 'todo');
+  f.alternate.assignee.conversationId = 'engineer';
+  f.recipient.workMode = 'work';
+  await f.dispatch('/api/send', f.message);
+  for (const mapSquadId of ['protagonist', undefined]) {
+    await assert.rejects(f.dispatch('/api/send', {...f.message, mapSquadId}), /同じ送信ID/);
+  }
+  assert.equal(f.calls.length, 1);
+  assert.equal(f.recipient.messages.length, 1);
+});
+
+test('stale or unknown map team, record, work mode, attachments and steering cannot dispatch', async () => {
+  const f = await mapFixture();
+  for (const mapSquadId of ['', null, 'todo:absent', 'protagonist']) {
+    await assert.rejects(f.dispatch('/api/send',{...f.message,mapSquadId}), /担当者/);
+  }
+  f.recipient.project = {id:'project-record'};
+  await assert.rejects(f.dispatch('/api/send',f.message), /会話モード/);
+  delete f.recipient.project;
+  f.recipient.workMode = 'work';
+  await assert.rejects(f.dispatch('/api/send',f.message), /会話モード/);
+  delete f.recipient.workMode;
+  await assert.rejects(f.dispatch('/api/send',{...f.message,attachmentIds:['file']}), /本文だけ/);
+  await assert.rejects(f.dispatch('/api/send',{...f.message,residentVisit:f.body.residentVisit}), /本文だけ/);
+  await assert.rejects(f.dispatch('/api/steer',f.message), /追加指示/);
+  f.alternate.status = 'done';
+  await assert.rejects(f.dispatch('/api/send',f.message), /担当者/);
+  assert.equal(f.recipient.status,'idle');
+  assert.equal(f.recipient.messages.length,0);
+  assert.equal(f.calls.length,0);
+});
+
+test('a team reassignment during thread preparation is checked again before the turn starts', async () => {
+  const f = await mapFixture();
+  f.context.ensureThread = async () => { f.alternate.assignee.conversationId = 'engineer'; };
+  await assert.rejects(f.dispatch('/api/send',f.message),/担当者/);
+  assert.equal(f.calls.length,0);
+  assert.equal(f.recipient.messages.length,0);
+  // No delivered turn was recorded, so a corrected retry can be sent once.
+  f.alternate.assignee.conversationId = f.recipient.id;
+  f.context.ensureThread = async () => {};
+  await f.dispatch('/api/send',f.message);
+  assert.equal(f.calls.length,1);
 });
