@@ -1,3 +1,5 @@
+import {posix as macPath} from 'node:path';
+
 const processCode = value => typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,31}$/.test(value) ? value : 'unknown';
 // Match only backend-owned constants. Do not expose arbitrary IPC strings in a
 // native dialog: they may contain account information or local content.
@@ -74,4 +76,15 @@ export function createRuntimeRecovery({present,close}) {
     })().finally(()=>{pending=null;});
     return pending;
   };
+}
+
+export function relaunchAfterRecovery(app, runtime = process) {
+  if (app.isPackaged && runtime.platform === 'darwin' && macPath.basename(runtime.execPath) === 'A2ACraftRuntime') {
+    // The macOS desktop check execs the Electron runtime. Restart through the
+    // bundle's principal executable and keep the same profile and launch mode.
+    const execPath = macPath.join(macPath.dirname(runtime.execPath), 'A2ACraft');
+    app.relaunch({execPath, args:runtime.argv.slice(1)});
+  } else {
+    app.relaunch();
+  }
 }

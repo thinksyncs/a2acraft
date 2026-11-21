@@ -1,6 +1,16 @@
-# A2ACraft 0.4.18 — Mac preview status
+# A2ACraft 0.4.19 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+### Mac desktop acceptance in 0.4.19
+
+The same signed Apple Silicon app returned `-10827` when invoked by the managed runner and launched successfully from the user's Mac desktop. In the runner, lookups for Launch Services and WindowServer returned permission denied and Core Graphics reported no desktop session. On 0.4.18, Launch Services could identify the bundle as an application, and its ZIP contained an executable arm64 entry. The reported runner error alone did not establish a missing binary or a Finder launch failure.
+
+Recovery restarts now use the principal app executable and preserve the original arguments. A separate failure affected recording after a successful desktop launch. The recorder previously stopped on its first transient presentation check. It now waits for the app's own visible sample window and the correct page, reports the last stage on failure, and checks the actual rendered images during the walk and chat.
+
+The revised desktop build recorded 15 native window frames on macOS 27.2.1. The overhead and leader views both changed as the party approached エマ・ソレイユ. The same resident received a sample question and answered in the map chat. After returning to the village, リリカ asked カイル about preparing for a hike and he quoted the previously recorded advice about carrying water and rain gear. These are facts about the isolated sample session. The suite passed all 532 tests. The tester ZIP includes a standalone Finder launcher and the app has a verified ad hoc integrity signature.
+
+### 0.4.18
 
 In 0.4.18, approaching a villager shows the topic and the last request with its matching reply. Talking opens the resident's existing chat beside the live map, or below it on narrow windows. Companions can start a short conversation with a nearby villager while the player watches. The villager quotes a saved exchange. This ambient interaction runs locally.
 

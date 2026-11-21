@@ -2,10 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
-import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
+import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery,relaunchAfterRecovery} from './runtime-recovery.mjs';
 
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+test('a packaged Mac recovery restart uses its declared executable and preserves isolated launch arguments',()=>{
+  const folder='/Applications/Renamed Preview.app/Contents/MacOS/';
+  const runtime={platform:'darwin',execPath:folder+'A2ACraftRuntime',
+    argv:[folder+'A2ACraftRuntime','--demo','--preview-data-dir=/tmp/村の サンプル']};
+  const calls=[],app={isPackaged:true,relaunch(...options){calls.push(options);}};
+  relaunchAfterRecovery(app,runtime);
+  assert.deepEqual(calls.shift(),[{execPath:folder+'A2ACraft',args:runtime.argv.slice(1)}]);
+  for(const other of [{...runtime,platform:'linux'},{...runtime,execPath:folder+'A2ACraft'}]){
+    relaunchAfterRecovery(app,other);
+    assert.deepEqual(calls.shift(),[]);
+  }
+  relaunchAfterRecovery({...app,isPackaged:false},runtime);
+  assert.deepEqual(calls.shift(),[]);
+});
+
 function childFixture({exits=true}={}){
   const child=new EventEmitter();
   Object.assign(child,{pid:42,exitCode:null,signalCode:null,stdout:new PassThrough(),stderr:new PassThrough(),signals:[]});

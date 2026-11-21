@@ -11,7 +11,7 @@ import {createUiStateStore} from './ui-state-store.mjs';
 import {createCloseCoordinator} from './close-coordinator.mjs';
 import {createMapStateStore} from './map-state.mjs';
 import {bundledCodexPath,resolveCodexExecutable} from './codex-runtime.mjs';
-import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery} from './runtime-recovery.mjs';
+import {waitForBackendReady,stopOwnedChild,processDiagnostic,createRuntimeRecovery,relaunchAfterRecovery} from './runtime-recovery.mjs';
 import {beginWindowSession,startupPageURL,revealWindow,revealForDialog,fitWindowToWorkArea} from './window-lifecycle.mjs';
 import {createWindowDiagnostics} from './window-diagnostics.mjs';
 import {createSavedReload,createWindowStateFlusher} from './saved-reload.mjs';
@@ -118,7 +118,7 @@ const coordinatedClose = createCloseCoordinator({
   close: async () => {
     quitting = true;
     await Promise.allSettled([stopBackend(), settingsWriting]);
-    if(relaunchRequested)app.relaunch();
+    if(relaunchRequested)relaunchAfterRecovery(app);
     app.exit(process.exitCode || 0);
   }
 });
@@ -413,7 +413,7 @@ async function loadProductWindow(navigate) {
   starting = false;
   if(recordSampleWalk){
     const {captureSampleWalk}=await import('./sample-walk-capture.mjs');
-    const ok=await captureSampleWalk(window,{origin,profile:app.getPath('userData'),version:app.getVersion()});
+    const ok=await captureSampleWalk(window,{origin,profile:app.getPath('userData'),version:app.getVersion(),reveal:revealAppWindow});
     if(!ok)process.exitCode=1;
   }
   if (smoke) await smokeCheck();
