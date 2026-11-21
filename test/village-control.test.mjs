@@ -137,6 +137,21 @@ test("an assigned waiting team can be inspected before anyone has chat history",
   assert.equal(f.element("village-empty").hidden, false, "an empty roster and decorative home party do not hide onboarding");
 });
 
+test("a castle map report opens the matching squad card without taking control, or the roster if the record expired", t => {
+  const f = fixture(t, {visible:false});
+  f.state.todos = {items:[{id:"castle-trail",title:"道を調べる",status:"todo",assignee:{type:"chat",conversationId:"b"},runs:[]}]};
+  f.view.setVisible(true);
+  const control = f.view.getControlledSquadId();
+  f.view.openSquadRecord("todo:castle-trail");
+  assert.equal(f.root.dataset.selectedSquad, "todo:castle-trail");
+  assert.equal(f.element("village-quest-peek").hidden, false);
+  assert.equal(f.view.getControlledSquadId(), control);
+  f.state.todos = {items:[]};
+  f.view.openSquadRecord("todo:castle-trail");
+  assert.equal(f.element("village-quest-drawer").hidden, false);
+  assert.equal(f.element("village-quest-peek").hidden, true);
+});
+
 test("Island overview changes the camera without cancelling the party walk",t=>{
   const f=fixture(t);f.element("village-canvas").dispatch("keydown",{key:"d"});f.advance(6);
   const before=f.party(),leader=f.hero();assert.equal(before.length,3);assert.ok(leader.x>510&&leader.x<550);
@@ -261,6 +276,12 @@ test('team card chat stays on the map, preserves drafts by recipient, and revali
   assert.match(form.querySelector('label').textContent, new RegExp(chat.characterName));
   assert.ok(form.querySelectorAll('span').some(span => span.textContent === '次は小さい画面で確認します。'));
   input.value = '画面の幅は？'; input.dispatch('input');
+  f.element('village-quest-control').click();
+  assert.equal(f.root.dataset.controlledSquad, paused);
+  assert.equal(f.root.dataset.selectedSquad, paused);
+  assert.equal(f.element('village-quest-peek').hidden, false);
+  assert.equal(input.value, '画面の幅は？');
+  assert.equal(sent.length, 0);
   inspect('protagonist');
   assert.equal(input.value, '');
   input.value = 'こちらは別の下書き'; input.dispatch('input');

@@ -26,13 +26,6 @@
   background-blend-mode: luminosity;
   border-color: #563e2c;
 }
-.world-room-stage[data-room="castle"] {
-  background: linear-gradient(90deg, #56615b 30%, #785049 30% 70%, #56615b 70%);
-  border-color: #929786;
-}
-.world-room-stage[data-room="weapon"] {
-  border-color: #695a40;
-}
 .project-dialog button.world-room-host {
   position: absolute;
   top: 10px;
@@ -205,6 +198,103 @@
   background: #142621d9;
   border: 1px solid #c5aa7077;
   border-radius: 4px;
+}
+
+/* The painted rooms share a clear central aisle with the live party. */
+.world-room-stage:is([data-room="castle"], [data-room="weapon"]) {
+  height: auto;
+  aspect-ratio: 5 / 2;
+  width: calc(100% + 44px);
+  min-height: 172px;
+  max-height: min(312px, 42dvh);
+  margin-top: 12px;
+  border-block: 1px solid #877653;
+  background: #393a32;
+}
+.world-room-scenery.world-room-painting {
+  object-fit: cover;
+  object-position: center 44%;
+  image-rendering: auto;
+}
+.world-room-stage:has(.world-room-painting) .world-room-host {
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  outline-offset: 2px;
+}
+.world-room-stage:has(.world-room-painting) .world-room-host canvas,
+.world-room-stage:has(.world-room-painting) .world-room-host img {
+  display: block;
+  width: clamp(40px, 7.4vw, 58px);
+  height: auto;
+  image-rendering: auto;
+}
+.world-room-stage:has(.world-room-painting) .world-room-host span {
+  position: absolute;
+  top: 100%;
+  padding: 2px 7px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: #1f241be8;
+}
+.world-room-stage:has(.world-room-painting) .world-room-party {
+  bottom: 6%;
+}
+.world-room-stage:has(.world-room-painting) .world-room-party :is(canvas, img) {
+  display: block;
+  width: clamp(37px, 7vw, 55px);
+  height: auto;
+  image-rendering: auto;
+}
+.world-room-speech:has(.world-room-speaker) {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 1.52;
+}
+.world-room:has(.world-room-painting) .world-room-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.world-room:has(.world-room-painting) .world-room-actions button {
+  flex: 1 1 150px;
+  margin: 0;
+  min-height: 44px;
+}
+.world-room-stage:has(.world-room-painting) .world-room-party img:first-child {
+  order: 1;
+  transform: translateY(-16%);
+}
+.world-room-stage:has(.world-room-painting) .world-room-party img:nth-child(odd):not(:first-child) {
+  order: 2;
+  filter: hue-rotate(-26deg);
+}
+.world-room-stage:has(.world-room-painting) .world-room-party img:nth-child(4n) {
+  transform: translateY(12%);
+  filter: hue-rotate(38deg);
+}
+@media (max-width: 600px) {
+  .world-room-stage:is([data-room="castle"], [data-room="weapon"]) {
+    width: calc(100% + 32px);
+  }
+}
+@media (max-height: 740px) {
+  .world-room-stage:is([data-room="castle"], [data-room="weapon"]) {
+    max-height: 35dvh;
+    min-height: min(155px, 30dvh);
+  }
+}
+.world-room-speaker {
+  color: #ead29b;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .world-journey-status {

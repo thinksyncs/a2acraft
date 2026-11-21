@@ -21,6 +21,7 @@ const button = (text, action, className) => {
   return n;
 };
 export function initProjects({
+  castleRecords,
   api,
   demo,
   getState,
@@ -333,7 +334,10 @@ export function initProjects({
     onWorld: updateWorld,
     notify,
   });
-  const room = createWorldRoom({ onExit: () => world.release() });
+  const room = createWorldRoom({
+    onExit: () => world.release(),
+    ...castleRecords,
+  });
   function openRoom(facility, count) {
     room.open(facility, count, (content, close) => {
       if (facility.id === "building") {
@@ -343,7 +347,7 @@ export function initProjects({
       if (facility.id === "weapon")
         content.append(
           button(
-            "品ぞろえを見る · k token",
+            "武器を選んで試着する",
             () => {
               close();
               onNavigate?.("weapon");
@@ -361,7 +365,7 @@ export function initProjects({
             },
             "primary",
           ),
-          button("依頼と成果を確認する", () => {
+          button("依頼を書く", () => {
             close();
             onNavigate?.("castle");
           }),

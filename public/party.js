@@ -170,7 +170,14 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
   if($('#party-edit-close'))$('#party-edit-close').onclick=()=>$('#party-edit-dialog').close();
   $('#party-edit-dialog')?.addEventListener('close',()=>{const target=editorFocus?.isConnected?editorFocus:$('#party-edit-open');if(!$('#tavern-view').hidden)target?.focus({preventScroll:true});});
   if($('#party-new-quest'))$('#party-new-quest').onclick=()=>{dismissedQuest=current().quest?.id;render();$('#party-quest').focus();};
-  if($('#party-view-record'))$('#party-view-record').onclick=()=>{dismissedQuest=null;render();const heading=$('#tavern-view .party-progress-heading h3');heading.tabIndex=-1;heading.focus({preventScroll:true});};
+  function openRecord() {
+    dismissedQuest = null;
+    render();
+    const heading = $('#tavern-view .party-progress-heading h3');
+    heading.tabIndex = -1;
+    heading.focus();
+  }
+  if($('#party-view-record'))$('#party-view-record').onclick=openRecord;
   $('#party-final-chat').onclick=()=>{const leader=current().quest?.party.leaderId;if(leader)onSelect(leader);};
   function saveQuestDraft(value){
     if(active(current().quest)||current().quest?.status==='paused')return false;
@@ -184,7 +191,7 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     let badge=element.querySelector('.party-pane-badge');if(!badge){badge=text('span','','party-pane-badge');element.querySelector('.panel-foot').append(badge);}
     const quest=current().quest,step=quest?.steps.find(step=>step.conversationId===chat.id);badge.textContent=step&&active(quest)?(step.kind==='summary'?'リーダー':step.role)+' · '+partyStepLabels[step.status]:'';
   }
-  return {render,renderPane,getQuestDraft:()=>$('#party-quest').value,setQuestDraft:saveQuestDraft,startQuest:async value=>{
+  return {render,renderPane,openRecord,getQuestDraft:()=>$('#party-quest').value,setQuestDraft:saveQuestDraft,startQuest:async value=>{
     if(busy)throw Error('前の操作が完了するまでお待ちください。');
     if(active(current().quest)||current().quest?.status==='paused')throw Error('現在のクエストを再開または終了してから出発してください。');
     if(!canConnect())throw Error('Codexに接続してから出発してください。');

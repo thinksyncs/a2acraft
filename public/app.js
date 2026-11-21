@@ -21,6 +21,7 @@ import {residentDemoReply} from './resident-demo.js';
 import {residentVisitFor,residentSquadParty,companionRoster,buildResidentContext} from './resident-companions.js';
 import {initDiscoverySharing} from './discovery-sharing.js';
 import {initProjects} from './projects.js';
+import {projectVillageActivities} from './village-activity.js';
 import {createWorldRoom,button as roomButton} from './world-room.js';
 import {projectDemo} from './project-demo.js';
 import {villageDemoChats,villageDemoActivityState,villageDemoQuestSource} from './village-demo.js';
@@ -145,16 +146,53 @@ const equipment=initEquipment({api,demo,storeKey,getChats:()=>chats,getSelected:
 const party=initParty({api,demo,storeKey,getChats:()=>chats,getState:()=>villageSample?{...state.party,party:villageDemoActivityState(state).party.party}:state.party,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canConnect:()=>demo||(!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'),onState:applyPartyState,onChat:chat=>{
   const index=chats.findIndex(item=>item.id===chat.id);if(index>=0)chats[index]=chat;renderChats();
 },onSelect:id=>select(id),onDemoTurn:chat=>equipment.demoTurn(chat),onPersistQuest:quest=>todoView.syncDemoQuest(quest)});
-const castle=initCastle({api,demo,getPractice:practiceMode,getTodos:()=>state.todos,onTodo:id=>switchView('todos',()=>todoView.open(id)),getState:()=>state.party,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canConnect:()=>demo||(!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'),getPolicy:()=>demo?{ok:true}:state.policy,getDraft:()=>party.getQuestDraft(),setDraft:value=>party.setQuestDraft(value),onStart:value=>party.startQuest(value),onTavern:()=>switchView('tavern'),onTodos:()=>switchView('todos'),onProgress:()=>switchView('tavern')});
+const castle=initCastle({api,demo,getPractice:practiceMode,getTodos:()=>state.todos,onTodo:id=>switchView('todos',()=>todoView.open(id)),getState:()=>state.party,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canConnect:()=>demo||(!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'),getPolicy:()=>demo?{ok:true}:state.policy,getDraft:()=>party.getQuestDraft(),setDraft:value=>party.setQuestDraft(value),onStart:value=>party.startQuest(value),onTavern:()=>switchView('tavern'),onTodos:()=>switchView('todos'),onProgress:()=>openFacilityView('progress')});
 const pluginView=initPlugins({api,demo,storeKey,onBoard:openPartyBoard,getTodos:()=>state.todos,onTodo:id=>switchView('todos',()=>todoView.open(id)),onDisabled:()=>{if(view==='backlog')switchView('settings');},onTeamsDisabled:()=>{if(view==='teams')switchView('settings');},getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),getState:()=>state,onSelect:id=>select(id),onOpenExternal:openTeamsExternal,notify:toast});
 const mediaView=initMedia({api,getState:()=>state.media,isVisible:()=>!$('#workspace').hidden&&view==='image',motionAllowed:()=>document.body.dataset.motion!=='reduced',onState:value=>{state.media=value;mediaView.render();todoView.hydrate();},onAttach:file=>switchView('chat',()=>attachments.addFiles([file])),notify:toast});
 const todoView=initTodos({api,demo,storeKey,onTeams:id=>switchView('teams',()=>pluginView.openTeamsDraft(id)),getState:()=>state.todos,getChats:()=>chats,getParty:()=>state.party,getMedia:()=>state.media,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),canRun:()=>demo||(!serverUnavailable&&state.policy?.ok),onState:value=>{state.todos=value;todoView.hydrate();village.render();},onSelect:id=>select(id),onTavern:()=>switchView('tavern'),onMedia:id=>switchView('image',()=>mediaView.select(id)),onDemoStart:params=>party.startTodo(params),onDemoAction:(action,retry)=>party.todoAction(action,retry)});
-const town=initTown({api,demo,onTeams:id=>switchView('teams',()=>pluginView.openTeamsDraft(id)),getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onProgress:()=>switchView('tavern'),onTodo:id=>switchView('todos',()=>todoView.open(id)),getState:()=>state,getChats:()=>chats,getSelected:()=>selected,onNavigate:place=>switchView(place==='tavern'?'tavern':place==='castle'?'castle':'equipment',()=>{if(!['tavern','castle'].includes(place))equipment.open(place);}),onRefresh:refreshUsage,onCharacterChat:id=>select(id,'chat',()=>$('#prompt').focus()),onCharacterEquip:(id,slot)=>select(id,'equipment',()=>{equipment.open(slot);$('#equipment-chat').focus();})});
+const town=initTown({api,demo,onTeams:id=>switchView('teams',()=>pluginView.openTeamsDraft(id)),getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onProgress:()=>openFacilityView('progress'),onTodo:id=>switchView('todos',()=>todoView.open(id)),getState:()=>state,getChats:()=>chats,getSelected:()=>selected,onNavigate:place=>switchView(place==='tavern'?'tavern':place==='castle'?'castle':'equipment',()=>{if(!['tavern','castle'].includes(place))equipment.open(place);}),onRefresh:refreshUsage,onCharacterChat:id=>select(id,'chat',()=>$('#prompt').focus()),onCharacterEquip:(id,slot)=>select(id,'equipment',()=>{equipment.open(slot);$('#equipment-chat').focus();})});
 const workspaceTabs=initWorkspaceTabs({getGroups:()=>state.chatGroups,getChats:()=>chats,getSelected:()=>selected,getView:()=>view,onMap:()=>switchView('town',()=>townSection(currentTownSection==='projects'?'projects':'town')),onGroup:chooseChatGroup,onAdd:addChatGroup});
-const villageRoom=createWorldRoom({id:'village-room',onExit:()=>village.render()});
-function visitVillageFacility(place){
- const facility={id:place,name:place==='weapon'?'スキルの武器屋':place==='castle'?'王城':'旅立ちの酒場',host:place==='weapon'?'武器屋の店主':place==='castle'?'王様':'酒場の主人'};
- villageRoom.open(facility,village.getControlledParty()?.members.length||1,(content,close)=>content.append(roomButton(place==='weapon'?'品ぞろえを見る · k token':place==='castle'?'依頼と成果を確認する':'仲間と役割を編成する',()=>{close();switchView(['tavern','castle'].includes(place)?place:'equipment',()=>{if(place==='weapon')equipment.open(place);});},'primary')));
+function openFacilityView(place) {
+  const next = place === 'progress' ? 'tavern' : place === 'weapon' ? 'equipment' : place;
+  switchView(next, () => {
+    if (place === 'weapon') {
+      equipment.open('weapon');
+      $('#equipment-chat').focus();
+    } else if (place === 'castle') {
+      if (demo) $('#castle-direct-quest').open = true;
+      $(demo ? '#castle-quest' : '#castle-work-request').focus();
+    } else if (place === 'progress') {
+      party.openRecord();
+    }
+  });
+}
+const castleRecords = {
+  getProgress() {
+    const quest = state.party?.quest;
+    return {quest, squads: quest ? [] : projectVillageActivities(villageState(), chats).allSquads};
+  },
+  onProgress(record) {
+    if (record.questId && state.party?.quest?.id === record.questId) {
+      openFacilityView('progress');
+      return;
+    }
+    switchView('town', () => {
+      townSection('town');
+      village.openSquadRecord(record.squadId);
+    });
+  },
+};
+const villageRoom = createWorldRoom({
+  id: 'village-room', onExit: () => village.render(),
+  ...castleRecords,
+});
+function visitVillageFacility(place) {
+  const facility = {id: place, name: place === 'weapon' ? 'スキルの武器屋' : place === 'castle' ? '王城' : '旅立ちの酒場',
+    host: place === 'weapon' ? '武器屋の店主' : place === 'castle' ? '王様' : '酒場の主人'};
+  const label = place === 'weapon' ? '武器を選んで試着する' : place === 'castle' ? '依頼を書く' : '仲間と役割を編成する';
+  villageRoom.open(facility, village.getControlledParty()?.members.length || 1, (content, close) => {
+    content.append(roomButton(label, () => { close(); openFacilityView(place); }, 'primary'));
+  });
 }
 function villageState(){return villageSample?villageDemoActivityState(state):state;}
 const village=initVillage({api,demo,getState:villageState,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard(),
@@ -167,9 +205,9 @@ const village=initVillage({api,demo,getState:villageState,getChats:()=>chats,onS
     },
     send:sendTeamChatMessage
   }});
-const adventure=initAdventure({api,demo,getState:()=>state,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onState:applyAdventureState,onProgress:()=>switchView('tavern'),onTown:()=>{townSection('town');village.focus();},notify:toast});
+const adventure=initAdventure({api,demo,getState:()=>state,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onState:applyAdventureState,onProgress:()=>openFacilityView('progress'),onTown:()=>{townSection('town');village.focus();},notify:toast});
 const discoveries=initDiscoverySharing({host:$('#adventure-world'),api,demo,getState:()=>state.discoveries,getAdventure:()=>state.adventure,onState:applyDiscoveryState,notify:toast});
-const projects=initProjects({api,demo,getState:()=>state,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onChat:openResidentChat,onMap:showProjectMap,onLegacy:()=>{townSection('town');village.focus();},onNavigate:place=>switchView(['tavern','castle'].includes(place)?place:'equipment',()=>{if(place==='weapon')equipment.open(place);}),onState:value=>{state.projects=value;projects.render();updateComposer();},notify:toast});
+const projects=initProjects({api,demo,castleRecords,getState:()=>state,getChats:()=>chats,getModel:()=>({model:$('#model').value,effort:$('#effort').value}),onChat:openResidentChat,onMap:showProjectMap,onLegacy:()=>{townSection('town');village.focus();},onNavigate:openFacilityView,onState:value=>{state.projects=value;projects.render();updateComposer();},notify:toast});
 // Panels are detached when switching a single-pane conversation. Keep the
 // question card itself reachable while its previous transcript is off-screen.
 const projectChatContext=$('#project-chat-context');
