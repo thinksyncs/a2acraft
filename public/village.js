@@ -37,7 +37,7 @@ const iconPaths={find:'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',history:
 function iconButton(node,key,label){node.title=label;node.setAttribute('aria-label',label);node.replaceChildren();const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',iconPaths[key]);icon.append(path);node.append(icon);return node;}
 
 export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest,teamMessaging}){
- const root=document.querySelector('#history-village');if(!root)return {render(){},setVisible(){},focus(){},getEncounter(){return null;},endEncounter(){},setControlledSquad(){return false;},getControlledSquadId(){return 'protagonist';},getControlledParty(){return null;}};
+ const root=document.querySelector('#history-village');if(!root)return {render(){},setVisible(){},focus(){},openSquadRecord(){},getEncounter(){return null;},endEncounter(){},setControlledSquad(){return false;},getControlledSquadId(){return 'protagonist';},getControlledParty(){return null;}};
  root.classList.add('history-village');root.setAttribute('aria-labelledby','village-title');
  let visible=false,disposed=false,projection=projectVillage([],[]),signature='',district=0,selected=null,busy=false;
  let demoOverrides=[],demoRevision=0;
@@ -128,7 +128,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const questChat=button('village-quest-chat','担当の会話',()=>{const id=questChat.dataset.conversationId;closeQuestPeek(false);if(id)onOpenChat?.(id);});questActions.append(questOpen,questChat);
  const questControl=button('village-quest-control','この隊を操作',()=>{
   const squad=selectedSquad();if(!squad)return;
-  if(setControlledSquad(squad.id)){closeQuestPeek();return;}
+  if(setControlledSquad(squad.id)){questPeekClose.focus({preventScroll:true});return;}
   renderQuestPeek();questControlNote.hidden=false;questControlNote.textContent='この隊を動かせません。現在の編成と作業状態を確認してください。';
  });
  const questControlNote=make('small',undefined,'village-control-note');questControlNote.id='village-control-note';questControlNote.setAttribute('role','status');
@@ -448,6 +448,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const squad=activities.allSquads.find(item=>item.id===id)||(id==='protagonist'?activities.protagonist:null);if(!squad)return;
   closeSpeech(false);directory.open=false;questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');selectedSquadId=id;root.dataset.selectedSquad=id;peekSignature='';questMore.open=false;questPeek.hidden=false;
   syncDistrict();renderQuestPeek();locateSquad();if(focus)questPeekClose.focus({preventScroll:true});
+ }
+ function openSquadRecord(id){
+  if(!visible||disposed)return;
+  updateProjection(true);
+  if(activities.allSquads.some(squad=>squad.id===id)){selectSquad(id);return;}
+  if(questDrawer.hidden)questButton.click();
+  else questClose.focus();
  }
  function cycleSquad(direction){const groups=inspectionSquads(),index=groups.findIndex(item=>item.id===selectedSquadId);if(groups.length)selectSquad(groups[(Math.max(0,index)+direction+groups.length)%groups.length].id,{focus:false});}
  function renderQuestPeek(){
@@ -784,5 +791,5 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function dispose(){saveView();disposed=true;visible=false;inputFrame.cancel();endEncounter({redraw:false});clearTimeout(projectionTimer);if(frameId)cancelAnimationFrame(frameId);world3D?.destroy();observer.disconnect();insetObserver.disconnect();modalObserver.disconnect();media.removeEventListener('change',motionChanged);removeEventListener('chat-ui-motion',motionChanged);document.removeEventListener('visibilitychange',motionChanged);detail.remove();}
  addEventListener('pagehide',dispose,{once:true});
- return {render,setVisible,focus,dispose,getEncounter,endEncounter,saveView,setControlledSquad,getControlledSquadId,getControlledParty};
+ return {render,setVisible,focus,openSquadRecord,dispose,getEncounter,endEncounter,saveView,setControlledSquad,getControlledSquadId,getControlledParty};
 }

@@ -1,5 +1,16 @@
 // Original room scenery, separate from navigation and interaction state.
 export function roomScenery(kind) {
+  if (kind === "castle" || kind === "weapon") {
+    const image = document.createElement("img");
+    image.className = "world-room-scenery world-room-painting";
+    image.alt = "";
+    image.width = 1600;
+    image.height = 640;
+    image.src = kind === "castle" ? "/assets/castle-hall.jpg" : "/assets/weapon-workshop.jpg";
+    image.draggable = false;
+    return image;
+  }
+
   const canvas = document.createElement("canvas");
   canvas.className = "world-room-scenery";
   canvas.width = 384;
@@ -10,7 +21,7 @@ export function roomScenery(kind) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
   };
-  const wood = kind === "tavern" || kind === "weapon";
+  const wood = kind === "tavern";
   rect(wood ? "#65513c" : "#59635c", 0, 0, 384, 192);
   for (let y = 36; y < 192; y += 18) {
     rect(wood ? "#88704b" : "#7a8374", 0, y, 384, 1);
@@ -38,55 +49,24 @@ export function roomScenery(kind) {
     rect("#4c3728", x + 3, y + 28, 6, 16);
     rect("#4c3728", x + 49, y + 28, 6, 16);
   }
-  if (kind === "weapon") {
-    for (const x of [42, 282]) {
-      rect("#332e26", x, 18, 60, 104);
-      rect("#9a7c48", x + 3, 18, 54, 4);
-      rect("#a08049", x + 3, 94, 54, 5);
-      for (let i = 0; i < 3; i++) {
-        const sx = x + 13 + i * 17;
-        rect("#bdcbc0", sx, 37, 3, 40);
-        rect("#edf0d4", sx, 37, 1, 35);
-        rect("#d9b775", sx - 4, 76, 11, 3);
-        rect("#76503b", sx, 79, 3, 10);
-      }
-      rect("#bd9e61", x + 8, 105, 42, 2);
-    }
-    table(41, 136);
-    table(285, 136);
-    candle(66, 143);
-    candle(313, 143);
-  } else if (kind === "castle") {
-    rect("#65453f", 151, 34, 82, 158);
-    rect("#b69759", 151, 34, 3, 158);
-    rect("#b69759", 230, 34, 3, 158);
-    rect("#d0b36e", 170, 2, 44, 34);
-    rect("#77514a", 175, 5, 34, 26);
-    for (const x of [63, 304]) {
-      rect("#3b5960", x, 8, 18, 40);
-      rect("#d9be78", x + 7, 15, 4, 23);
-      candle(x + 9, 104);
-    }
-  } else {
-    table(38, 63);
-    table(288, 63);
-    table(38, 130);
-    table(288, 130);
-    for (const [x, y] of [
-      [65, 72],
-      [316, 72],
-      [65, 139],
-      [316, 139],
-    ]) {
-      candle(x, y);
-      rect("#e6d0a1", x + 10, y + 9, 8, 5);
-    }
-    rect("#8f7249", 125, 14, 134, 13);
-    rect("#c6ac6c", 125, 14, 134, 3);
-    for (let x = 135; x < 255; x += 18) {
-      rect("#628372", x, 5, 6, 10);
-      rect("#d0b977", x + 1, 2, 4, 4);
-    }
+  table(38, 63);
+  table(288, 63);
+  table(38, 130);
+  table(288, 130);
+  for (const [x, y] of [
+    [65, 72],
+    [316, 72],
+    [65, 139],
+    [316, 139],
+  ]) {
+    candle(x, y);
+    rect("#e6d0a1", x + 10, y + 9, 8, 5);
+  }
+  rect("#8f7249", 125, 14, 134, 13);
+  rect("#c6ac6c", 125, 14, 134, 3);
+  for (let x = 135; x < 255; x += 18) {
+    rect("#628372", x, 5, 6, 10);
+    rect("#d0b977", x + 1, 2, 4, 4);
   }
   return canvas;
 }
