@@ -27,6 +27,10 @@ function readSampleMap(origin, action, residentId, question) {
   const start = find('#village-walk-sample'), scene = find('#history-village');
   if (document.hidden) return {pending:'page-hidden'};
   if (!start || !visible(map)) return {pending:'map'};
+  if (action === 'prepare-eyes' && !visible(eye)) {
+    const toggle = find('#village-leader-toggle');
+    if (visible(toggle) && !toggle.disabled) toggle.click();
+  }
   if (!visible(eye) || eye.dataset.renderer !== 'webgl' || eye.dataset.world3d !== 'leader') return {pending:'leader-view'};
 
   const speech = find('#village-speech');
@@ -266,7 +270,7 @@ export async function captureSampleWalk(window, {profile, origin, version, revea
   };
   try {
     report.stage = 'waiting-for-map';
-    if (!await waitFor(state, () => true, 35_000)) throw Error('Sample map and WebGL leader view did not become visible');
+    if (!await waitFor(() => state('prepare-eyes'), () => true, 35_000)) throw Error('Sample map and WebGL leader view did not become visible');
     await state('overview'); await delay(350); await frame('overview', await state());
     await state('start');
     await recordWalkingFrames(state, frame);

@@ -310,31 +310,16 @@ function resident(ctx,item,time,motion,selectedId){
 }
 
 
-function questMarker(ctx,squad,time,motion,selectedSquadId){
- const x=integer(squad.x),y=integer(squad.y),hero=Boolean(squad.isProtagonist),state=squad.motion||'waiting';
- const colors=hero?['#ae8745','#f0cc80','#ffedba']:state==='returned'?['#517855','#9cbd7b','#dfebad']:state==='working'?['#a57440','#e2b775','#ffdf9a']:state==='paused'?['#7a6d79','#ba9fa9','#e5c9ca']:['#456b77','#8bb2b6','#d1e6d3'];
- const sway=motion&&['working','gathering'].includes(state)?Math.floor(time/400+seedOf(squad.seed))%2:0;
- ellipse(ctx,'#263d3155',x+2,y+1,10,4);
- rect(ctx,'#634b33',x-2,y-38,3,40);rect(ctx,'#c3a367',x-1,y-38,1,38);
- rect(ctx,colors[0],x-8,y-38,24,18);rect(ctx,colors[1],x-7,y-37,21,14);
- polygon(ctx,colors[0],[[x+13,y-37],[x+18+sway,y-35],[x+14,y-30],[x+18+sway,y-24],[x+12,y-24]]);
- rect(ctx,colors[2],x-7,y-37,21,2);rect(ctx,'#fff6cf33',x-6,y-34,18,1);
- const ink=hero?'#6f5937':'#34514b';
- if(hero){
-  polygon(ctx,ink,[[x+3,y-35],[x+5,y-31],[x+9,y-30],[x+6,y-28],[x+7,y-24],[x+3,y-26],[x-1,y-24],[x,y-28],[x-3,y-30],[x+1,y-31]]);
- }else if(state==='returned'){
-  line(ctx,ink,x-2,y-30,x+2,y-26,2);line(ctx,ink,x+2,y-26,x+9,y-33,2);
- }else if(state==='paused'){
-  rect(ctx,ink,x-1,y-34,3,9);rect(ctx,ink,x+5,y-34,3,9);
- }else if(state==='working'){
-  line(ctx,ink,x-1,y-25,x+7,y-33,2);line(ctx,ink,x-2,y-33,x+7,y-26,2);rect(ctx,ink,x+5,y-35,5,4);
- }else if(state==='gathering'){
-  line(ctx,ink,x-2,y-30,x+7,y-30,2);line(ctx,ink,x+4,y-34,x+8,y-30,2);line(ctx,ink,x+4,y-26,x+8,y-30,2);
- }else{
-  rect(ctx,ink,x-1,y-34,9,2);rect(ctx,ink,x-1,y-26,9,2);polygon(ctx,ink,[[x,y-32],[x+7,y-32],[x+4,y-29],[x+7,y-27],[x,y-27],[x+3,y-29]]);
- }
- rect(ctx,colors[2],x-3,y-41,5,4);
- if(selectedSquadId===squad.id){ctx.strokeStyle='#fff0b0';ctx.lineWidth=2;ctx.strokeRect(x-11,y-44,32,28);}
+function questMarker(ctx,squad,time,motion){
+ const x=integer(squad.x)+4,y=integer(squad.y);
+ const leader=squad.members?.find(member=>member.isLeader)||squad.members?.[0];
+ const cloth=worldPersonColor(leader||{},{hero:squad.isProtagonist,party:true,index:0,squadSeed:squad.seed});
+ const flutter=motion?Math.sin(time/480+seedOf(squad.seed)%16):0;
+ line(ctx,'#695d47',x,y-31,x,y,1.5);
+ ctx.fillStyle=cloth;ctx.beginPath();ctx.moveTo(x,y-30);
+ ctx.quadraticCurveTo(x+4,y-31,x+12,y-28+flutter);
+ ctx.quadraticCurveTo(x+7,y-28+flutter,x,y-23);
+ ctx.closePath();ctx.fill();
 }
 function adventurer(ctx,item,squad,index,time,motion,selectedId){
  const hero=Boolean(squad.isProtagonist),pose=characterPose({...item,hero:hero&&index===0,
@@ -466,7 +451,7 @@ export function drawVillageConversationFocus(ctx,options){
  ctx.restore();return markers;
 }
 
-export function drawVillageWorld(ctx,{time=0,residents=[],projects=[],population=0,selectedId=null,motion=true,squads=[],protagonist=null,selectedSquadId=null,outskirtsVisible=true,terrainVisible=true,delegates=null,roads=[],clearings=[]}={}){
+export function drawVillageWorld(ctx,{time=0,residents=[],projects=[],population=0,selectedId=null,motion=true,squads=[],protagonist=null,outskirtsVisible=true,terrainVisible=true,delegates=null,roads=[],clearings=[]}={}){
  ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  if(terrainVisible){terrain(ctx,population);if(outskirtsVisible)outskirts(ctx);}
  drawWorldSettlement(ctx,{clearings},{layer:'ground'});
@@ -483,7 +468,7 @@ export function drawVillageWorld(ctx,{time=0,residents=[],projects=[],population
  objects.sort((a,b)=>(a.value.y||0)-(b.value.y||0)||objectLayers[a.type]-objectLayers[b.type]);
  for(const {type,value,squad,index} of objects){
   if(type==='project')project(ctx,value,clock,motion,selectedId);
-  else if(type==='marker')questMarker(ctx,value,clock,motion,selectedSquadId);
+  else if(type==='marker')questMarker(ctx,value,clock,motion);
   else if(type==='adventurer')adventurer(ctx,value,squad,index,clock,motion,selectedId);
   else resident(ctx,value,clock,motion,selectedId);
  }

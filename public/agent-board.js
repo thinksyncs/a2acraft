@@ -80,7 +80,7 @@ export function createAgentBoard({
           .slice(0, 2)
           .map((chat) => ({
             id: "demo-village",
-            name: "会話の村",
+            name: "冒険者の村",
             jobs: [{ conversationId: chat.id }],
           }));
     return sources.slice(0, 2).map((p, i) => ({

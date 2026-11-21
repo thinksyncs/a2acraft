@@ -82,36 +82,6 @@ function staticKey(scene) {
     (scene.buildings || []).map(b => [b.id, b.x, b.y, b.width, b.depth, b.height, b.stage, b.color, b.kind])]);
 }
 
-// Reserve the focused actor's actual head volume in screen space. Unlike badge
-// anchors, these bounds remain useful when a distant badge overlaps a near face.
-export function worldLabelFaceBounds(people, matrix, width, height) {
-  return people.filter(person=>person.identityFocused).flatMap(person=>{
-    const size=clamp(finite(person.scale,1),.35,1.25),half=5.4*size,points=[];
-    for(const x of [-half,half])for(const y of [15*size,25*size])for(const z of [-half,half]){
-      const clip=transform(matrix,[person.x+x,y,person.y+z,1]);
-      if(clip[3]<=0)return [];
-      points.push({x:(clip[0]/clip[3]+1)*width/2,y:(1-clip[1]/clip[3])*height/2});
-    }
-    const box={left:Math.min(...points.map(p=>p.x))-2,right:Math.max(...points.map(p=>p.x))+2,
-      top:Math.min(...points.map(p=>p.y))-2,bottom:Math.max(...points.map(p=>p.y))+2};
-    return box.right<0||box.left>width||box.bottom<0||box.top>height?[]:[box];
-  });
-}
-
-function crossesFace(from,to,faces) {
-  return faces.some(box=>{
-    let enter=0,leave=1;
-    for(const [axis,min,max]of [['x',box.left,box.right],['y',box.top,box.bottom]]){
-      const delta=to[axis]-from[axis];
-      if(Math.abs(delta)<1e-9){if(from[axis]<min||from[axis]>max)return false;continue;}
-      const a=(min-from[axis])/delta,b=(max-from[axis])/delta;
-      enter=Math.max(enter,Math.min(a,b));leave=Math.min(leave,Math.max(a,b));
-      if(enter>leave)return false;
-    }
-    return true;
-  });
-}
-
 // Reject only complete character volumes outside the view, before building the
 // animated crowd mesh. Actors crossing an edge retain their full geometry.
 export function peopleInView(people,matrix){
@@ -158,9 +128,8 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     gl.drawArrays(gl.TRIANGLES, 0, count);
   }
   function paintLabels() {
-    const labels = worldDelegateLabels(shownPeople, viewProjection, width, height);
+    const labels = camera.mode === 'leader' ? [] : worldDelegateLabels(shownPeople, viewProjection, width, height);
     if (!labels.length) { if (labelCanvas) labelCanvas.style.display = 'none'; return; }
-    const faces=camera.mode==='leader'?worldLabelFaceBounds(shownPeople,viewProjection,width,height):[];
     if (!labelCanvas) {
       const parent = canvas.parentElement, owner = canvas.ownerDocument;
       if (!parent || !owner?.createElement) return;
@@ -176,12 +145,11 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     if (labelCanvas.height !== canvas.height) labelCanvas.height = canvas.height;
     const ctx = labelContext;ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.clearRect(0,0,width,height);
     ctx.textAlign='left';ctx.textBaseline='middle';
-    // Tethers and complementary shapes make ownership legible without relying
-    // on color or body size. Labels keep a readable screen size in this inset.
+    // In the overview and follow views, shapes and tethers identify each helper's party.
     ctx.save();ctx.setLineDash([3,3]);ctx.lineWidth=1;ctx.globalAlpha=.7;
-    for(const label of labels)if(label.owner&&!crossesFace(label.owner,{x:label.x,y:label.y+8},faces)){ctx.strokeStyle=label.color||'#c5cfb1';ctx.beginPath();ctx.moveTo(label.owner.x,label.owner.y);ctx.lineTo(label.x,label.y+8);ctx.stroke();}
+    for(const label of labels)if(label.owner){ctx.strokeStyle=label.color||'#c5cfb1';ctx.beginPath();ctx.moveTo(label.owner.x,label.owner.y);ctx.lineTo(label.x,label.y+8);ctx.stroke();}
     ctx.restore();
-    const occupied=[...faces];
+    const occupied=[];
     for (const label of labels.sort((a,b)=>Number(b.delegated)-Number(a.delegated)||a.depth-b.depth)) {
       ctx.font=label.parent?'bold 11px sans-serif':'italic 11px sans-serif';
       let text=label.text;
@@ -200,7 +168,7 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
       const cy=box.top+labelHeight/2,iconX=box.left+9;
       const anchor={x:label.x,y:label.y+4},end={x:clamp(label.x,box.left,box.right),y:box.bottom};
       ctx.strokeStyle=label.color||'#c5cfb1';
-      if(!crossesFace(anchor,end,faces)){ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(end.x,end.y);ctx.stroke();}
+      ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(anchor.x,anchor.y);ctx.lineTo(end.x,end.y);ctx.stroke();
       ctx.fillStyle=label.parent?'#192b2af2':'#142d2bf2';ctx.fillRect(box.left,box.top,textWidth,labelHeight);
       ctx.lineWidth=label.parent?1.5:1;ctx.setLineDash(label.parent?[]:[3,2]);ctx.strokeRect(box.left,box.top,textWidth,labelHeight);ctx.setLineDash([]);
       ctx.beginPath();

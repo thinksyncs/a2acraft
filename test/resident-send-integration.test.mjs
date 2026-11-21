@@ -16,7 +16,7 @@ async function fixture({running = false} = {}) {
     assert.ok(first >= 0 && last > first);
     return source.slice(first, last);
   };
-  const send = section('async function send(c,', '\nlet partyWaiter='),
+  const send = section('function residentTurnContext(',  '\nlet partyWaiter='),
     steer = section('async function steer(c,', '\nasync function attachContexts');
   const routes = ['/api/send', '/api/steer'].map(route => {
     const line = source.split('\n').find(line => line.startsWith("   if(p==='" + route + "')"));
@@ -26,9 +26,12 @@ async function fixture({running = false} = {}) {
   const companion = {id: 'engineer', title: '実装相談', characterName: 'リナ', messages: [{role: 'user', text: '下書きを保持する'}, {role: 'assistant', text: '起動失敗時も保存を確認'}]};
   const conversations = [recipient, companion, {id: 'other', title: '無関係', messages: [{role: 'user', text: 'UNSELECTED_SECRET'}]}];
   const party = {leaderId: 'engineer', members: [{conversationId: 'engineer', role: '実装と検証'}]};
-  const parties = {active: false, currentId: 'none', state: {party}}, calls = [], saves = [], released = [];
+  const parties = {active: false, currentId: 'none', state: {party}, public() { return this.state; }};
+  const alternate = {id: 'waiting', title: '別の隊', status: 'todo', assignee: {type: 'chat', conversationId: 'other'}};
+  const todos = {public: () => ({items: [alternate]})};
+  const calls = [], saves = [], released = [];
   const context = vm.createContext({
-    buildResidentContext, deliverSend, randomUUID, conversations, parties, c: recipient,
+    buildResidentContext, deliverSend, randomUUID, conversations, parties, todos, boardPublic: () => ({}), c: recipient,
     historyImportIds: new Set(), conversationWorkspaces: {snapshot: () => ({turn: {sandboxPolicy: {type: 'readOnly'}}})},
     projects: {active: new Map()}, assertBoardAvailable() {}, hasScheduledRun: () => false,
     scheduledStarting: null, workQuestWaiter: null, teamsWaiter: null, startingTodo: false,
@@ -46,7 +49,7 @@ async function fixture({running = false} = {}) {
   vm.runInContext(send + '\n' + steer + '\nasync function dispatch(p,b){\n' + routes + '\nthrow Error("Missing fixture route");}', context);
   const visit = {source: 'village', partyKey: residentPartyKey(party)};
   const body = {id: recipient.id, text: '何から改善しますか？', model: 'model', effort: 'medium', requestId: 'resident-request', residentVisit: visit};
-  return {context, calls, saves, released, recipient, companion, parties, body,
+  return {context, calls, saves, released, recipient, companion, parties, alternate, body,
     dispatch: (route, input = body) => context.dispatch(route, input)};
 }
 
@@ -107,4 +110,32 @@ test('an accepted request stays idempotent after the party changes and cannot re
   assert.equal(f.calls.length, 1);
   await assert.rejects(f.dispatch('/api/send', {...f.body, residentVisit: {...f.body.residentVisit, partyKey: residentPartyKey(f.parties.state.party)}}), /同じ送信ID/);
   assert.equal(f.calls.length, 1);
+});
+
+for (const [route, running] of [['/api/send', false], ['/api/steer', true]]) {
+  test(route + ' resolves a visiting squad locally and sends its roles without conversation history', async () => {
+    const f = await fixture({running});
+    const party = {leaderId: 'other', members: [{conversationId: 'other', role: '担当チャット'}]};
+    const visit = {source: 'village', squadId: 'todo:waiting', partyKey: residentPartyKey(party)};
+    const body = {...f.body, residentVisit: visit, ...(running ? {expectedTurnId: 'turn-current'} : {})};
+    await f.dispatch(route, body);
+    assert.equal(f.calls.length, 1);
+    const text = f.calls[0].params.input[0].text;
+    assert.match(text, /担当チャット/);
+    assert.doesNotMatch(text, /UNSELECTED_SECRET|下書きを保持する|起動失敗時/);
+    const context = f.recipient.messages[0].residentContext;
+    assert.equal(context.squadId, 'todo:waiting');
+    assert.deepEqual(context.companions, [{id: 'other', name: '無関係', role: '担当チャット'}]);
+  });
+}
+test('an unknown or no longer available squad cannot send using another roster or the home party', async () => {
+  const f = await fixture();
+  const partyKey = residentPartyKey({leaderId:'other',members:[{conversationId:'other',role:'担当チャット'}]});
+  const input = squadId => ({...f.body, residentVisit:{source:'village',squadId,partyKey}});
+  await assert.rejects(f.dispatch('/api/send',input('unknown')), /隊の操作権限/);
+  await assert.rejects(f.dispatch('/api/send',{...f.body,residentVisit:{...f.body.residentVisit,squadId:'todo:waiting'}}), /仲間が変わりました/);
+  f.alternate.status = 'done';
+  await assert.rejects(f.dispatch('/api/send',input('todo:waiting')), /隊の操作権限/);
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.recipient.messages.length, 0);
 });

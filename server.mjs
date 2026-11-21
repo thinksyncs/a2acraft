@@ -432,6 +432,10 @@ async function ensureThread(c,model,scope){
  }
  resumed.set(c.threadId,scope.key);
 }
+function residentTurnContext(visit,conversation){
+ return buildResidentContext({visit,conversation,conversations,party:parties.state.party,
+  getVillageState:()=>({party:parties.public(),todos:todos.public(),boardDispatch:boardPublic()})});
+}
 async function send(c,text,model,effort,attachmentIds=[],partyStep=null,scheduled=null,delivery=null,residentContext=null){
  if(historyImportIds.has(c.id))throw Error('履歴の更新を保存しています。完了後に送信してください。');
  const scope=conversationWorkspaces.snapshot(c,{readOnly:Boolean(partyStep||scheduled)});
@@ -1162,9 +1166,9 @@ const server=http.createServer(async(req,res)=>{
     changed(c);return json(res,200,c);
    }
    if(p==='/api/send'&&c.project){if(b.attachmentIds?.length)throw Error('projectの相談には本文で回答してください。');const project=projects.find(c.project.id),event=project.events.find(e=>e.conversationId===c.id&&e.kind!=='progress'&&e.status==='open');if(!event)throw Error('この会話には回答待ちの相談がありません。');await projects.answer({id:project.id,eventId:event.id,text:b.text,requestId:b.requestId});return json(res,200,{ok:true});}
-   if(p==='/api/send'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('メッセージまたは添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'send'},delivery=>send(c,b.text.trim(),b.model,b.effort||'medium',b.attachmentIds,null,null,delivery,buildResidentContext({visit:b.residentVisit,conversation:c,conversations,party:parties.state.party})));return json(res,200,{ok:true});}
+   if(p==='/api/send'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('メッセージまたは添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'send'},delivery=>send(c,b.text.trim(),b.model,b.effort||'medium',b.attachmentIds,null,null,delivery,residentTurnContext(b.residentVisit,c)));return json(res,200,{ok:true});}
    if(p==='/api/steer'&&c.project)throw Error('この隊への回答は相談が届いてから送信してください。');
-   if(p==='/api/steer'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('追加指示または添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'steer'},delivery=>steer(c,b.text.trim(),b.expectedTurnId,b.attachmentIds,delivery,buildResidentContext({visit:b.residentVisit,conversation:c,conversations,party:parties.state.party})));return json(res,200,{ok:true});}
+   if(p==='/api/steer'){if(typeof b.text!=='string'||(!b.text.trim()&&!b.attachmentIds?.length))throw Error('追加指示または添付ファイルを入力してください。');await deliverSend(c,{...b,text:b.text.trim(),kind:'steer'},delivery=>steer(c,b.text.trim(),b.expectedTurnId,b.attachmentIds,delivery,residentTurnContext(b.residentVisit,c)));return json(res,200,{ok:true});}
    if(p==='/api/stop'&&c.project){await projects.configure({id:c.project.id,action:'pause'});return json(res,200,{ok:true});}
    if(p==='/api/stop'){await interrupt(c);return json(res,200,{ok:true});}
    return json(res,404,{error:'Not found'});

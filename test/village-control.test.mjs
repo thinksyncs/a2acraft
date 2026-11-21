@@ -15,8 +15,8 @@ import { villageDemoActivityState, villageDemoChats } from "../public/village-de
 // Run the actual controller, animation and canvas drawing, without a browser,
 // external services or WebGL. Character ground shadows locate the rendered
 // party; real canvas transforms keep viewport culling meaningful in the fixture.
-function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [] } = {}) {
-  const frames = new Map(), storage = new Map(), navigations = [];
+function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [], withTeams = false, teamMessaging } = {}) {
+  const frames = new Map(), storage = new Map(), navigations = [], openedChats = [];
   const documentListeners = new Map();
   let nextFrame = 0, now = 0, view, root;
   class Element {
@@ -39,6 +39,7 @@ function fixture(t, { saved, demo = false, sampleWalk = false, building = false,
       }, {get:(target,key)=>key in target ? target[key] : ()=>{}});
     }
     getContext() { return this.context; }
+    hasPointerCapture() { return false; }
     get ownerDocument() { return document; }
     getClientRects() { return [this.getBoundingClientRect()]; }
     getBoundingClientRect() { return {width:1000,height:640,left:0,top:0,right:1000,bottom:640}; }
@@ -84,15 +85,17 @@ function fixture(t, { saved, demo = false, sampleWalk = false, building = false,
   const key=demo?"chat-ui-demo-village-view":"chat-ui-village-view";
   storage.set(key,JSON.stringify({camera:{x:500,y:320,zoom:1},insetVisible:false,...saved}));
   const members=["a","b","c"].map(id=>({id,title:id,characterName:id,messages:[]})),chats=[...members,...extraChats];
-  const state={party:{party:{leaderId:"a",members:members.map(chat=>({conversationId:chat.id,role:"担当"}))}},
+  const baseState={party:{party:{leaderId:"a",members:members.map(chat=>({conversationId:chat.id,role:"担当"}))}},
     village:{overrides:building?[{conversationId:"a",kind:"software",stage:"building"}]:[]}};
+  const state=withTeams||sampleWalk?structuredClone(villageDemoActivityState(baseState)):baseState;
   const start=()=>{
     root=new Element();root.id="history-village";body.replaceChildren(root);
-    view=initVillage({getChats:()=>chats,getState:()=>sampleWalk?villageDemoActivityState(state):state,demo,onNavigate:id=>navigations.push(id)});
+    view=initVillage({getChats:()=>chats,getState:()=>state,demo,teamMessaging,onNavigate:id=>navigations.push(id),
+      onOpenChat:(id,encounter)=>openedChats.push({id,encounter})});
     if(visible)view.setVisible(true);return view;
   };
   start();
-  return {storage,key,navigations,get view(){return view;},get root(){return root;},
+  return {storage,key,navigations,openedChats,state,chats,get view(){return view;},get root(){return root;},
     element:id=>body.querySelector("#"+id),
     hero:()=>({x:Number(root.dataset.heroX),y:Number(root.dataset.heroY)}),
     camera:()=>({x:root.dataset.cameraX,y:root.dataset.cameraY,zoom:root.dataset.zoom}),
@@ -104,6 +107,14 @@ function fixture(t, { saved, demo = false, sampleWalk = false, building = false,
   };
 }
 
+test("the village opens without the inset even when older automatic view state was stored",t=>{
+  const f=fixture(t,{saved:{insetVisible:true}});
+  assert.equal(f.element("village-leader-window").hidden,true);
+  assert.equal(f.element("village-leader-toggle").getAttribute("aria-expanded"),"false");
+  f.view.saveView();
+  assert.equal(JSON.parse(f.storage.get(f.key)).showLeaderView,false);
+});
+
 test("Island overview changes the camera without cancelling the party walk",t=>{
   const f=fixture(t);f.element("village-canvas").dispatch("keydown",{key:"d"});f.advance(6);
   const before=f.party(),leader=f.hero();assert.equal(before.length,3);assert.ok(leader.x>510&&leader.x<550);
@@ -114,6 +125,145 @@ test("Island overview changes the camera without cancelling the party walk",t=>{
 });
 
 const distantChat={id:'distant',title:'北の天文台の観測記録',characterName:'天文台の人',messages:[{id:'u1',role:'user',text:'星空の観測日時と望遠鏡の記録をまとめたい。'}]};
+
+function teamFixture(t, teamMessaging) {
+  const ids = new Set([2, 18, 30, 42, 54, 66, 78, 6].map(n => 'village-demo-' + n));
+  const f = fixture(t, { withTeams: true, teamMessaging, extraChats: [...villageDemoChats().filter(chat => ids.has(chat.id)), distantChat] });
+  function inspect(id) {
+    const flag = f.root.querySelectorAll('button').find(button => button.dataset.villageQuest === id);
+    assert.ok(flag, 'map flag for ' + id);
+    flag.click();
+    assert.equal(f.root.dataset.selectedSquad, id);
+    return f.element('village-quest-control');
+  }
+  function clickGround(x, y) {
+    const canvas = f.element('village-canvas');
+    const camera = f.camera();
+    const event = { target: canvas, button: 0, pointerId: 1,
+      clientX: 500 + (x - Number(camera.x)) * Number(camera.zoom),
+      clientY: 320 + (y - Number(camera.y)) * Number(camera.zoom) };
+    canvas.parentElement.dispatch('pointerdown', event);
+    canvas.parentElement.dispatch('pointerup', event);
+  }
+  return { f, inspect, clickGround };
+}
+
+test('switching at a map flag gives the selected leader the walk and encounter and parks the original party', t => {
+  const { f, inspect, clickGround } = teamFixture(t);
+  const workBefore = structuredClone(f.state);
+  const home = f.hero(), id = 'todo:village-sample-pause';
+  const control = inspect(id);
+  assert.equal(f.view.getControlledSquadId(), 'protagonist', 'opening the card is inspection only');
+  assert.ok(control && !control.disabled && !control.hidden);
+  control.click();
+  assert.equal(f.root.dataset.controlledSquad, id);
+  assert.equal(f.view.getControlledParty().leaderId, 'village-demo-6');
+
+  const camp = f.hero();
+  assert.notDeepEqual(camp, home);
+  clickGround(500, 400);
+  assert.ok(Math.abs(Number(f.root.dataset.heroGoalX) - 500) < 2, 'ground click sets the selected team’s goal');
+  f.advance(8);
+  assert.notDeepEqual(f.hero(), camp, 'the selected party leaves its camp');
+
+  const onRoad = f.hero();
+  f.element('village-canvas').dispatch('keydown', { key: 'd' });
+  f.advance(6);
+  assert.ok(f.hero().x > onRoad.x, 'keyboard moves the same party');
+
+  f.talk(distantChat.id);
+  for (let i = 0; i < 240 && f.root.dataset.encounterStatus === 'approaching'; i++) f.advance(1, 300);
+  const meeting = f.view.getEncounter();
+  assert.equal(meeting?.status, 'talking');
+  assert.equal(meeting.conversationId, distantChat.id);
+  assert.equal(meeting.leader.conversationId, 'village-demo-6', 'the borrowed leader faces the resident');
+  f.element('village-speech-chat').click();
+  assert.equal(f.openedChats.at(-1).id, distantChat.id);
+  assert.equal(f.openedChats.at(-1).encounter.leader.conversationId, 'village-demo-6');
+  const parked = f.hero();
+
+  inspect('protagonist').click();
+  assert.equal(f.view.getControlledSquadId(), 'protagonist');
+  assert.equal(f.view.getControlledParty().leaderId, 'a');
+  assert.deepEqual(f.hero(), home, 'the original party stayed where the player left it');
+  assert.equal(f.view.getEncounter(), null, 'the old meeting does not move with control');
+  inspect(id).click();
+  assert.deepEqual(f.hero(), parked, 'taking control again resumes at the team’s last position');
+  assert.deepEqual(f.state, workBefore, 'map control leaves the saved roster, task and run unchanged');
+});
+
+test('the map rejects a working team and rechecks changed permissions on use and refresh', t => {
+  const { f, inspect } = teamFixture(t);
+  const work = 'todo:village-sample-work', paused = 'todo:village-sample-pause';
+  const home = f.hero();
+  const denied = inspect(work);
+  assert.ok(denied && (denied.hidden || denied.disabled));
+  assert.equal(f.view.setControlledSquad(work), false, 'direct selection enforces the same permission');
+  assert.equal(f.view.setControlledSquad('todo:not-in-this-profile'), false);
+  assert.equal(f.root.dataset.controlledSquad, 'protagonist');
+  assert.deepEqual(f.hero(), home);
+
+  const oldControl = inspect(paused);
+  assert.ok(!oldControl.hidden && !oldControl.disabled);
+  const originalTodos = f.state.todos;
+  f.state.todos = { ...originalTodos, items: originalTodos.items.filter(todo => 'todo:' + todo.id !== paused) };
+  oldControl.click();
+  assert.equal(f.view.getControlledSquadId(), 'protagonist', 'a stale card cannot claim a removed team');
+  f.state.todos = originalTodos;
+  f.view.render();
+  assert.equal(f.view.setControlledSquad(paused), true);
+  const leaderIndex = f.chats.findIndex(chat => chat.id === 'village-demo-6');
+  assert.ok(leaderIndex >= 0);
+  f.chats.splice(leaderIndex, 1);
+  f.advance(1, 300);
+  f.view.render();
+  assert.equal(f.root.dataset.controlledSquad, 'protagonist', 'a removed leader revokes control');
+  assert.deepEqual(f.hero(), home);
+});
+
+test('team card chat stays on the map, preserves drafts by recipient, and revalidates before sending', async t => {
+  const drafts = new Map(), sent = [];
+  let reason = '';
+  const { f, inspect } = teamFixture(t, {
+    read: id => ({draft: drafts.get(id) || '', reason}),
+    write: (id, text) => drafts.set(id, text),
+    send: id => { sent.push({id, text: drafts.get(id)}); drafts.delete(id); },
+  });
+  const paused = 'todo:village-sample-pause', leader = 'village-demo-6';
+  const chat = f.chats.find(item => item.id === leader);
+  chat.messages.push({role:'assistant', text:'次は小さい画面で確認します。'});
+  inspect(paused);
+  const form = f.element('village-team-chat'), input = f.element('village-team-message');
+  const submit = () => form.onsubmit({preventDefault() {}});
+  assert.equal(form.hidden, false);
+  assert.match(form.querySelector('label').textContent, new RegExp(chat.characterName));
+  assert.ok(form.querySelectorAll('span').some(span => span.textContent === '次は小さい画面で確認します。'));
+  input.value = '画面の幅は？'; input.dispatch('input');
+  inspect('protagonist');
+  assert.equal(input.value, '');
+  input.value = 'こちらは別の下書き'; input.dispatch('input');
+  inspect(paused);
+  assert.equal(input.value, '画面の幅は？');
+  reason = 'Codex 未接続';
+  await submit();
+  assert.equal(sent.length, 0);
+  assert.equal(input.value, '画面の幅は？');
+  reason = '';
+  f.view.render();
+  await submit();
+  assert.deepEqual(sent, [{id:leader, text:'画面の幅は？'}]);
+  assert.equal(drafts.get('a'), 'こちらは別の下書き');
+  assert.equal(f.root.dataset.selectedSquad, paused);
+  assert.equal(f.openedChats.length, 0, 'sending leaves the team card on screen');
+
+  input.value = 'まだ送らない'; input.dispatch('input');
+  const items = f.state.todos.items.filter(todo => 'todo:' + todo.id !== paused);
+  f.state.todos = {...f.state.todos, items};
+  await submit();
+  assert.equal(sent.length, 1, 'a removed team cannot be addressed through a stale card');
+  assert.equal(drafts.get(leader), 'まだ送らない');
+});
+
 test('sample outing follows the main footpath and reaches a resident through the normal encounter',async t=>{
   const f=fixture(t,{demo:true,sampleWalk:true,extraChats:villageDemoChats()});
   f.element('village-walk-sample').click();

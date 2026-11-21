@@ -27,7 +27,7 @@ export function createResidentConversation({host, onReturn, onParty, onExpand}) 
   const companionsPanel=document.createElement('div');companionsPanel.className='resident-companions-panel';
   const companionsList=document.createElement('ul'),companionsHint=document.createElement('p'),changeParty=document.createElement('button');
   companionsHint.textContent='同行者の役割と直近の会話を、この相談の参考にします。';
-  changeParty.type='button';changeParty.textContent='仲間を変える';changeParty.onclick=()=>{companions.open=false;onParty?.();};
+  changeParty.type='button';changeParty.textContent='仲間を変える';changeParty.onclick=()=>{companions.open=false;if(encounter?.squadId)onReturn?.();else onParty?.();};
   companionsPanel.append(companionsList,companionsHint,changeParty);companions.append(companionsLabel,companionsPanel);
   root.querySelector('button').after(companions);
   const details = root.querySelector('.resident-view-details'), summary = details.querySelector('summary');
@@ -88,7 +88,7 @@ export function createResidentConversation({host, onReturn, onParty, onExpand}) 
     undock,
     show(value, {recordOnly = false} = {}) {
       if (!value || encounter?.conversationId !== value.conversationId) {closeView();companions.open=false;}
-      companions.hidden=recordOnly;
+      companions.hidden=recordOnly;changeParty.textContent=value?.squadId?'街で隊を選ぶ':'仲間を変える';
       encounter = value;root.hidden = !value;host.classList.toggle('resident-chat-active',Boolean(value));
       if (!value) { delete root.dataset.conversationId;return; }
       root.dataset.conversationId=value.conversationId;
@@ -98,12 +98,12 @@ export function createResidentConversation({host, onReturn, onParty, onExpand}) 
       refreshView();
     },
     updateCompanions(roster=[],error='') {
-      const key=JSON.stringify([roster,error]);if(companions.dataset.roster===key)return;
+      const rolesOnly=Boolean(encounter?.squadId),key=JSON.stringify([roster,error,rolesOnly]);if(companions.dataset.roster===key)return;
       companions.dataset.roster=key;
       companionsLabel.textContent=error?'同行者の編成を確認':roster.length?'同行：'+roster.map(member=>member.name).join('・'):'ひとりで話す';
       companionsLabel.title=companionsLabel.textContent;
       companionsList.replaceChildren(...roster.map(member=>{const item=document.createElement('li');item.textContent=member.name+' · '+member.role+' — '+member.title;return item;}));
-      companionsHint.textContent=error||(roster.length?'同行者の役割と直近の会話を、この相談の参考にします。':'同行者はいません。この村人の会話を続けます。');
+      companionsHint.textContent=error||(!roster.length?'同行者はいません。この村人の会話を続けます。':rolesOnly?'同行者の名前と役割を、この相談の参考にします。':'同行者の役割と直近の会話を、この相談の参考にします。');
     },
     destroy(){undock();originalPosition.remove();observer.disconnect();details.removeEventListener('toggle',refreshView);document.removeEventListener('pointerdown',closeOutside);document.removeEventListener('keydown',closeOnEscape,true);renderer?.destroy();host.classList.remove('resident-chat-active');root.remove();}
   };

@@ -11,6 +11,8 @@ import {projectVillage,VILLAGE_STAGES} from './village-model.js';
 import {drawVillageWorld,drawVillageIslandBackground,drawVillageConversationFocus,worldPersonColor} from './village-art.js';
 import {delegationCacheKey,delegationSummary,villageDelegateActors} from './village-delegates.js';
 import {projectVillageActivities} from './village-activity.js';
+import {villageControlTarget} from './village-party-control.js';
+import {createTeamChat,teamChatRecipient} from './village-team-chat.js';
 import {VILLAGE_WORLD,VILLAGE_PLACES} from './village-world.js';
 import {PartyTravel} from './world-travel.js';
 import {sceneBuildingObstacles} from './project-buildings.js';
@@ -34,14 +36,14 @@ const shortLabels={planned:'構想',building:'建設',testing:'検証',complete:
 const iconPaths={find:'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',history:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',quests:'M5 21V3m0 1h14l-3 5 3 5H5',shop:'m4 4 16 16M7 3 3 7m14 10 4 4M5 19l14-14m-4-2 6 6',tavern:'M4 9h13v11H4zm13 2h3v6h-3M6 3v3m5-3v3m5-3v3',castle:'M3 21V5h4v4h3V3h4v6h3V5h4v16H3m7 0v-6h4v6',board:'M3 4h18v13H3zm4 13v4m10-4v4M7 8h10M7 12h7'};
 function iconButton(node,key,label){node.title=label;node.setAttribute('aria-label',label);node.replaceChildren();const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',iconPaths[key]);icon.append(path);node.append(icon);return node;}
 
-export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest}){
- const root=document.querySelector('#history-village');if(!root)return {render(){},setVisible(){},focus(){},getEncounter(){return null;},endEncounter(){}};
+export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest,teamMessaging}){
+ const root=document.querySelector('#history-village');if(!root)return {render(){},setVisible(){},focus(){},getEncounter(){return null;},endEncounter(){},setControlledSquad(){return false;},getControlledSquadId(){return 'protagonist';},getControlledParty(){return null;}};
  root.classList.add('history-village');root.setAttribute('aria-labelledby','village-title');
  let visible=false,disposed=false,projection=projectVillage([],[]),signature='',district=0,selected=null,busy=false;
  let demoOverrides=[],demoRevision=0;
  try{const stored=JSON.parse(mapStorage.getItem(DEMO_KEY)||'null');if(demo&&Array.isArray(stored?.overrides)){demoOverrides=stored.overrides;demoRevision=Number.isSafeInteger(stored.revision)?stored.revision:0;}}catch{}
  const heading=make('header',undefined,'village-heading'),headingCopy=make('div');
- const title=make('h2','会話が息づく村');title.id='village-title';title.tabIndex=-1;
+ const title=make('h2','冒険者の村');title.id='village-title';title.tabIndex=-1;
  const intro=make('p','会話が村人に。ソフトづくりが建物に。','village-intro');headingCopy.append(title,intro);
  const headerActions=make('div',undefined,'village-header-actions');
  const find=iconButton(button('village-find','村人を探す',()=>{closeQuestPeek(false);directory.open=true;questDrawer.hidden=true;search.focus();}), 'find','村人を探す');find.setAttribute('aria-expanded','false');
@@ -51,9 +53,9 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const stat=(id,label)=>{const row=make('div'),value=make('strong','0');value.id=id;row.append(value,make('span',label));statistics.append(row);return value;};
  const population=stat('village-population','人'),projectCount=stat('village-project-count','棟'),finished=stat('village-completed-count','完成');
  const previewNote=make('p',undefined,'village-preview-note');previewNote.id='village-preview-note';previewNote.hidden=!demo;
- if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',sample?'にぎやかな村':'会話の村'));if(!sample){const link=make('a','にぎやかな村へ →');link.href='/?demo=1&village=sample';previewNote.append(link);}const back=make('a','自分の街に戻る');back.id='village-preview-return';back.href='/';previewNote.append(back);}
+ if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',sample?'サンプル':'自分の村'));if(!sample){const link=make('a','サンプルの村へ →');link.href='/?demo=1&village=sample';previewNote.append(link);}const back=make('a','自分の村に戻る');back.id='village-preview-return';back.href='/';previewNote.append(back);}
  const mapSection=make('section',undefined,'village-map-section');mapSection.setAttribute('aria-label','村の風景');
- const frame=make('div',undefined,'village-map-frame'),canvas=make('canvas');canvas.id='village-canvas';canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','会話の村。村人に話しかけ、建物やパーティを確認できます。Enterで名簿、矢印キーで見回す、WASDキーで仲間と歩きます。');canvas.setAttribute('aria-describedby','village-map-help');
+ const frame=make('div',undefined,'village-map-frame'),canvas=make('canvas');canvas.id='village-canvas';canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','冒険者の村。村人に話しかけ、建物やパーティを確認できます。Enterで名簿、矢印キーで見回す、WASDキーで仲間と歩きます。');canvas.setAttribute('aria-describedby','village-map-help');
  const sites=make('div',undefined,'village-sites');sites.setAttribute('aria-label','この地区の建物');
  const questSites=make('div',undefined,'village-quest-sites');questSites.setAttribute('aria-label','村にいるパーティ');
  const speech=make('section',undefined,'village-speech');speech.id='village-speech';speech.hidden=true;speech.setAttribute('role','dialog');speech.setAttribute('aria-modal','false');speech.setAttribute('aria-labelledby','village-speech-name');
@@ -70,6 +72,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const fit=button('village-fit','全体へ',()=>{if(travel)travel.follow=false;automaticZoom=false;fitIsland();draw();queueViewSave();});fit.setAttribute('aria-label','島全体を見る');
  const zoomIn=button('village-zoom-in','＋',()=>changeZoom(zoom*1.2));zoomIn.setAttribute('aria-label','村を拡大');cameraControls.append(zoomOut,fit,zoomIn);
  const follow=button('village-follow','歩行に追従',()=>{if(!travel)return;travel.follow=true;automaticZoom=false;zoom=Math.max(zoom,.8);camera=travelCamera(heroPoint);draw();queueViewSave();});follow.hidden=true;cameraControls.append(follow);
+ const returnHome=button('village-control-home','自分の隊に戻る',()=>{if(setControlledSquad('protagonist'))closeQuestPeek();},'outline');returnHome.hidden=true;cameraControls.append(returnHome);
  const districtControls=make('div',undefined,'village-district-controls');
  const previous=button('village-district-prev','←',()=>changeDistrict(district-1));previous.setAttribute('aria-label','前の地区');
  const districtLabel=make('span','第1地区');districtLabel.id='village-district-label';districtLabel.setAttribute('role','status');
@@ -85,7 +88,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const insetClose=button('village-leader-close','×',()=>setInsetVisible(false,true),'world-3d-inset-close');insetClose.setAttribute('aria-label','リーダー目線の小窓を閉じる');insetHeader.append(insetTitle,insetClose);
  const canvas3D=make('canvas',undefined,'world-3d-inset-canvas');canvas3D.id='village-map-3d';canvas3D.tabIndex=0;canvas3D.setAttribute('role','img');canvas3D.setAttribute('aria-label','リーダー目線。俯瞰地図と同じ隊の視界です。ドラッグ・矢印キーで見回し、WASDで歩けます。');
  inset.append(insetHeader,canvas3D);frame.append(inset);
- const insetToggle=button('village-leader-toggle','目線を表示',()=>setInsetVisible(true,true),'world-3d-inset-toggle village-leader-toggle');insetToggle.setAttribute('aria-controls',inset.id);insetToggle.setAttribute('aria-expanded','true');insetToggle.hidden=true;
+ const insetToggle=button('village-leader-toggle','リーダー目線',()=>setInsetVisible(true,true),'world-3d-inset-toggle village-leader-toggle');insetToggle.setAttribute('aria-controls',inset.id);insetToggle.setAttribute('aria-expanded','false');
  const viewError=make('p',undefined,'world-3d-error village-inset-error');viewError.id='village-3d-error';viewError.hidden=true;viewError.setAttribute('role','status');mapSection.append(insetToggle,viewError);
  const services=make('nav',undefined,'village-services');services.setAttribute('aria-label','村の施設');services.append(iconButton(button('village-shop','武器屋',()=>travelTo('weapon')),'shop','武器屋へ向かう'),iconButton(button('village-tavern','酒場と仲間',()=>travelTo('tavern')),'tavern','酒場へ向かう'),iconButton(button('village-castle','お城で依頼',()=>travelTo('castle')),'castle','お城へ向かう'),iconButton(button('village-board','隊の掲示板',()=>onOpenBoard?.()),'board','隊の掲示板'));
  const directory=make('details',undefined,'village-directory');directory.id='village-directory';
@@ -112,12 +115,26 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const questMore=make('details',undefined,'village-peek-more');questMore.append(make('summary','役割と達成条件'));
  const questCriteria=make('p');questCriteria.id='village-quest-criteria';const questArtifact=make('p');questArtifact.id='village-quest-artifact';
  const questPeekMembers=make('div',undefined,'village-quest-peek-members');questPeekMembers.id='village-quest-members';questPeekMembers.setAttribute('aria-label','この隊の仲間と役割');questMore.append(questCriteria,questArtifact,questPeekMembers);
- questBody.append(questPeekStatus,questCurrent,questProgress,questTask,questResult,questNote,questMore);
+ const teamChat=createTeamChat({messaging:teamMessaging,target:fresh=>{
+  if(!visible||questPeek.hidden)return null;
+  const chats=getChats()||[],source=fresh?projectVillageActivities(getState()||{},chats):activities;
+  const squad=selectedSquadId==='protagonist'?source.protagonist:source.allSquads.find(item=>item.id===selectedSquadId);
+  const chat=teamChatRecipient(squad,chats);
+  return chat?{squadId:squad.id,chat,permitted:Boolean(villageControlTarget(source,squad.id))}:null;
+ }});
+ questBody.append(teamChat.element,questPeekStatus,questCurrent,questProgress,questTask,questResult,questNote,questMore);
  const questFooter=make('footer',undefined,'village-peek-footer'),questActions=make('div',undefined,'village-peek-actions');
- const questOpen=button('village-quest-open','依頼を開く →',()=>{const squad=selectedSquad();closeQuestPeek(false);if(squad?.id==='protagonist')onNavigate?.('tavern');else if(squad)onOpenQuest?.(squad);},'primary');
+ const questOpen=button('village-quest-open','依頼を開く →',()=>{const squad=selectedSquad();closeQuestPeek(false);if(squad?.id==='protagonist')onNavigate?.('tavern');else if(squad)onOpenQuest?.(squad);});
  const questChat=button('village-quest-chat','担当の会話',()=>{const id=questChat.dataset.conversationId;closeQuestPeek(false);if(id)onOpenChat?.(id);});questActions.append(questOpen,questChat);
+ const questControl=button('village-quest-control','この隊を操作',()=>{
+  const squad=selectedSquad();if(!squad)return;
+  if(setControlledSquad(squad.id)){closeQuestPeek();return;}
+  renderQuestPeek();questControlNote.hidden=false;questControlNote.textContent='この隊を動かせません。現在の編成と作業状態を確認してください。';
+ });
+ const questControlNote=make('small',undefined,'village-control-note');questControlNote.id='village-control-note';questControlNote.setAttribute('role','status');
+ questControl.setAttribute('aria-describedby',questControlNote.id);questActions.append(questControl);
  const questCycle=make('nav',undefined,'village-peek-cycle');questCycle.setAttribute('aria-label','確認するパーティを切り替える');
- const questPrevious=button('village-quest-prev','‹ 前の隊',()=>cycleSquad(-1));const questNext=button('village-quest-next','次の隊 ›',()=>cycleSquad(1));const questLocate=button('village-quest-locate','隊の場所へ',()=>locateSquad());questCycle.append(questPrevious,questLocate,questNext);questFooter.append(questActions,questCycle);questPeek.append(peekHeading,questBody,questFooter);
+ const questPrevious=button('village-quest-prev','‹ 前の隊',()=>cycleSquad(-1));const questNext=button('village-quest-next','次の隊 ›',()=>cycleSquad(1));const questLocate=button('village-quest-locate','隊の場所へ',()=>locateSquad());questCycle.append(questPrevious,questLocate,questNext);questFooter.append(questActions,questControlNote,questCycle);questPeek.append(peekHeading,questBody,questFooter);
  const note=make('p','建物の段階は会話からの推定です。','village-explanation');
  const wayfinding=make('nav',undefined,'village-wayfinding');wayfinding.setAttribute('aria-label','道の先へ');
  for(const place of VILLAGE_PLACES){const guide=button('village-travel-'+place.id,place.shortName,()=>travelTo(place.id),'village-waypoint');guide.dataset.destination=place.id;guide.setAttribute('aria-label',place.name+'へ向かう');wayfinding.append(guide);}
@@ -180,6 +197,10 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let semanticLayout=null,semanticSignature='',residentCameraCell='',contextKey='';
  let residentPatrols=new Map(),patrolLayout=null;
  let activities={protagonist:null,squads:[],allSquads:[],stats:{}},activitySignature='',activityReferences=[],squadScenes=[],heroScene=null,selectedSquadId=null,peekSignature='';
+ const homeSquadId='protagonist',soloParty={id:homeSquadId,members:[{seed:'hero',conversationId:null}]};
+ let controlledSquadId=homeSquadId;
+ const parkedPoses=new Map();
+ root.dataset.controlledSquad=homeSquadId;
  let speechId=null,speechAnchor=null,heroPoint={x:490,y:430},heroGoal=null,heroTrail=[{x:490,y:430}],heroLastTime=0,heroRouteIndex=0;
  let encounter=null,latestScene=null;const residentPauses=new Map();
  try{const rows=JSON.parse(mapStorage.getItem(layoutKey)||'[]'),used=new Set();if(Array.isArray(rows))for(const row of rows.slice(0,20000)){if(Array.isArray(row)&&typeof row[0]==='string'&&row[0].length<=512&&Number.isSafeInteger(row[1])&&row[1]>=0&&row[1]<20000&&!used.has(row[1])){assignments.set(row[0],row[1]);used.add(row[1]);}}}catch{}
@@ -191,8 +212,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   saveEnabled:value=>{try{mapStorage.setItem(ambientKey,value?'on':'off');}catch{}}});
  let locallyPaused=false,zoom=1,automaticZoom=true,camera={x:500,y:320},dimensions={width:0,height:0},transform={scale:1,x:0,y:0};
  const viewKey=demo?'chat-ui-demo-village-view':'chat-ui-village-view';
- let savedView=readVillageView(null),savedHero=null,insetVisible=true,insetInitialized=false,insetCamera=null,world3D=null,viewSaveTimer=0,leaderHeading=0,leaderPrevious=null;
- try{const value=JSON.parse(mapStorage.getItem(viewKey)||'null');savedView=readVillageView(value);savedHero=value?.hero||null;insetVisible=value?.insetVisible!==false;insetCamera=value?.insetCamera||null;}catch{}
+ let savedView=readVillageView(null),savedHero=null,insetVisible=false,showLeaderView=false,insetInitialized=false,insetCamera=null,world3D=null,viewSaveTimer=0,leaderHeading=0,leaderPrevious=null;
+ try{const value=JSON.parse(mapStorage.getItem(viewKey)||'null');savedView=readVillageView(value);savedHero=value?.hero||null;showLeaderView=value?.showLeaderView===true;insetVisible=showLeaderView;insetCamera=value?.insetCamera||null;}catch{}
  if(savedView.camera){camera={x:savedView.camera.x,y:savedView.camera.y};zoom=savedView.camera.zoom;automaticZoom=false;}
  district=savedView.district;
  let drag=null,suppressMapClick=false,travel=null,arrivalFocus=null,travelVersion=0,arrivalMembers=null;
@@ -202,12 +223,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const reducedMotion=()=>media.matches||document.body.dataset.motion==='reduced';
  const motionEnabled=()=>!locallyPaused&&!reducedMotion();
  const canAnimate=()=>visible&&!document.hidden&&!detail.open&&!document.querySelector('dialog[open]')&&motionEnabled()&&(travel||shownResidents.length>0||activities.protagonist||activities.squads.length>0)&&frame.clientWidth>0;
- function saveView(){clearTimeout(viewSaveTimer);viewSaveTimer=0;try{mapStorage.setItem(viewKey,JSON.stringify({mode:'2d',camera:{...camera,zoom},district,insetVisible,insetCamera:world3D?.getCameraState()||insetCamera,
-  hero:savedHero||{point:{...heroPoint},heading:leaderHeading,members:(travel?.engine.members||arrivalMembers||heroScene?.members||[heroPoint]).slice(0,8).map(({x,y})=>({x,y}))}}));}catch{}}
+ function saveView(){clearTimeout(viewSaveTimer);viewSaveTimer=0;const homeView=controlledSquadId===homeSquadId?null:parkedPoses.get(homeSquadId);try{mapStorage.setItem(viewKey,JSON.stringify({mode:'2d',camera:homeView?.camera||{...camera,zoom},district,showLeaderView,insetCamera:world3D?.getCameraState()||insetCamera,
+  hero:savedHero||(controlledSquadId===homeSquadId?currentPose():parkedPoses.get(homeSquadId))}));}catch{}}
  function queueViewSave(){clearTimeout(viewSaveTimer);viewSaveTimer=setTimeout(saveView,300);}
  function fail3D(){setInsetVisible(false);viewError.textContent='目線の小窓を表示できません。俯瞰地図はそのまま使えます。';viewError.hidden=false;insetToggle.disabled=true;}
  function resizeInset(){if(insetVisible&&canvas3D.clientWidth&&canvas3D.clientHeight)world3D?.resize(canvas3D.clientWidth,canvas3D.clientHeight,Math.min(devicePixelRatio||1,2));}
  function setInsetVisible(value,focus=false){
+  if(focus)showLeaderView=Boolean(value);
   insetInitialized=true;insetVisible=Boolean(value);inset.hidden=!insetVisible;root.dataset.viewMode='2d';root.dataset.leaderInset=String(insetVisible);
   insetToggle.hidden=insetVisible;insetToggle.setAttribute('aria-expanded',String(insetVisible));viewError.hidden=true;
   if(insetVisible&&!world3D){world3D=createWorld3D({canvas:canvas3D,onGround:point=>moveHero(point.x,point.y),onSelect:hit=>{if(hit.id.startsWith('project:'))openResident(hit.id.slice(8));else if(hit.id.startsWith('resident:'))openSpeech(hit.id.slice(9));else if(hit.id.startsWith('place:'))travelTo(hit.id.slice(6));else if(hit.id.startsWith('party:')){const groupId=hit.id.slice(6,hit.id.lastIndexOf(':')),group=[...squadScenes,...(heroScene?[heroScene]:[])].find(item=>item.id===groupId),member=group?.members[Number(hit.id.slice(hit.id.lastIndexOf(':')+1))];if(member?.conversationId&&!isControlledLeader(member))openSpeech(member.conversationId);else selectSquad(groupId);}},onFailure:()=>queueMicrotask(fail3D),onCameraChange:queueViewSave});
@@ -222,7 +244,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(!encounter||!latestScene)return null;
   const person=latestScene.people.find(item=>item.conversationId===encounter.conversationId);
   if(!person)return null;
-  return structuredClone({source:'village',conversationId:encounter.conversationId,name:encounter.name,status:encounter.status,phase:encounter.status,
+  return structuredClone({source:'village',...(controlledSquadId===homeSquadId?{}:{squadId:controlledSquadId}),conversationId:encounter.conversationId,name:encounter.name,status:encounter.status,phase:encounter.status,
    person:{...encounter.person,...person,name:encounter.name},leader:{...controlledLeader(),...latestScene.leader},scene:latestScene});
  }
  function endEncounter({redraw=true}={}){
@@ -234,6 +256,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function controlledLeader(){const group=heroScene||squadScenes.find(item=>item.isProtagonist);return group?.members.find(member=>member.isLeader||member.conversationId&&member.conversationId===group.leaderId)||group?.members[0]||heroPoint;}
  function isControlledLeader(member){const leader=controlledLeader();return member===leader||Boolean(member.conversationId&&member.conversationId===leader.conversationId);}
  function openSpeech(id){
+  if(!retainControl())return;
   const person=projection.residents.find(r=>r.conversationId===id);if(!person)return;
   if(id===controlledLeader().conversationId){onOpenChat?.(id);return;}
   const candidates=[...positions,...[...squadScenes,...(heroScene?[heroScene]:[])].flatMap(group=>group.members.map((member,index)=>({...member,color:worldPersonColor(member,{hero:group.isProtagonist,party:true,index,squadSeed:group.seed})})))].filter(item=>item.conversationId===id);
@@ -283,11 +306,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   result.stats.population=result.residents.length;result.stats.projects=result.projects.length;
   return {value:result,changed};
  }
- function updateProjection(){
+ function updateProjection(recheckActivities=false){
   if(disposed)return;
   const chats=getChats()||[],cached=cachedProjection(chats);lastProjection=performance.now();
   const state=getState()||{},references=[state.party,state.todos,state.boardDispatch];let activityChanged=false;
-  if(cached.changed||references.some((value,index)=>value!==activityReferences[index])||!activitySignature){activityReferences=references;const next=projectVillageActivities(state,chats),key=JSON.stringify(next);if(key!==activitySignature){activities=next;activitySignature=key;activityChanged=true;}}
+  if(recheckActivities||cached.changed||references.some((value,index)=>value!==activityReferences[index])||!activitySignature){activityReferences=references;const next=projectVillageActivities(state,chats),key=JSON.stringify(next);if(key!==activitySignature){activities=next;activitySignature=key;activityChanged=true;}}
+  if(activityChanged&&controlledSquadId!==homeSquadId&&!villageControlTarget(activities,controlledSquadId))switchParty(homeSquadId);
+  if(activityChanged)for(const id of parkedPoses.keys())if(id!==homeSquadId&&!villageControlTarget(activities,id))parkedPoses.delete(id);
   if(!cached.changed&&!activityChanged&&signature){syncAnimation();return;}signature='ready';projection=cached.value;
   // A streaming delta never moves somebody's home underneath the player.
   // Recompute after settled content changes and preserve the current camera.
@@ -350,11 +375,66 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function inspectionSquads(){return [...(activities.protagonist&&!activities.protagonist.activityId?[activities.protagonist]:[]),...activities.allSquads];}
  function selectedSquad(){return activities.allSquads.find(item=>item.id===selectedSquadId)||(selectedSquadId==='protagonist'?activities.protagonist:null);}
- function visibleSquads(){const selected=activities.allSquads.find(item=>item.id===selectedSquadId);return selected&&!activities.squads.some(item=>item.id===selected.id)?[...activities.squads.slice(0,-1),selected]:activities.squads;}
+ function visibleSquads(){
+  const pinned=activities.allSquads.filter(squad=>squad.id===selectedSquadId||squad.id===controlledSquadId);
+  if(pinned.every(squad=>activities.squads.includes(squad)))return activities.squads;
+  const others=activities.squads.filter(squad=>!pinned.includes(squad));
+  return [...others.slice(0,Math.max(0,activities.squads.length-pinned.length)),...pinned];
+ }
+ function homeParty(){return activities.protagonist&&!activities.protagonist.activityId?activities.protagonist:soloParty;}
+ function getControlledSquadId(){return controlledSquadId;}
+ function getControlledParty(){return controlledSquadId===homeSquadId?homeParty():villageControlTarget(activities,controlledSquadId);}
+ function squadSceneFor(id){return heroScene?.id===id?heroScene:squadScenes.find(squad=>squad.id===id);}
+ function orderedMembers(squad){return [...squad.members].sort((a,b)=>Number(Boolean(b.isLeader))-Number(Boolean(a.isLeader)));}
+ function currentPose(){
+  const members=travel?.engine.members||arrivalMembers||heroScene?.members||[heroPoint];
+  return {point:{...heroPoint},camera:{...camera,zoom},heading:leaderHeading,members:members.slice(0,8).map(({x,y})=>({x,y}))};
+ }
+ function switchParty(id,target){
+  const scene=squadSceneFor(id)||(!parkedPoses.has(id)&&target?campScenes([target])[0]:null);
+  const leader=scene?.members.find(member=>member.isLeader)||scene?.members[0];
+  const pose=parkedPoses.get(id)||(leader&&{point:leader,heading:leader.heading||0,members:orderedMembers(scene)});
+  if(!pose)return false;
+  const terrain=movementTerrain(),obstacles=movementObstacles();
+  const walkable=point=>islandRouteWalkable([point,point],terrain.island,{...terrain,obstacles});
+  // Quest markers can sit on a workshop footprint. Start the party at the nearest open ground.
+  let start=pose.point;
+  for(let radius=12;!walkable(start)&&radius<=144;radius+=12){
+   for(let turn=0;turn<8;turn++){
+    const angle=turn*Math.PI/4,point={x:pose.point.x+Math.cos(angle)*radius,y:pose.point.y+Math.sin(angle)*radius};
+    if(walkable(point)){start=point;break;}
+   }
+  }
+  if(!walkable(start)){if(id!==homeSquadId)return false;start={x:490,y:430};}
+  endEncounter({redraw:false});cancelTravel();parkedPoses.set(controlledSquadId,currentPose());
+  controlledSquadId=id;root.dataset.controlledSquad=id;parkedPoses.delete(id);
+  heroPoint={x:start.x,y:start.y};heroGoal={...heroPoint};leaderHeading=pose.heading;leaderPrevious={...heroPoint};
+  arrivalMembers=pose.members.map(point=>walkable(point)?{x:point.x,y:point.y}:{...heroPoint});arrivalMembers[0]={...heroPoint};
+  heroTrail=arrivalMembers.slice().reverse();heroLastTime=elapsed;heroScene=null;
+  delete root.dataset.heroGoalX;delete root.dataset.heroGoalY;
+  automaticZoom=false;zoom=Math.max(.8,zoom);camera=travelCamera(heroPoint);world3D?.setMode('leader');
+  peekSignature='';queueViewSave();return true;
+ }
+ function retainControl(){
+  if(controlledSquadId===homeSquadId)return true;
+  const id=controlledSquadId;
+  // A click can arrive before the next scheduled state refresh.
+  updateProjection(true);
+  return id===controlledSquadId;
+ }
+ function setControlledSquad(id){
+  if(disposed||!visible)return false;
+  updateProjection(true);
+  const target=villageControlTarget(activities,id);
+  if(id!==homeSquadId&&!target)return false;
+  if(id===controlledSquadId)return true;
+  if(!switchParty(id,target))return false;
+  syncDistrict();renderQuestPeek();return true;
+ }
  function closeQuestPeek(focus=true){questPeek.hidden=true;selectedSquadId=null;peekSignature='';delete root.dataset.selectedSquad;syncDistrict();if(focus&&visible)canvas.focus({preventScroll:true});}
  function locateSquad(){
   cancelTravel();const squad=selectedSquad();if(!squad)return;
-  updateSquadScenes();const scene=squadScenes.find(item=>item.id===selectedSquadId)||(selectedSquadId==='protagonist'?heroScene:null);if(!scene)return;
+  updateSquadScenes();const scene=squadSceneFor(selectedSquadId);if(!scene)return;
   const scale=transform.scale||1,small=dimensions.width<600;
   const desiredX=small?dimensions.width/2:Math.max(120,(dimensions.width-questPeek.offsetWidth-36)/2),desiredY=small?Math.max(155,Math.min(200,dimensions.height*.3)):dimensions.height*.47;
   camera={x:scene.x+(dimensions.width/2-desiredX)/scale,y:scene.y+(dimensions.height/2-desiredY)/scale};draw();
@@ -368,9 +448,16 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function cycleSquad(direction){const groups=inspectionSquads(),index=groups.findIndex(item=>item.id===selectedSquadId);if(groups.length)selectSquad(groups[(Math.max(0,index)+direction+groups.length)%groups.length].id,{focus:false});}
  function renderQuestPeek(){
   if(questPeek.hidden)return;
+  teamChat.render();
   if(selectedSquadId==='protagonist'&&activities.protagonist?.activityId){selectedSquadId=activities.protagonist.activityId;root.dataset.selectedSquad=selectedSquadId;draw();}
   const squad=selectedSquad();if(!squad){closeQuestPeek();return;}
-  questPrevious.disabled=questNext.disabled=inspectionSquads().length<2;const key=JSON.stringify(squad);if(key===peekSignature)return;peekSignature=key;
+  questPrevious.disabled=questNext.disabled=inspectionSquads().length<2;
+  const controlled=squad.id===getControlledSquadId(),movable=squad.id===homeSquadId||Boolean(villageControlTarget(activities,squad.id));
+  questControl.disabled=controlled||!movable;
+  questControl.textContent=controlled?'操作中':squad.id==='protagonist'?'自分の隊に戻る':'この隊を操作';
+  questControlNote.hidden=controlled||movable;
+  if(!questControlNote.hidden)questControlNote.textContent=squad.members?.some(member=>member.conversationId===squad.leaderId)?'この隊は現在の作業状態では移動できません。':'移動できるリーダーがいません。';
+  const key=JSON.stringify(squad);if(key===peekSignature)return;peekSignature=key;
   const info=squad.details||{},current=info.current,steps=info.steps||[],progress=info.progress,idle=squad.id==='protagonist';
   questPeek.dataset.questId=squad.id;questPeek.dataset.live=String(Boolean(info.live));questPartyName.textContent=squad.partyName||squad.name||'依頼のパーティ';questPartyName.title=questPartyName.textContent;
   questPeekTitle.textContent=idle?'次の冒険へ':squad.title;questPeekTitle.title=questPeekTitle.textContent;questPeekStatus.textContent=squad.statusLabel+(squad.provisional?' · 保存した編成で待機':'');questPeekStatus.dataset.status=squad.status;
@@ -385,7 +472,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   questPeekMembers.replaceChildren(...squad.members.map(member=>{const step=steps.find(item=>item.conversationId===member.conversationId),status=step?.status||'unknown';const row=button('',undefined,()=>{closeQuestPeek(false);onOpenChat?.(member.conversationId);},'village-quest-member');row.dataset.villageMember=member.conversationId;row.dataset.status=status;row.setAttribute('aria-label',member.name+'の会話を開く');row.append(make('strong',member.name),make('span',step?.role||member.role),make('small',stepLabels[status]||'会話を見る →'));return row;}));
   if(focused)Array.from(questPeekMembers.children).find(item=>item.dataset.villageMember===focused)?.focus({preventScroll:true});
   const conversationId=current?.conversationId||squad.targetConversationId;questChat.dataset.conversationId=conversationId||'';questChat.hidden=!conversationId;questChat.textContent=current?'担当の会話':'関連する会話';
-  questOpen.textContent=idle?'酒場で編成を見る →':'この依頼を開く →';
+  questOpen.textContent=idle?'酒場で編成を見る':'依頼の詳細';
  }
  function renderActivities(){
   const stats=activities.stats;questSummary.textContent=stats.total?stats.total+'件の依頼 · 進行中 '+stats.running+'隊 · 待機 '+stats.waiting+'隊 · 帰還 '+stats.returned+'隊':'まだ依頼の記録はありません。酒場で仲間を編成できます。';
@@ -394,7 +481,18 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function syncQuestSites(){
   const groups=[...visibleSquads(),...(activities.protagonist&&!activities.protagonist.activityId?[activities.protagonist]:[])];
-  questSites.replaceChildren(...groups.map(squad=>{const control=button('',undefined,()=>selectSquad(squad.id),'village-quest-flag');control.dataset.villageQuest=squad.id;control.dataset.status=squad.status;control.dataset.motion=squad.motion;control.setAttribute('aria-label',(squad.title||squad.name||'あなたのパーティ')+' · '+squad.statusLabel);control.title=control.getAttribute('aria-label');const tag=make('span',squad.id==='protagonist'?'あなたの隊':({working:'作業',gathering:'集合',waiting:'待機',paused:'中断',returned:'帰還'}[squad.motion]||squad.statusLabel));control.append(tag);control.onfocus=()=>{if(control.matches(':focus-visible')){const scene=squadScenes.find(item=>item.id===squad.id)||(squad.id==='protagonist'?heroScene:null);if(scene){camera={x:scene.x,y:scene.y};draw();}}};return control;}));
+  returnHome.hidden=getControlledSquadId()==='protagonist';
+  questSites.replaceChildren(...groups.map(squad=>{
+   const control=button('',undefined,()=>selectSquad(squad.id),'village-quest-flag');
+   const controlled=squad.id===getControlledSquadId(),home=squad.id==='protagonist';
+   const status=home?'自分の隊':squad.statusLabel;
+   const label=controlled?(home?'操作中':'操作中 · '+status):status;
+   control.dataset.villageQuest=squad.id;control.dataset.status=squad.status;control.dataset.motion=squad.motion;control.dataset.controlled=String(controlled);
+   control.title=[squad.partyName||squad.name,squad.title,label].filter(Boolean).join(' · ');
+   control.setAttribute('aria-label',control.title);control.append(make('span',label));
+   control.onfocus=()=>{if(control.matches(':focus-visible')){const scene=squadSceneFor(squad.id);if(scene){camera={x:scene.x,y:scene.y};draw();}}};
+   return control;
+  }));
  }
  function renderDirectory(){
   const query=normalized(search.value),matches=projection.residents.filter(item=>!query||normalized(item.name+' '+item.title).includes(query));
@@ -423,6 +521,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function cancelTravel(){travelVersion++;arrivalFocus=null;if(travel?.walking){holdTravelPosition(travel.engine);travel.engine.cancel();}travel=null;root.dataset.travelling='';root.dataset.arrivedPlace='';delete root.dataset.travelRemainingSeconds;root.dataset.cameraFollowing='false';follow.hidden=true;journey.hidden=true;}
  function travelTo(id){
+  if(!retainControl())return false;
   const place=VILLAGE_PLACES.find(item=>item.id===id);if(!place)return;
   const walking=true,from=walking?{...heroPoint}:{...camera};
   const north=VILLAGE_PLACES.find(item=>item.id==='weapon').entrance.y,lane=Math.abs(from.x-310)<Math.abs(from.x-630)?310:630;
@@ -440,7 +539,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   }
   if(!points.length)return false;
   cancelTravel();closeSpeech(false);questPeek.hidden=true;directory.open=false;questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');
-  const engine=new PartyTravel({...heroPoint},(activities.protagonist?.activityId?1:activities.protagonist?.members.length)||1),version=travelVersion;
+  const engine=new PartyTravel({...heroPoint},getControlledParty()?.members.length||1),version=travelVersion;
   travel={place,walking:true,engine,follow:true,last:elapsed,label:place.shortName+'へ向かっています'};arrivalMembers=null;
   root.dataset.travelling=id;journey.textContent=place.shortName+'へ向かっています';journey.hidden=false;automaticZoom=false;
   engine.go(points,()=>{
@@ -498,11 +597,12 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   arrivalMembers[0]={...heroPoint};
  }
  function moveHero(x,y,onArrival,{preserveEncounter=false,follow=false,label=''}={}){
+  if(!retainControl())return false;
   if(!pointInIsland({x,y},villageIsland()))return false;
   const goal={x,y};
   const route=islandLandRoute(heroPoint,goal,villageIsland(),{obstacles:movementObstacles(),...movementTerrain()});if(!route.length)return false;
   cancelTravel();closeSpeech(false,{preserveEncounter});arrivalMembers=null;
-  const engine=new PartyTravel({...heroPoint},(activities.protagonist?.activityId?1:activities.protagonist?.members.length)||1),version=travelVersion;
+  const engine=new PartyTravel({...heroPoint},getControlledParty()?.members.length||1),version=travelVersion;
   travel={engine,walking:true,place:{entrance:goal},follow,last:elapsed,label};
   if(follow){automaticZoom=false;zoom=Math.max(zoom,.8);camera=travelCamera(heroPoint);}
   engine.go(route,()=>{if(version!==travelVersion)return;holdTravelPosition(engine);travel=null;journey.hidden=true;queueViewSave();onArrival?.();});
@@ -511,22 +611,30 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function followingPoint(distance){let rest=distance;for(let index=heroTrail.length-1;index>0;index--){const a=heroTrail[index],b=heroTrail[index-1],length=Math.hypot(a.x-b.x,a.y-b.y);if(rest<=length)return {x:a.x+(b.x-a.x)*rest/(length||1),y:a.y+(b.y-a.y)*rest/(length||1)};rest-=length;}return heroTrail[0]||heroPoint;}
  function updateSquadScenes(){
-  const hero=(activities.protagonist&&!activities.protagonist.activityId?activities.protagonist:null)||{id:'protagonist',members:[{seed:'hero',conversationId:null}]},route=[{x:330,y:400},{x:630,y:400},{x:630,y:570},{x:310,y:570},{x:310,y:230},{x:710,y:230}];
-  if(hero&&!hero.activityId){
+  const hero=getControlledParty(),route=[{x:330,y:400},{x:630,y:400},{x:630,y:570},{x:310,y:570},{x:310,y:230},{x:710,y:230}];
+  if(hero){
    const target=travel?heroPoint:heroGoal||route[heroRouteIndex%route.length],distance=Math.hypot(target.x-heroPoint.x,target.y-heroPoint.y),dt=Math.min(80,Math.max(0,elapsed-heroLastTime))/1000,step=motionEnabled()?Math.min(distance,dt*46):0;
    if(step>0){heroPoint={x:heroPoint.x+(target.x-heroPoint.x)*step/distance,y:heroPoint.y+(target.y-heroPoint.y)*step/distance};const last=heroTrail.at(-1);if(Math.hypot(heroPoint.x-last.x,heroPoint.y-last.y)>2){heroTrail.push({...heroPoint});if(heroTrail.length>200)heroTrail.shift();}}else if(distance<1&&!heroGoal)heroRouteIndex++;
-   const ordered=[...hero.members].sort((a,b)=>Number(Boolean(b.isLeader))-Number(Boolean(a.isLeader)));
+   const ordered=orderedMembers(hero);
    heroScene={...hero,isProtagonist:true,x:heroPoint.x,y:heroPoint.y,members:ordered.map((member,index)=>({...member,...(travel?.engine.members[index]||arrivalMembers?.[index]||followingPoint(index*15)),walking:(distance>1||Boolean(travel))&&motionEnabled(),direction:travel?(travel.place.entrance.x>=heroPoint.x?'right':'left'):target.x>=heroPoint.x?'right':'left'}))};
   }else heroScene=null;
   heroLastTime=elapsed;
-  const occupied=[];squadScenes=visibleSquads().map((squad,index)=>{
+  squadScenes=campScenes(visibleSquads()).filter(squad=>squad.id!==controlledSquadId).map(squad=>parkedScene(squad));
+  if(controlledSquadId!==homeSquadId)squadScenes.push(parkedScene(homeParty()));
+  const shownHero=heroScene||squadScenes.find(squad=>squad.isProtagonist);if(shownHero){root.dataset.heroX=shownHero.x.toFixed(1);root.dataset.heroY=shownHero.y.toFixed(1);const leader=shownHero.members.find(member=>member.isLeader)||shownHero.members[0]||shownHero;if(leaderPrevious){const dx=leader.x-leaderPrevious.x,dy=leader.y-leaderPrevious.y;if(Math.hypot(dx,dy)>.01)leaderHeading=Math.atan2(dx,-dy);}leaderPrevious={x:leader.x,y:leader.y};leader.heading=leaderHeading;leader.direction=['up','right','down','left'][((Math.round(leaderHeading/(Math.PI/2))%4)+4)%4];}else{delete root.dataset.heroX;delete root.dataset.heroY;}
+ }
+ function parkedScene(squad){
+  const pose=parkedPoses.get(squad.id);if(!pose)return squad;
+  return {...squad,...pose.point,isProtagonist:false,members:orderedMembers(squad).map((member,index)=>({...member,...(pose.members[index]||pose.point),walking:false,direction:'down'}))};
+ }
+ function campScenes(squads){
+  const occupied=[];return squads.map((squad,index)=>{
    const exact=projectSlots.find(project=>project.conversationId===squad.targetConversationId),related=exact||[...projectSlots].sort((a,b)=>topicScore(squad.targetKeywords,b)-topicScore(squad.targetKeywords,a)||a.seed-b.seed).find(project=>topicScore(squad.targetKeywords,project)>0);
    const camps=Array.from({length:12},(_,camp)=>({x:175+(camp%4)*200,y:235+Math.floor(camp/4)*170})),start=squad.seed%12,ordered=[...camps.slice(start),...camps.slice(0,start)];
    const base=squad.motion==='working'&&related?{x:related.x+49,y:related.y+47}:ordered.find(point=>occupied.every(other=>Math.hypot(point.x-other.x,point.y-other.y)>105))||ordered[index%12];occupied.push(base);
-   const working=squad.motion==='working',isProtagonist=hero?.activityId===squad.id;
-   return {...squad,...base,isProtagonist,members:squad.members.map((member,memberIndex)=>({...member,x:base.x-15+(memberIndex%4)*10+(working?Math.sin(elapsed/900+memberIndex)*4:0),y:base.y+14+Math.floor(memberIndex/4)*12+(working?Math.cos(elapsed/1100+memberIndex)*3:0),walking:working&&motionEnabled(),direction:'down'}))};
+   const working=squad.motion==='working';
+   return {...squad,...base,isProtagonist:false,members:squad.members.map((member,memberIndex)=>({...member,x:base.x-15+(memberIndex%4)*10+(working?Math.sin(elapsed/900+memberIndex)*4:0),y:base.y+14+Math.floor(memberIndex/4)*12+(working?Math.cos(elapsed/1100+memberIndex)*3:0),walking:working&&motionEnabled(),direction:'down'}))};
   });
-  const shownHero=heroScene||squadScenes.find(squad=>squad.isProtagonist);if(shownHero){root.dataset.heroX=shownHero.x.toFixed(1);root.dataset.heroY=shownHero.y.toFixed(1);const leader=shownHero.members.find(member=>member.isLeader)||shownHero.members[0]||shownHero;if(leaderPrevious){const dx=leader.x-leaderPrevious.x,dy=leader.y-leaderPrevious.y;if(Math.hypot(dx,dy)>.01)leaderHeading=Math.atan2(dx,-dy);}leaderPrevious={x:leader.x,y:leader.y};leader.heading=leaderHeading;leader.direction=['up','right','down','left'][((Math.round(leaderHeading/(Math.PI/2))%4)+4)%4];}else{delete root.dataset.heroX;delete root.dataset.heroY;}
  }
  function resize(){
   const width=frame.clientWidth,height=frame.clientHeight;if(!width||!height)return;
@@ -566,6 +674,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const delegates=villageDelegateActors(delegateParents);
   root.dataset.nativeSubagents=String(delegates.badges.reduce((count,badge)=>count+badge.count,0));root.dataset.renderedSubagents=String(delegates.helpers.length);
   latestScene=village3DScene({projects:projectSlots,residents:positions,population:projection.residents.length,hero:heroScene,squads:squadScenes,heading:leaderHeading,delegates,roads:semanticLayout?.roads||[],clearings:semanticLayout?.clearings||[],time:elapsed,motion:motionEnabled()});
+  root.dataset.controlledLeader=latestScene.leader.conversationId||'';
   if(encounter?.status==='talking')latestScene=villageEncounterSightline(latestScene,encounter.conversationId);
   if(encounter&&actors.person){root.dataset.encounterPersonHeading=String(actors.person.heading);root.dataset.encounterLeaderHeading=String(latestScene.leader.heading);root.dataset.encounterPose=JSON.stringify({person:{id:'resident:'+encounter.conversationId,x:actors.person.x,y:actors.person.y,heading:actors.person.heading},leader:latestScene.leader});root.dataset.encounterCamera=JSON.stringify(world3D?.getCameraState()||null);}
   if(insetVisible&&world3D)world3D.update(latestScene);drawVillageWorld(context,{time:elapsed,residents:positions,projects:projectSlots,population:projection.residents.length,selectedId:speechId||selected,squads:squadScenes,protagonist:heroScene,selectedSquadId,motion:canAnimate(),terrainVisible:!distant,delegates,roads:latestScene.roads,clearings:semanticLayout?.clearings||[]});
@@ -589,7 +698,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   }
   if(arrivalFocus){const entry=document.querySelector('#village-enter-'+arrivalFocus);if(entry&&!entry.hidden){entry.focus({preventScroll:true});arrivalFocus=null;}}
   zoomOut.disabled=zoom<=villageOverviewCamera(width,height).zoom+1e-8;zoomIn.disabled=zoom>=2.5;canvas.dataset.zoom=zoom.toFixed(2);
-  for(const control of questSites.children){const scene=squadScenes.find(item=>item.id===control.dataset.villageQuest)||(control.dataset.villageQuest==='protagonist'?heroScene:null);control.hidden=!scene;control.dataset.selected=String(control.dataset.villageQuest===selectedSquadId);if(scene){control.style.left=transform.x+scene.x*scale-22+'px';control.style.top=transform.y+(scene.y-18)*scale-22+'px';}}
+  for(const control of questSites.children){const scene=squadSceneFor(control.dataset.villageQuest);control.hidden=!scene;control.dataset.selected=String(control.dataset.villageQuest===selectedSquadId);if(scene){control.style.left=transform.x+scene.x*scale-22+'px';control.style.top=transform.y+(scene.y-18)*scale-22+'px';}}
   if(encounter?.status==='talking'){
   const avoid=[],parent=frame.getBoundingClientRect();
   if(insetVisible){const box=inset.getBoundingClientRect();avoid.push({left:box.left-parent.left,right:box.right-parent.left,top:box.top-parent.top,bottom:box.bottom-parent.top});}
@@ -639,6 +748,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const motionChanged=()=>{world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(visible&&!document.hidden&&reducedMotion()&&!locallyPaused)travel?.engine.advance(Infinity);syncAnimation();};media.addEventListener('change',motionChanged);addEventListener('chat-ui-motion',motionChanged);document.addEventListener('visibilitychange',motionChanged);
  function render(){
   if(!visible||disposed)return;
+  if(!questPeek.hidden)teamChat.render();
   if(performance.now()-lastProjection>220){clearTimeout(projectionTimer);projectionTimer=0;updateProjection();}
   else if(!projectionTimer)projectionTimer=setTimeout(()=>{projectionTimer=0;if(visible)updateProjection();},230);
  }
@@ -670,5 +780,5 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  function dispose(){saveView();disposed=true;visible=false;inputFrame.cancel();endEncounter({redraw:false});clearTimeout(projectionTimer);if(frameId)cancelAnimationFrame(frameId);world3D?.destroy();observer.disconnect();insetObserver.disconnect();modalObserver.disconnect();media.removeEventListener('change',motionChanged);removeEventListener('chat-ui-motion',motionChanged);document.removeEventListener('visibilitychange',motionChanged);detail.remove();}
  addEventListener('pagehide',dispose,{once:true});
- return {render,setVisible,focus,dispose,getEncounter,endEncounter,saveView};
+ return {render,setVisible,focus,dispose,getEncounter,endEncounter,saveView,setControlledSquad,getControlledSquadId,getControlledParty};
 }

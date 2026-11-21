@@ -42,7 +42,7 @@ export function initProjects({
   );
   const add = button("＋ 新しい地区", () => create.showModal(), "primary");
   add.id = "project-add";
-  const back = button("会話の村へ", onLegacy);
+  const back = button("冒険者の村へ", onLegacy);
   const agentBoard = createAgentBoard({api, demo, getState, getProjects: () => projects(), getChats, onChat});
   const boardButton = button("隊の掲示板", () => agentBoard.open());
   boardButton.id = "agent-board-open";
