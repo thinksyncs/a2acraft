@@ -263,3 +263,4 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 .village-quest-chat-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px}
 .village-quest-chat-input{width:100%;min-width:0;height:2.35em;min-height:0;resize:none;padding:.35em .5em;font:inherit;line-height:1.45}
 .village-quest-chat-hint{color:#e9cf96}
+.history-village .village-quest-chat-refresh{justify-self:start;width:auto;min-height:32px;padding:3px 8px;font-size:12px}

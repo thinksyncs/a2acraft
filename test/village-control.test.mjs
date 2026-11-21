@@ -115,6 +115,28 @@ test("the village opens without the inset even when older automatic view state w
   assert.equal(JSON.parse(f.storage.get(f.key)).showLeaderView,false);
 });
 
+test("an assigned waiting team can be inspected before anyone has chat history", t => {
+  const f = fixture(t, {visible:false});
+  const recipient = "b";
+  const task = {id:"first-task", title:"合言葉を決める", status:"todo", assignee:{type:"chat", conversationId:recipient}, runs:[]};
+  f.state.todos = {items:[task]};
+  f.view.setVisible(true);
+  assert.equal(f.root.dataset.population, "0");
+  const flag = f.root.querySelectorAll("button").find(button => button.dataset.villageQuest === "todo:first-task");
+  assert.ok(flag);
+  assert.equal(f.element("village-empty").hidden, true);
+  flag.click();
+  assert.equal(f.element("village-quest-control").disabled, false);
+  f.element("village-quest-peek-close").click();
+  f.advance(2);
+  assert.equal(f.element("village-empty").hidden, true);
+
+  f.view.setVisible(false);
+  f.state.todos = {items:[{...task, assignee:{type:"chat", conversationId:"missing"}}]};
+  f.view.setVisible(true);
+  assert.equal(f.element("village-empty").hidden, false, "an empty roster and decorative home party do not hide onboarding");
+});
+
 test("Island overview changes the camera without cancelling the party walk",t=>{
   const f=fixture(t);f.element("village-canvas").dispatch("keydown",{key:"d"});f.advance(6);
   const before=f.party(),leader=f.hero();assert.equal(before.length,3);assert.ok(leader.x>510&&leader.x<550);
@@ -227,7 +249,7 @@ test('team card chat stays on the map, preserves drafts by recipient, and revali
   const { f, inspect } = teamFixture(t, {
     read: id => ({draft: drafts.get(id) || '', reason}),
     write: (id, text) => drafts.set(id, text),
-    send: id => { sent.push({id, text: drafts.get(id)}); drafts.delete(id); },
+    send: (id,squadId) => { sent.push({id,squadId,text:drafts.get(id)}); drafts.delete(id); },
   });
   const paused = 'todo:village-sample-pause', leader = 'village-demo-6';
   const chat = f.chats.find(item => item.id === leader);
@@ -251,7 +273,7 @@ test('team card chat stays on the map, preserves drafts by recipient, and revali
   reason = '';
   f.view.render();
   await submit();
-  assert.deepEqual(sent, [{id:leader, text:'画面の幅は？'}]);
+  assert.deepEqual(sent, [{id:leader, squadId:paused, text:'画面の幅は？'}]);
   assert.equal(drafts.get('a'), 'こちらは別の下書き');
   assert.equal(f.root.dataset.selectedSquad, paused);
   assert.equal(f.openedChats.length, 0, 'sending leaves the team card on screen');
@@ -262,6 +284,37 @@ test('team card chat stays on the map, preserves drafts by recipient, and revali
   await submit();
   assert.equal(sent.length, 1, 'a removed team cannot be addressed through a stale card');
   assert.equal(drafts.get(leader), 'まだ送らない');
+});
+
+test('refreshing a quota block keeps the team and its draft until a separate explicit send', async t=>{
+  const drafts=new Map(),sent=[];
+  let blocked=true, refreshCount=0, resume;
+  const refreshing=new Promise(resolve=>{resume=resolve;});
+  const {f,inspect}=teamFixture(t,{
+    read:id=>({draft:drafts.get(id)||'',reason:blocked?'残量を取得できません。':'',refreshQuota:blocked}),
+    write:(id,text)=>drafts.set(id,text),
+    send:(id,squadId)=>sent.push({id,squadId,text:drafts.get(id)}),
+    refreshQuota:async()=>{refreshCount++;await refreshing;blocked=false;},
+  });
+  const paused='todo:village-sample-pause';
+  inspect(paused);
+  const form=f.element('village-team-chat'),input=f.element('village-team-message'),refresh=f.element('village-team-quota-refresh');
+  input.value='枠が回復したら聞く';input.dispatch('input');
+  assert.equal(refresh.hidden,false);
+  assert.equal(refresh.type,'button');
+  await form.onsubmit({preventDefault(){}});
+  assert.deepEqual(sent,[]);
+  const update=refresh.onclick();
+  assert.equal(refresh.disabled,true);
+  await refresh.onclick();
+  assert.equal(refreshCount,1);
+  resume();await update;
+  assert.equal(refresh.hidden,true);
+  assert.equal(f.root.dataset.selectedSquad,paused);
+  assert.equal(input.value,'枠が回復したら聞く');
+  assert.deepEqual(sent,[]);
+  await form.onsubmit({preventDefault(){}});
+  assert.deepEqual(sent,[{id:'village-demo-6',squadId:paused,text:'枠が回復したら聞く'}]);
 });
 
 test('sample outing follows the main footpath and reaches a resident through the normal encounter',async t=>{

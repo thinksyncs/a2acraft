@@ -159,7 +159,8 @@ function visitVillageFacility(place){
 function villageState(){return villageSample?villageDemoActivityState(state):state;}
 const village=initVillage({api,demo,getState:villageState,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard(),
   teamMessaging:{
-    read:id=>({draft:drafts[id]||'',reason:teamSendReason(id)}),
+    read:id=>({draft:drafts[id]||'',...teamSendStatus(id)}),
+    refreshQuota:refreshUsage,
     write:(id,text)=>{
       if(!chats.some(chat=>chat.id===id))return;
       drafts[id]=text;if(selected===id)$('#prompt').value=text;persist();
@@ -759,20 +760,33 @@ function updateHud() {
 function normalSendUnavailable(chat,steering){
   return $('#workspace').hidden || (!demo&&(!state.connected||state.account?.type!=='chatgpt'||state.login||serverUnavailable)) || Boolean(state.workQuestPlanning) || boardActive() || partyActive() || !chat || steerPending || pendingSends.has(chat.id) || conversationModeRequests.has(chat.id) || !state.policy?.ok || (chats.some(active) && !steering) || !$('#model').value;
 }
-function teamSendReason(id){
+function teamSendStatus(id){
   const chat=chats.find(item=>item.id===id);
-  if(!chat)return '会話を開けません。';
-  if(chat.project)return 'この会話は作業の記録です。';
-  if(chat.workMode==='work')return '作業モードの会話です。送信は会話画面で確認してください。';
-  if(!demo&&(!state.connected||state.account?.type!=='chatgpt'||state.login||serverUnavailable))return '送信するにはCodexに接続してください。';
-  if(attachments.get(id).length||attachments.busy(id))return '準備中の添付を会話画面で確認してください。';
-  if(normalSendUnavailable(chat,false)||connectionReadiness?.busy||state.projects?.activeCount)return '現在は送信できません。';
-  return '';
+  if(!chat)return {reason:'会話を開けません。'};
+  if(chat.project)return {reason:'この会話は作業の記録です。'};
+  if(chat.workMode==='work')return {reason:'作業モードの会話です。送信は会話画面で確認してください。'};
+  if(!demo&&(!state.connected||state.account?.type!=='chatgpt'||state.login||serverUnavailable))return {reason:'送信するにはCodexに接続してください。'};
+  if(attachments.get(id).length||attachments.busy(id))return {reason:'準備中の添付を会話画面で確認してください。'};
+  if(!state.policy?.ok){
+    const quota=state.policy?.quota, reason=state.policy?.reason||'現在は送信できません。';
+    if(!quota)return {reason};
+    const bucket=buckets()[quota.bucketIndex], window=bucket?.[quota.slot];
+    if(!window)return {reason,refreshQuota:true};
+    const name=windowLabel(window,quota.slot==='secondary'?'追加枠':'利用枠');
+    const remaining=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1}).format(100-window.usedPercent);
+    const reset=new Date(window.resetsAt*1000);
+    const next=Number.isFinite(window.resetsAt)&&reset.getTime()>Date.now()
+      ? '（'+reset.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' リセット予定）':'';
+    return {reason:reason+' '+(bucket.limitName||bucket.limitId||'Codex')+' · '+name+' 残り'+remaining+'%'+next,refreshQuota:true};
+  }
+  if(normalSendUnavailable(chat,false)||connectionReadiness?.busy||state.projects?.activeCount)return {reason:'現在は送信できません。'};
+  return {reason:''};
 }
-function sendTeamChatMessage(id){
+function sendTeamChatMessage(id,mapSquadId){
+  if(typeof mapSquadId!=='string'||!mapSquadId)return;
   const chat=chats.find(item=>item.id===id),text=(drafts[id]||'').trim();
-  if(!text||teamSendReason(id))return;
-  return sendConversationTurn(chat,text,{fromMap:true});
+  if(!text||teamSendStatus(id).reason)return;
+  return sendConversationTurn(chat,text,{mapSquadId});
 }
 function updateComposer() {
   const chat = chats.find(chat => chat.id === selected), steering = !chat?.project&&chat?.status === 'running';
@@ -1057,12 +1071,14 @@ $('#composer').onsubmit = async event => {
   }
   return sendConversationTurn(projectChat,$('#prompt').value.trim());
 };
-async function sendConversationTurn(chat,text,{fromMap=false}={}) {
+async function sendConversationTurn(chat,text,{mapSquadId}={}) {
+  const fromMap=mapSquadId!==undefined;
   const id=chat.id,isSteer=!fromMap&&chat.status==='running',expectedTurnId=chat.turnId;
   let residentVisit;
   try{if(!fromMap)residentVisit=residentVisitForChat(id);}catch(error){toast(error.message);return;}
   const model=$('#model').value,effort=$('#effort').value,previousStatus=chat.status,files=fromMap?[]:attachments.take(id);
-  const requestId=demo?null:requestForSend(sendRequests,id,{...(residentVisit?{residentVisit}:{}),text,model,effort,attachmentIds:files.map(file=>file.id),kind:isSteer?'steer':'send',expectedTurnId:isSteer?expectedTurnId:null});
+  const mapContext=fromMap?{mapSquadId}:residentVisit?{residentVisit}:{};
+  const requestId=demo?null:requestForSend(sendRequests,id,{...mapContext,text,model,effort,attachmentIds:files.map(file=>file.id),kind:isSteer?'steer':'send',expectedTurnId:isSteer?expectedTurnId:null});
   let dispatched=false;pendingSends.add(id);
   drafts[id] = ''; if(selected===id)$('#prompt').value=''; persist(); chat.error = null;
   if (!isSteer) chat.status = 'starting'; else steerPending = true;
@@ -1080,7 +1096,7 @@ async function sendConversationTurn(chat,text,{fromMap=false}={}) {
     // Keep the retry identity durable before dispatching a desktop request.
     await desktopDrafts?.flush();
     dispatched=true;
-    await api(isSteer ? 'steer' : 'send',{id,text,...(residentVisit?{residentVisit}:{}),attachmentIds:files.map(file=>file.id),expectedTurnId:isSteer?expectedTurnId:null,model,effort,requestId});
+    await api(isSteer ? 'steer' : 'send',{id,text,...mapContext,attachmentIds:files.map(file=>file.id),expectedTurnId:isSteer?expectedTurnId:null,model,effort,requestId});
     delete sendRequests[id];persist();
   } catch (error) {
     let accepted=false;
