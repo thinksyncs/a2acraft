@@ -245,8 +245,21 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
  .history-village .village-quest-peek{max-height:calc(100% - 24px)}
 }
 
+.history-village .village-camera-controls #village-control-home{font-size:12px;line-height:1.25;width:auto;max-width:78px;white-space:normal}
+.village-control-note{display:block;margin:4px 2px;color:#c9d6c9;font-size:12px}
+.village-quest-flag[data-controlled=true]>span{background:#f2dd9f;color:#24392f;opacity:1}
 #village-ambient{position:absolute;z-index:5;left:50%;bottom:70px;transform:translateX(-50%);width:max-content;max-width:min(440px,calc(100% - 24px));padding:7px 12px;border:1px solid #abbd8c;border-radius:9px;background:#183026f2;color:#f1f1dc;font-size:12px;line-height:1.5;pointer-events:none}
 #village-ambient p{margin:0;overflow-wrap:anywhere}
 #village-ambient p+p{margin-top:3px;color:#dfebbf}
 .history-village #village-ambient-toggle{margin-top:5px;min-height:28px;padding:2px 7px;font:inherit;background:transparent;color:#d9e5c7;border:1px solid #72876c;border-radius:5px;box-shadow:none}
 #village-ambient-toggle[aria-pressed=true]::before{content:'✓ ';}
+.village-quest-chat-form{display:grid;gap:5px;margin:0 0 10px;padding:0 0 10px;border:0;border-bottom:1px solid #6f846b}
+.village-quest-chat-form[hidden]{display:none}
+.village-quest-chat-label{font-weight:700}
+.village-quest-chat-recent{max-height:5.7em;overflow:auto;font-size:.86em;line-height:1.45}
+.village-quest-chat-line{display:flex;align-items:baseline;gap:.45em}
+.village-quest-chat-speaker{flex:none;color:#c5d9b7}
+.village-quest-chat-text{white-space:pre-line;overflow-wrap:anywhere}
+.village-quest-chat-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px}
+.village-quest-chat-input{width:100%;min-width:0;height:2.35em;min-height:0;resize:none;padding:.35em .5em;font:inherit;line-height:1.45}
+.village-quest-chat-hint{color:#e9cf96}

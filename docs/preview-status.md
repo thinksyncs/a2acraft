@@ -1,6 +1,14 @@
-# A2ACraft 0.4.19 — Mac preview status
+# A2ACraft 0.4.20 — Mac preview status
 
 This is a tester preview. Live conversation and file-work acceptance remains pending.
+
+### 0.4.20
+
+The village now starts in overhead view. Players can open the leader's view on demand and save that choice. First-person views show the people and scenery without floating shield markers. In the village, a small cloth pennant marks a party, and the active party's label reads 操作中.
+
+Selecting a team opens a card with the recipient’s name, recent messages and a single-line composer. In the browser’s fictional village, a message to グレン and his reply appeared on the same card while 学習図書館の隊 remained paused. Switching control, walking, showing and closing the leader view, and returning to the original party were also checked there. Map control changes movement only. The application checks the current local roster and activity state, and reserves teams currently working for inspection.
+
+All 542 tests passed. The locally signed Apple Silicon ZIP was extracted and verified against the source. The new interactions were observed in the browser sample. They have yet to be verified in the packaged 0.4.20 window or with a live model.
 
 ### Mac desktop acceptance in 0.4.19
 

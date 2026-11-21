@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {perspective, lookAt, multiply, transform, invert, screenRay, rayGround,
   rayBox, initialCamera, sanitizeCamera, cameraPose, movementTarget} from '../public/world-3d-math.js';
 import {staticMesh, peopleMesh, visiblePeople, groundRectangles, waterRectangle} from '../public/world-3d-mesh.js';
-import {createWorld3D,worldLabelFaceBounds} from '../public/world-3d.js';
+import {createWorld3D} from '../public/world-3d.js';
 
 const close = (actual, expected, tolerance = 0.002) => assert.ok(Math.abs(actual - expected) < tolerance, `${actual} should be close to ${expected}`);
 const projection = (point, matrix) => {
@@ -224,69 +224,45 @@ test('changing only the shared river mouth updates the uploaded 3D surface',()=>
   renderer.destroy();
 });
 
-test('first-person badges and their lines avoid a focused face without removing any character',t=>{
-  const original=Object.getOwnPropertyDescriptor(globalThis,'requestAnimationFrame'),
-    originalCancel=Object.getOwnPropertyDescriptor(globalThis,'cancelAnimationFrame');
+test('first person shows the characters without floating badges, including after switching from the overview', t => {
+  const original = Object.getOwnPropertyDescriptor(globalThis,'requestAnimationFrame');
+  const originalCancel = Object.getOwnPropertyDescriptor(globalThis,'cancelAnimationFrame');
   let nextFrame;
-  globalThis.requestAnimationFrame=callback=>{nextFrame=callback;return 1;};
-  globalThis.cancelAnimationFrame=()=>{};
-  t.after(()=>{
-    if(original)Object.defineProperty(globalThis,'requestAnimationFrame',original);else delete globalThis.requestAnimationFrame;
-    if(originalCancel)Object.defineProperty(globalThis,'cancelAnimationFrame',originalCancel);else delete globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = callback => {nextFrame = callback; return 1;};
+  globalThis.cancelAnimationFrame = () => {};
+  t.after(() => {
+    if(original) Object.defineProperty(globalThis,'requestAnimationFrame',original); else delete globalThis.requestAnimationFrame;
+    if(originalCancel) Object.defineProperty(globalThis,'cancelAnimationFrame',originalCancel); else delete globalThis.cancelAnimationFrame;
   });
-  const width=240,height=130,leader={id:'viewer',x:0,y:40,heading:0};
-  const target={id:'resident:alto',kind:'agent',name:'アルト',delegationLabel:'主 アルト',x:0,y:0,heading:Math.PI,identityFocused:true};
-  const people=[target,{id:'background',kind:'agent',x:0,y:-80,delegationLabel:'主 ニーナ · 補助 2'},
-    {id:'helper',kind:'subagent',x:6,y:-75,scale:.58,label:'補 テオ · 調査',parentX:0,parentY:-80}];
-  const before=structuredClone(people),bounds={left:-200,right:200,top:-200,bottom:200};
-  const matrix=multiply(perspective(Math.PI/3,width/height,.7,2400),lookAt([0,20,40],[0,20,0]));
-  const [face]=worldLabelFaceBounds(people,matrix,width,height);
-  assert.ok(face,'the actual head projects inside this chat inset');
-  function paint(focused){
-    const boxes=[],segments=[],uploads=[];let currentPath=[];
-    const context=new Proxy({measureText:text=>({width:text.length*7}),
-      fillRect(x,y,w,h){boxes.push({left:x,top:y,right:x+w,bottom:y+h});},
-      beginPath(){currentPath=[];},moveTo(x,y){currentPath.push({x,y});},lineTo(x,y){currentPath.push({x,y});},
-      stroke(){if(currentPath.length===2)segments.push(currentPath);}},
-      {get:(object,key)=>key in object?object[key]:()=>{}});
-    const labelCanvas={style:{},setAttribute(){},getContext:()=>context,remove(){}};
-    const gl=new Proxy({STATIC_DRAW:1,DYNAMIC_DRAW:2,getShaderParameter:()=>true,getProgramParameter:()=>true,
-      bufferData(_target,data,usage){if(usage===2)uploads.push(data);}},
-      {get:(object,key)=>key in object?object[key]:()=>({})});
-    const canvas={clientWidth:width,clientHeight:height,offsetLeft:0,offsetTop:0,dataset:{},getContext:()=>gl,
-      ownerDocument:{createElement:()=>labelCanvas},parentElement:{append(){}},addEventListener(){},removeEventListener(){}};
-    const renderer=createWorld3D({canvas});
-    renderer.update({bounds,leader,people:people.map(person=>({...person,identityFocused:focused&&person===target})),
-      buildings:[],scenery:[],roads:[],water:[]});
-    renderer.setMode('leader');renderer.setVisible(true);nextFrame();renderer.destroy();
-    return {boxes,segments,mesh:uploads.at(-1),count:Number(canvas.dataset.visiblePeople)};
-  }
-  const overlap=box=>box.left<face.right&&box.right>face.left&&box.top<face.bottom&&box.bottom>face.top;
-  const ordinary=paint(false),focused=paint(true);
-  assert.ok(ordinary.boxes.some(overlap),'the fixture reproduces a distant badge covering the interlocutor');
-  assert.ok(focused.boxes.length>0,'identification labels are retained where they fit');
-  assert.ok(focused.boxes.every(box=>!overlap(box)),'no badge covers the head');
-  for(const [from,to]of focused.segments)for(let step=0;step<=100;step++){
-    const x=from.x+(to.x-from.x)*step/100,y=from.y+(to.y-from.y)*step/100;
-    assert.ok(x<face.left||x>face.right||y<face.top||y>face.bottom,'a badge line must not cross the face');
-  }
-  assert.equal(focused.count,people.length);assert.equal(focused.count,ordinary.count);
-  assert.deepEqual(focused.mesh,ordinary.mesh,'every character retains the same 3D geometry');
-  assert.deepEqual(people,before,'rendering does not change the source actors');
-});
-
-test('head protection follows rotated and scaled people and ignores unfocused or behind-camera actors',()=>{
-  const matrix=multiply(perspective(Math.PI/3,2,.7,2400),lookAt([0,20,40],[0,20,0]));
-  const person={x:0,y:0,identityFocused:true};
-  const [box]=worldLabelFaceBounds([person],matrix,400,200);
-  for(const heading of [0,Math.PI/4,Math.PI/2]){
-    const mesh=peopleMesh([{...person,heading}]);
-    for(let i=0;i<mesh.length;i+=9)if(mesh[i+1]>=16&&mesh[i+1]<=25){
-      const point=projection([mesh[i],mesh[i+1],mesh[i+2]],matrix),x=(point[0]+1)*200,y=(1-point[1])*100;
-      assert.ok(x>=box.left&&x<=box.right&&y>=box.top&&y<=box.bottom);
-    }
-  }
-  const [small]=worldLabelFaceBounds([{...person,scale:.58}],matrix,400,200);
-  assert.ok(small.right-small.left<box.right-box.left);
-  assert.deepEqual(worldLabelFaceBounds([{...person,identityFocused:false},{...person,y:100}],matrix,400,200),[]);
+  const people = [
+    {id:'talking', kind:'agent', name:'アルト', x:0, y:0, heading:Math.PI, identityFocused:true},
+    {id:'parent', kind:'agent', x:0, y:-80, delegationLabel:'主 ニーナ · 補助 1'},
+    {id:'helper', kind:'subagent', x:6, y:-75, scale:.58, label:'補 テオ · 調査', parentX:0, parentY:-80},
+  ];
+  const peopleUploads = [], layers = [];
+  let badges = 0;
+  const context = new Proxy({measureText:text=>({width:text.length*7}),fillRect(){badges++;}},
+    {get:(object,key)=>key in object?object[key]:()=>{}});
+  const gl = new Proxy({STATIC_DRAW:1,DYNAMIC_DRAW:2,getShaderParameter:()=>true,getProgramParameter:()=>true,
+    bufferData(_target,data,usage){if(usage===2)peopleUploads.push(data);}},
+    {get:(object,key)=>key in object?object[key]:()=>({})});
+  const canvas={clientWidth:240,clientHeight:130,offsetLeft:0,offsetTop:0,dataset:{},getContext:()=>gl,
+    ownerDocument:{createElement:()=>({style:{},setAttribute(){},getContext:()=>context,remove(){}})},
+    parentElement:{append(layer){layers.push(layer);}},addEventListener(){},removeEventListener(){}};
+  const renderer=createWorld3D({canvas});
+  t.after(()=>renderer.destroy());
+  renderer.update({bounds:{left:-200,right:200,top:-200,bottom:200},leader:{id:'viewer',x:0,y:40,heading:0},people,
+    buildings:[],scenery:[],roads:[],water:[]});
+  renderer.setMode('leader');renderer.setVisible(true);nextFrame();
+  assert.equal(Number(canvas.dataset.visiblePeople),people.length);
+  assert.deepEqual(peopleUploads.at(-1),peopleMesh(people));
+  assert.equal(layers.length,0,'both the village and the conversation inset start without a label layer');
+  renderer.setMode('overview');nextFrame();
+  assert.equal(layers.length,1);assert.equal(layers[0].style.display,'block');
+  assert.ok(badges>0,'the overview keeps its party markers');
+  const overviewBadges=badges;
+  renderer.setCameraState({...renderer.getCameraState(),mode:'leader'});nextFrame();
+  assert.equal(layers[0].style.display,'none','a previous overlay is hidden when restoring first person');
+  assert.equal(badges,overviewBadges);
+  assert.deepEqual(peopleUploads.at(-1),peopleMesh(people));
 });
