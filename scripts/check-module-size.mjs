@@ -17,6 +17,7 @@ export async function ownedSourceFiles(root) {
   async function walk(directory, relative = "", topLevel = false) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (entry.isSymbolicLink()) continue;
+      if (relative === "src-tauri" && ["binaries", "resources", "gen"].includes(entry.name)) continue;
       const name = relative ? `${relative}/${entry.name}` : entry.name;
       if (entry.isFile() && sourceExtension.test(entry.name)) files.push(name);
       else if (entry.isDirectory() && !excludedDirectories.has(entry.name) &&

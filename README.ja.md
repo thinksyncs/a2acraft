@@ -36,9 +36,12 @@ Apple Silicon向けにCodex 0.169.0を同梱し、アプリ専用のChatGPTロ�
 
 取り込んだCodexの会話を開き、継続に必要な内容を準備できます。接続設定では、AIへの送信をせずに会話・ファイル作業の実行範囲を確認できます。
 
-現在はテスター向けの確認版です。Apple Developer Program登録、Developer ID署名、公証は未実施です。実画面での履歴取り込みとChatGPTへの再接続は確認しました。実際の応答・ファイル作業と最終ビルドの受入確認は未完了です。[検証状況](docs/preview-status.md)に結果を記載しています。
+現在はテスター向けの確認版です。Developer ID署名とAppleの公証は未取得です。Apple Silicon MacでTauri版0.4.23を起動し、会話画面から送ったメッセージに実際のCodexが返信したことをテスターが確認しました。ファイル作業は今回の確認対象外です。Electron版では履歴の取り込みとChatGPTへの再接続を確認しています。[Electron版の検証状況](docs/preview-status.md)
 
-- [Macアプリのビルド](docs/electron.md)
+Rust/Tauri版はMac標準のWebKitで地図と会話を表示します。地図・チャット・Codex接続の処理はElectron版と共通で、保存先はそれぞれ独立しています。Apple Silicon Macで `npm ci`、`npm run tauri:build` の順に実行するとTauri版を作れます。
+
+- [Rust/Tauri版をビルドする](docs/tauri.md)
+- [Electron版をビルドする](docs/electron.md)
 - [初回起動と確認手順](docs/mac-first-start.md)
 - [同梱ソフトウェアの通知](NOTICE.md)
 
@@ -57,4 +60,3 @@ Apple Silicon MacとNode.js 22以降を使用します。テスト用のアド�
 このリポジトリにはアプリのソース、ビルド手順、テスト、紹介動画を掲載します。内部仕様、個人の会話、認証情報、ローカルの検証記録は含めません。プロジェクト全体へのオープンソースライセンスは設定していません。各同梱物の通知と素材のクレジットを確認してください。
 
 [クレジットと素材の出典](CREDITS.md)
-

@@ -36,9 +36,12 @@ The Apple Silicon preview bundles Codex 0.169.0 and provides an independent Chat
 
 Imported Codex conversations can be opened and prepared for continuation. Connection settings include a separate readiness check that starts no model turn and verifies the effective conversation and file-work permissions.
 
-This is a tester preview, not a notarized general release. Apple Developer Program enrollment, Developer ID signing and notarization are still pending. Native history import and ChatGPT reconnection were verified; live response, file work and final native acceptance remain pending. See the [verification status](docs/preview-status.md).
+This preview is for testers. Developer ID signing and Apple notarization are pending. On Apple Silicon, a tester launched the packaged Tauri 0.4.23 app, sent a message, and saw a live Codex reply in the chat window. File work was outside that test. For the Electron edition, native history import and ChatGPT reconnection were verified. See the [Electron verification status](docs/preview-status.md).
 
-- [Build the Mac application](docs/electron.md)
+The Rust/Tauri edition uses the macOS system webview and shares the map, chat, and Codex backend with the Electron edition. Each edition has its own saved data. Build the Tauri app on Apple Silicon with `npm ci` and `npm run tauri:build`.
+
+- [Build the Rust/Tauri app](docs/tauri.md)
+- [Build the Electron app](docs/electron.md)
 - [First start and verification](docs/mac-first-start.md)
 - [Third-party notices](NOTICE.md)
 
@@ -57,4 +60,3 @@ What everyday task would you like to turn into a small adventure? [Share an idea
 This repository contains the application source, build instructions, tests, and gameplay films. Internal specifications, private conversations, authentication data and local verification records are not included. No blanket open-source license is granted; see the component notices and media credits.
 
 [Credits and media sources](CREDITS.md)
-

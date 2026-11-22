@@ -1220,7 +1220,6 @@ const server=http.createServer(async(req,res)=>{
 });
 persistenceEventsReady=true;
 startupStage('listen');
-server.listen(requestedPort,'127.0.0.1',()=>{port=server.address().port;origin=`http://127.0.0.1:${port}`;if(process.env.CHAT_UI_READY_STDOUT==='1')console.log(JSON.stringify({type:'ready',port,origin}));console.log(`Personal Chat UI: ${origin}  |  Demo: ${origin}/?demo=1`);process.send?.({type:'ready',port,origin});});
 server.on('error',e=>{process.send?.({type:'startup-error',message:e.message});console.error(e.message);process.exitCode=1;});
 async function shutdown(){
  if(closing)return;closing=true;
@@ -1243,4 +1242,10 @@ async function shutdown(){
  await Promise.allSettled([writing,contextBoard.writing,attachments.writing,parties.writing,plugins.writing,teamsDrafts.writing,todos.writing,media.writing,inbox.writing,schedules.writing,reports.writing,boardDispatch.writing,adventure.writing,discoveries.writing,village.writing,projects?.writing,agentBoard?.writing,world?.observing,world?.writing,world?.artifacts.writing]);process.exit(0);
 }
 process.on('SIGINT',shutdown);process.on('SIGTERM',shutdown);if(process.connected)process.on('disconnect',shutdown);
-if(process.env.CHAT_UI_READY_STDOUT==='1'){process.stdin.resume();process.stdin.on('end',shutdown);}
+const supervised = process.env.CHAT_UI_READY_STDOUT === '1';
+if (supervised && process.stdin.readableEnded) {
+ await shutdown();
+} else {
+ if (supervised) { process.stdin.once('end',shutdown);process.stdin.resume(); }
+ server.listen(requestedPort,'127.0.0.1',()=>{port=server.address().port;origin=`http://127.0.0.1:${port}`;if(supervised)console.log(JSON.stringify({type:'ready',port,origin}));console.log(`Personal Chat UI: ${origin}  |  Demo: ${origin}/?demo=1`);process.send?.({type:'ready',port,origin});});
+}

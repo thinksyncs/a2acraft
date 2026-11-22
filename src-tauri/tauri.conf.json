@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "A2ACraft",
+  "version": "0.4.23",
+  "identifier": "com.thinksyncs.chatui.tauri",
+  "build": {
+    "beforeDevCommand": "node scripts/prepare-tauri.mjs",
+    "beforeBuildCommand": "node scripts/prepare-tauri.mjs",
+    "frontendDist": "resources/backend/public"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": true,
+    "security": { "capabilities": [] }
+  },
+  "bundle": {
+    "active": true,
+    "icon": ["../assets/mac/A2ACraft.iconset/icon_128x128.png", "../assets/mac/A2ACraft.icns"],
+    "targets": ["app"],
+    "resources": { "resources/backend/": "backend/" },
+    "category": "Productivity",
+    "shortDescription": "A2ACraft by Toppy",
+    "macOS": { "minimumSystemVersion": "13.5", "signingIdentity": "-" }
+  }
+}
