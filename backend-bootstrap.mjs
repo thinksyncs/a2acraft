@@ -6,7 +6,10 @@ const knownImportCodes = new Set([
 ]);
 
 function report(message) {
-  if (!process.connected) return;
+  if (!process.connected) {
+    if (process.env.CHAT_UI_READY_STDOUT === '1') process.stdout.write(JSON.stringify(message) + '\n');
+    return;
+  }
   // Diagnostics must never gate loading the application. A delayed IPC flush
   // callback is not evidence that the backend cannot initialize.
   try { process.send(message, () => {}); } catch {}

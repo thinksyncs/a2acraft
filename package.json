@@ -16,6 +16,12 @@
     "start": "node server.mjs",
     "desktop": "electron .",
     "desktop:demo": "electron . --demo",
+    "tauri:prepare": "node scripts/prepare-tauri.mjs",
+    "tauri:dev": "tauri dev",
+    "tauri:demo": "tauri dev -- -- --demo",
+    "tauri:build": "tauri build -- --locked",
+    "tauri:verify:mac": "node scripts/verify-tauri-mac.mjs",
+    "tauri:test": "npm run tauri:prepare && cargo test --locked --manifest-path src-tauri/Cargo.toml",
     "test": "node scripts/check-module-size.mjs && node --test test/*.test.mjs electron/*.test.mjs",
     "dist": "electron-builder",
     "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never",
@@ -38,6 +44,7 @@
     "node-pty": "1.1.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "2.12.1",
     "electron": "44.5.1",
     "electron-builder": "26.15.3"
   },

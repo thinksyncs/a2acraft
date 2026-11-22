@@ -1,0 +1,11 @@
+[package]
+name = "glib-variant-regression"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+glib = { path = "../../src-tauri/vendor/glib", default-features = false }
+
+[profile.release]
+debug = 0
