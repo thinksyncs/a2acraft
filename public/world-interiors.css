@@ -201,6 +201,47 @@
 }
 
 /* The painted rooms share a clear central aisle with the live party. */
+.world-room:has(.world-room-painting) {
+  --room-ink: #242621;
+  --room-rule: #71654e;
+  --room-light: #f1d99e;
+  color: #f1ead7;
+  background: var(--room-ink);
+  border: 1px solid var(--room-rule);
+  border-radius: 3px;
+  box-shadow: 0 16px 48px #0008;
+}
+.world-room:has(.world-room-painting) h2 {
+  color: #f4ead2;
+  font: 500 clamp(24px, 3vw, 30px)/1.2 "Iowan Old Style", Palatino, "Hiragino Mincho ProN", serif;
+}
+.world-room:has(.world-room-painting) .world-room-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 4px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: #dcd4bd;
+  font: inherit;
+  font-size: 14px;
+}
+.world-room:has(.world-room-painting) .world-room-exit::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: solid currentColor;
+  border-width: 0 0 1.5px 1.5px;
+  transform: rotate(45deg);
+}
+.world-room:has(.world-room-painting) .world-room-exit:hover {
+  color: #fff0cd;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .world-room-stage:is([data-room="castle"], [data-room="weapon"]) {
   height: auto;
   aspect-ratio: 5 / 2;
@@ -258,15 +299,79 @@
   font-size: 15px;
   line-height: 1.52;
 }
-.world-room:has(.world-room-painting) .world-room-actions {
+.world-room:has(.world-room-painting) .world-room-speech {
+  margin: 14px 0 9px;
+  padding: 2px 0 2px 13px;
+  border: 0;
+  border-left: 2px solid #a28a5c;
+  border-radius: 0;
+  background: transparent;
+}
+.world-room:has(.world-room-painting) .world-room-actions:not([hidden]) {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0 8px;
+  border-top: 1px solid var(--room-rule);
+  padding-top: 4px;
 }
-.world-room:has(.world-room-painting) .world-room-actions button {
-  flex: 1 1 150px;
-  margin: 0;
+.world-room:has(.world-room-painting) .world-room-actions button:where(:not([hidden])) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
   min-height: 44px;
+  margin: 0;
+  padding: 8px 12px 8px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #e4ddca;
+  font: 500 15px/1.45 var(--font-ui);
+  letter-spacing: normal;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.world-room:has(.world-room-painting) .world-room-actions button::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border: solid currentColor;
+  border-width: 1px 1px 0 0;
+  transform: rotate(45deg);
+  color: #ac9870;
+}
+.world-room:has(.world-room-painting) .world-room-actions .primary {
+  color: var(--room-light);
+  font-weight: 700;
+}
+.world-room:has(.world-room-painting) .world-room-actions .primary::before {
+  width: 0;
+  height: 0;
+  border: solid transparent;
+  border-width: 4px 0 4px 7px;
+  border-left-color: currentColor;
+  transform: none;
+  color: inherit;
+}
+.world-room:has(.world-room-painting) .world-room-actions button:is(:hover, :focus-visible):not(:disabled) {
+  color: #ffedbf;
+  background: #35362d;
+}
+.world-room:has(.world-room-painting) :is(.world-room-exit, .world-room-actions button):focus-visible {
+  outline: 2px solid var(--room-light);
+  outline-offset: -2px;
+}
+.world-room:has(.world-room-painting) .world-room-actions button:disabled {
+  color: #a29f91;
+  opacity: 1;
+}
+.world-room:has(.world-room-painting) .world-room-actions button:disabled::before {
+  visibility: hidden;
 }
 .world-room-stage:has(.world-room-painting) .world-room-party img:first-child {
   order: 1;
@@ -283,6 +388,15 @@
 @media (max-width: 600px) {
   .world-room-stage:is([data-room="castle"], [data-room="weapon"]) {
     width: calc(100% + 32px);
+  }
+}
+@media (max-width: 480px) {
+  .world-room:has(.world-room-painting) .world-room-actions:not([hidden]) {
+    display: grid;
+    gap: 0;
+  }
+  .world-room:has(.world-room-painting) .world-room-actions button + button {
+    border-top: 1px solid #45473b;
   }
 }
 @media (max-height: 740px) {

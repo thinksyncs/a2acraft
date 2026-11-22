@@ -3,6 +3,7 @@ import {sceneryObjectMesh} from './world-scenery-model.js';
 import {finite, clamp, worldBounds} from './world-3d-math.js';
 import {pointInIsland} from './world-island.js';
 import {biomeLandmarks} from './world-biomes.js';
+import {biomeColorField} from './world-biome-blend.js';
 
 import {hash,color,triangle,quad,box,roof,cone} from './world-model-primitives.js';
 import {buildingMesh} from './world-building-model.js';
@@ -80,11 +81,11 @@ function islandShoreRectangles(island) {
   });
 }
 
-function sceneryMesh(out,item){
+function sceneryMesh(out,item,distant=false){
   const x=finite(item.x),z=finite(item.y),size=clamp(finite(item.size,finite(item.scale,1)),.1,4);
   if(item.kind==='woodland'||item.kind==='mountain-range'){
-    for(const marker of biomeLandmarks(item))sceneryObjectMesh(out,marker);
-  }else if(sceneryObjectMesh(out,item)){
+    for(const marker of biomeLandmarks(item))sceneryObjectMesh(out,marker,distant);
+  }else if(sceneryObjectMesh(out,item,distant)){
     return;
   }else if(item.kind==='well'){
     const stone=color('#b9b99b'),wood=color('#9a774b');
@@ -151,7 +152,33 @@ function bridgeMesh(out,bridge){
     box(out,railX+railWidth/2,13,railZ,railWidth,3,3,color('#c6ab76'));
   }
 }
-export function staticMesh(scene) {
+// Keep the unchanged ground, roads and structures separate from natural
+// scenery. A leader window only uploads the groves and ridges in its view.
+const naturalKind=new Set(['woodland','mountain-range','tree','pine','rock','mountain','biome-tree','biome-mountain']);
+export function naturalTiles(scene){
+  const tiles=new Map(),step=clamp(finite(scene.biomes?.step,480)*2,560,1100);
+  for(const item of scene.scenery||[]){
+    if(!naturalKind.has(item.kind))continue;
+    const patch=item.kind==='woodland'||item.kind==='mountain-range',size=clamp(finite(item.size,finite(item.scale,1)),.1,4);
+    const w=finite(item.width,100*size),d=finite(item.depth,100*size),h=finite(item.height,100*size);
+    const cx=finite(item.x)+(patch?w/2:0),cz=finite(item.y)+(patch?d/2:0);
+    const key=Math.floor(cx/step)+','+Math.floor(cz/step);
+    let tile=tiles.get(key);
+    if(!tile){tile={items:[],left:Infinity,right:-Infinity,top:Infinity,bottom:-Infinity,height:0};tiles.set(key,tile);}
+    tile.items.push(item);
+    tile.left=Math.min(tile.left,cx-w/2);tile.right=Math.max(tile.right,cx+w/2);
+    tile.top=Math.min(tile.top,cz-d/2);tile.bottom=Math.max(tile.bottom,cz+d/2);
+    // Survey height describes the stand, not necessarily its tallest tree.
+    tile.height=Math.max(tile.height,h,patch?Math.min(w,d)*.65:0);
+  }
+  return [...tiles.values()];
+}
+export function naturalTileMesh(tile,distant=false){
+  const out=[];for(const item of tile.items)sceneryMesh(out,item,distant);
+  return new Float32Array(out);
+}
+
+export function staticMesh(scene,{separateNature=false}={}) {
   const out = [], bounds = worldBounds(scene.bounds), buildings = scene.buildings || [];
   const centerX = (bounds.left + bounds.right) / 2, centerY = (bounds.top + bounds.bottom) / 2;
   const island=scene.island?.coast?.length>=3?scene.island:null;
@@ -179,6 +206,32 @@ export function staticMesh(scene) {
       if((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)>1e-6)surface([a,b,c],height,shade);
     }
   });
+  const field=biomeColorField(scene.biomes);
+  function biomeSurface(patch,clipCoast=false){
+    const corners=r=>[{x:r.left,y:r.top},{x:r.right,y:r.top},{x:r.right,y:r.bottom},{x:r.left,y:r.bottom}];
+    if(!field){
+      if(clipCoast)coastSurface(patch,'grass',.035,color(patch.color));
+      else surface(corners(patch),.035,color(patch.color));
+      return;
+    }
+    const paint=points=>{
+      const vertices=points.map(({x,y})=>[x,.035,y,0,1,0,...field.sample(x,y).map(v=>v/255)]);
+      for(let i=1;i<points.length-1;i++){
+        const a=points[0],b=points[i],c=points[i+1];
+        if((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)>1e-6)
+          out.push(...vertices[0],...vertices[i+1],...vertices[i]);
+      }
+    };
+    // Split on global sample lines, including when water or a clearing clips
+    // a patch. WebGL interpolates the same soil colours as the atlas texture.
+    const spacing=field.step/4;
+    for(let gy=Math.floor(patch.top/spacing);gy<Math.ceil(patch.bottom/spacing);gy++)
+      for(let gx=Math.floor(patch.left/spacing);gx<Math.ceil(patch.right/spacing);gx++){
+        const tile={left:Math.max(patch.left,gx*spacing),right:Math.min(patch.right,(gx+1)*spacing),
+          top:Math.max(patch.top,gy*spacing),bottom:Math.min(patch.bottom,(gy+1)*spacing)};
+        if(clipCoast)coastalFaces(island,tile,'grass',paint);else paint(corners(tile));
+      }
+  }
   if(island){
     const frame=island.seaBounds||bounds;
     // seaBounds frames the overview; the ocean itself continues to the fog
@@ -193,7 +246,8 @@ export function staticMesh(scene) {
         for(const dry of cutGroundRectangles([patch],[...biomeGround,...clearingGround]))
           coastSurface(dry,'grass',0,color(island.landColor));
       }
-      for(const patch of [...biomeSurfaces,...clearingSurfaces])coastSurface(patch,'grass',.035,color(patch.color));
+      for(const patch of biomeSurfaces)biomeSurface(patch,true);
+      for(const patch of clearingSurfaces)coastSurface(patch,'grass',.035,color(patch.color));
       biomeSurfaces=[];clearingSurfaces=[];
     }else{
     const land=island.landPatches||[];
@@ -236,10 +290,7 @@ export function staticMesh(scene) {
   for(const patch of outletSurfaces)surface([
     {x:patch.left,y:patch.top},{x:patch.right,y:patch.top},
     {x:patch.right,y:patch.bottom},{x:patch.left,y:patch.bottom}],.12,color(patch.color,'#315e75'));
-  for(const patch of biomeSurfaces){
-    surface([{x:patch.left,y:patch.top},{x:patch.right,y:patch.top},
-      {x:patch.right,y:patch.bottom},{x:patch.left,y:patch.bottom}],.035,color(patch.color));
-  }
+  for(const patch of biomeSurfaces)biomeSurface(patch);
   for(const patch of clearingSurfaces){
     surface([{x:patch.left,y:patch.top},{x:patch.right,y:patch.top},
       {x:patch.right,y:patch.bottom},{x:patch.left,y:patch.bottom}],.035,color(patch.color));
@@ -252,7 +303,7 @@ export function staticMesh(scene) {
     road(out, route.points[i - 1], route.points[i], clamp(finite(route.width, 20), 3, 80), finite(route.height, 0.16),route.rounded===true);
   for (const building of buildings) buildingMesh(out, building);
   for(const bridge of scene.bridges||[])bridgeMesh(out,bridge);
-  for(const item of scene.scenery||[])sceneryMesh(out,item);
+  for(const item of scene.scenery||[])if(!separateNature||!naturalKind.has(item.kind))sceneryMesh(out,item);
   // Sparse decorative woodland is stable, and never used as work/progress evidence.
   // An explicit shared terrain scene is authoritative, including an empty one.
   for (let i = 0; !Array.isArray(scene.scenery) && i < 64; i++) {

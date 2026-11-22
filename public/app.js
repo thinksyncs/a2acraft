@@ -195,7 +195,19 @@ function visitVillageFacility(place) {
   });
 }
 function villageState(){return villageSample?villageDemoActivityState(state):state;}
-const village=initVillage({api,demo,getState:villageState,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard(),
+function villageIdeaBlock(){
+ if(boardActive()||['running','stopping','paused'].includes(state.party?.quest?.status)||state.workQuestPlanning||state.projects?.activeCount||chats.some(active))return '今の作業が終わったら始めよう。';
+ if(!demo&&(serverUnavailable||!state.connected||state.account?.type!=='chatgpt'||state.login))return '開始するにはCodexに接続してください。';
+ if(!state.policy?.ok)return state.policy?.reason||'現在は依頼を開始できません。';
+ return $('#model').value?'':'使用するモデルを選んでください。';
+}
+async function acceptVillageIdea(invite){
+ const blocked=villageIdeaBlock();if(blocked)throw Error(blocked);
+ const source=villageState(),party=source.party?.party;
+ const sampleItem=villageSample&&source.todos.items.find(task=>task.id===invite.id);
+ return todoView.startInvitation(invite,{party,sampleItem});
+}
+const village=initVillage({api,demo,initiative:{blocked:villageIdeaBlock,start:acceptVillageIdea},getState:villageState,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard(),
   teamMessaging:{
     read:id=>({draft:drafts[id]||'',...teamSendStatus(id)}),
     refreshQuota:refreshUsage,
@@ -282,7 +294,7 @@ function openActivitySource(source){
  switchView('schedules');
 }
 function openVillageQuest(activity){
- const sampleId=villageSample&&villageDemoQuestSource(activity.todoId);
+ const sampleId=villageSample&&!state.todos?.items?.some(item=>item.id===activity.todoId)&&villageDemoQuestSource(activity.todoId);
  if(sampleId)return select(sampleId,'chat',()=>panels.get(sampleId)?.element.focus({preventScroll:true}));
  if(activity.todoId&&state.todos?.items.some(item=>item.id===activity.todoId))return switchView('todos',()=>todoView.open(activity.todoId));
  if(activity.questId&&state.party?.quest?.id===activity.questId||!activity.questId&&!activity.todoId)return switchView('tavern');
@@ -1174,6 +1186,7 @@ async function boot() {
     setText('#mode-tag','DEMO');
     const now = Date.now();
     state = {connected:true,account:{type:'chatgpt',email:'demo@example.com',planType:'pro'},limits:{rateLimits:{limitId:'codex',primary:{usedPercent:24,windowDurationMins:300,resetsAt:Math.floor(now/1000)+7800},secondary:{usedPercent:42,windowDurationMins:10080,resetsAt:Math.floor(now/1000)+259200}}},models:[{model:'demo-model',displayName:'CODEX · DEMO MODEL',supportedReasoningEfforts:[{reasoningEffort:'low'},{reasoningEffort:'medium'},{reasoningEffort:'high'}]}],policy:{ok:true,reason:''},updatedAt:now};
+    state.todos=todoView.demoSnapshot();
     chats = nameDemoChats([
       {id:'demo1',title:'Main',model:'CODEX · DEMO MODEL',status:'completed',messages:[{id:'demo-user',role:'user',text:'このUIをCodexの利用枠で使いたい。'},{id:'demo-assistant',role:'assistant',text:'ChatGPTアカウントを接続して、Codexの利用枠で会話を始められます。\n\n各ペインの会話は独立し、利用枠はアカウント全体で共有します。'}]},
       {id:'demo2',title:'Prompt 17',status:'idle',messages:[]}, {id:'demo3',title:'Prompt 18',status:'idle',messages:[]}, {id:'demo4',title:'Prompt 19',status:'idle',messages:[]},

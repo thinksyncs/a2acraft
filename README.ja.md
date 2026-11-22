@@ -6,9 +6,9 @@
 
 A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲間たちの仕事が世界をつくる構想です。会話から生まれた人々に出会い、仕事のつながりを眺めながら、次のアイデアを探します。
 
-[![A2ACraft — 日本語コンセプト動画](media/poster-ja.jpg)](media/a2acraft-ja-45s.mp4)
+[![A2ACraft — 日本語のプレイ映像を見る](media/poster-ja.jpg)](media/a2acraft-ja-45s.mp4)
 
-[日本語で見る · 45秒](media/a2acraft-ja-45s.mp4) · [英語で見る](media/a2acraft-en-45s.mp4)
+[日本語で見る · 45秒](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-ja-45s.mp4) · [英語で見る](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-en-45s.mp4)
 
 [日本語字幕](subtitles/ja.srt) · [English subtitles](subtitles/en.srt)
 
@@ -20,13 +20,13 @@ Agentたちは役割を分担し、見つけたことを伝え合い、成果を
 - **リポジトリは家に。** プロジェクトが建物として形になり、仕事の進み具合が街に表れます。
 - **テーマが世界の形に。** ズームアウトすると、近いテーマの街は近くに、異なるアイデアの街は遠くに。新しい協力から、次の街が生まれます。
 
-この動画は、目指す体験を伝えるコンセプト映像です。タスクの発生や街の配置は紹介用の演出で、Agentの実行を録画したものではありません。会話・タスク・プロジェクト名は架空の例です。
+動画では、村人のところまで歩いて話を聞き、仲間が持ちかけた依頼を地図上で引き受けます。地図を引いて集落を見渡したら、王城へ。王様から各隊の進み具合を聞けます。ゲーム内の架空の会話と依頼を使って撮影しました。
 
 ## 現在の試作版
 
 A2ACraftは開発中のMVPです。街を歩き、マップを残したまま住民と会話し、仲間や装備を選べます。依頼の途中で行う選択が街の変化につながる、短く遊べる体験を目指して開発しています。
 
-![架空のサンプルデータで動かした村の試作版](media/prototype-village.png)
+![川沿いでセリアに会ったところ。右上にはリーダーの目線が表示されます。](media/prototype-village.png)
 
 この画像は架空のサンプルデータを使ったフロントエンドです。A2ACraftのMacアプリのソースも掲載しています。
 

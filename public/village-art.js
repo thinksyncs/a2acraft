@@ -2,6 +2,7 @@ import {drawMapBuilding,drawMapPerson,drawMapScenery,drawIntoTerrainBitmap} from
 import {projectModel,facilityModel,cottageModel,characterPose} from './world-model-descriptors.js';
 import {VILLAGE_PLACES,VILLAGE_WORLD} from './village-world.js';
 import {biomeLandmarks} from './world-biomes.js';
+import {biomeColorField} from './world-biome-blend.js';
 import {mainAgentLabel} from './village-delegates.js';
 import {drawVillageRoadNetwork, drawRoadNetwork, villageRoadRects} from './world-road-art.js';
 import {districtScenery, villageRiverBanks, villageBridge, villageOutskirtsGeometry, villageSurroundingsScenery} from './world-terrain.js';
@@ -15,6 +16,7 @@ const clothing=['#cfaa5b','#7895ae','#c36e56','#af8ba3','#789b6c','#e0c7a1','#68
 const objectLayers={project:0,marker:1,resident:2,adventurer:3};
 let cachedBackground=null,cachedHomes=-1;
 let cachedOutskirts=null;
+const outskirtsBounds={left:-700,top:-400,right:1720,bottom:540};
 const surroundingTiles=new Map(),TILE=256,MAX_SURROUNDING_TILES=128;
 const islandBackgrounds=new WeakMap();
 const integer=value=>Number(value)||0;
@@ -117,10 +119,36 @@ function drawTerrainScenery(ctx,items){
  }
 }
 
+const biomePaintings = new WeakMap();
+function biomePainting(field) {
+ if (biomePaintings.has(field)) return biomePaintings.get(field);
+ const pixels = 14, w = field.width * pixels, h = field.height * pixels;
+ const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w,h) : globalThis.document?.createElement('canvas');
+ if (!canvas) return null;
+ canvas.width = w; canvas.height = h;
+ const context = canvas.getContext('2d'), image = context?.createImageData?.(w,h);
+ if (!image?.data) return null;
+ for (let y=0; y<h; y++) for (let x=0; x<w; x++) {
+  const gx = field.left + (x+.5)/pixels, gy = field.top + (y+.5)/pixels;
+  if (!field.cell(Math.floor(gx),Math.floor(gy))) continue;
+  const rgb = field.sample(gx*field.step,gy*field.step), index = (y*w+x)*4;
+  image.data[index]=rgb[0]; image.data[index+1]=rgb[1]; image.data[index+2]=rgb[2]; image.data[index+3]=255;
+ }
+ context.putImageData(image,0,0);
+ biomePaintings.set(field, canvas);
+ return canvas;
+}
+
 export function drawWorldBiomes(ctx,biomes,{left=-Infinity,right=Infinity,top=-Infinity,bottom=Infinity}={}){
  if(!biomes)return;
  const visible=item=>item.x+item.width>=left&&item.x<=right&&item.y+item.depth>=top&&item.y<=bottom;
- for(const patch of biomes.ground||[])if(visible(patch))rect(ctx,patch.color,patch.x,patch.y,patch.width,patch.depth);
+ const field=biomeColorField(biomes), painting=field && biomePainting(field);
+ if(painting){
+  ctx.save();
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(painting,field.left*field.step,field.top*field.step,field.width*field.step,field.height*field.step);
+  ctx.restore();
+ }else for(const patch of biomes.ground||[])if(visible(patch))rect(ctx,patch.color,patch.x,patch.y,patch.width,patch.depth);
  for(const patch of biomes.scenery||[])if(visible(patch))for(const item of biomeLandmarks(patch)){
   drawMapScenery(ctx,item);
  }
@@ -128,7 +156,7 @@ export function drawWorldBiomes(ctx,biomes,{left=-Infinity,right=Infinity,top=-I
 function outskirts(ctx){
  if(!cachedOutskirts){
   // A bounded transparent cache covers all three landmarks and connecting roads.
-  let canvas;const left=-700,top=-400,width=2420,height=940;
+  let canvas;const {left,top,right,bottom}=outskirtsBounds,width=right-left,height=bottom-top;
   if(typeof OffscreenCanvas!=='undefined')canvas=new OffscreenCanvas(width,height);
   else if(typeof document!=='undefined'){canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;}
   const context=canvas?.getContext('2d');
@@ -213,26 +241,59 @@ function drawSurroundingTile(ctx,tileX,tileY){
  ctx.restore();
 }
 
-function drawIslandBackgroundScene(ctx,bounds,population,biomes){
- const {left,right,top,bottom}=bounds;
+// The survey and navigation use these same village woods in both projections.
+const woodsBounds={left:VILLAGE_WORLD.left-96,right:VILLAGE_WORLD.right+96,
+ top:VILLAGE_WORLD.top-96,bottom:VILLAGE_WORLD.bottom+96};
+let woodsBitmap=null;
+function paintVillageWoods(ctx,viewport){
+ if(viewport&&(viewport.right<woodsBounds.left||viewport.left>woodsBounds.right||
+   viewport.bottom<woodsBounds.top||viewport.top>woodsBounds.bottom))return;
+ if(viewport&&!woodsBitmap){
+  const width=woodsBounds.right-woodsBounds.left,height=woodsBounds.bottom-woodsBounds.top;
+  const canvas=typeof OffscreenCanvas!=='undefined'?new OffscreenCanvas(width,height):globalThis.document?.createElement('canvas');
+  if(canvas){
+   canvas.width=width;canvas.height=height;
+   const ink=canvas.getContext('2d');
+   if(ink){
+    ink.translate(-woodsBounds.left,-woodsBounds.top);
+    drawIntoTerrainBitmap(()=>drawTerrainScenery(ink,villageSurroundingsScenery(VILLAGE_WORLD)));
+    woodsBitmap=canvas;
+   }
+  }
+ }
+ if(viewport&&woodsBitmap)ctx.drawImage(woodsBitmap,woodsBounds.left,woodsBounds.top);
+ else drawTerrainScenery(ctx,villageSurroundingsScenery(VILLAGE_WORLD));
+}
+
+function drawIslandBackgroundScene(ctx,bounds,population,biomes,viewport){
+ const view=viewport||bounds;
+ const left=Math.max(view.left,bounds.left),right=Math.min(view.right,bounds.right),
+  top=Math.max(view.top,bounds.top),bottom=Math.min(view.bottom,bounds.bottom);
+ if(right<=left||bottom<=top)return;
  rect(ctx,'#78924f',left,top,right-left,bottom-top);
- // Distant grass is a sparse texture; landmarks keep their exact world positions.
- const step=Math.max(96,Math.ceil(Math.max(right-left,bottom-top)/80/96)*96);
+ // Keep grass marks on one grid across the atlas and every close camera crop.
+ const step=Math.max(96,Math.ceil(Math.max(bounds.right-bounds.left,bounds.bottom-bounds.top)/80/96)*96);
  for(let y=Math.floor(top/step)*step;y<bottom;y+=step)for(let x=Math.floor(left/step)*step;x<right;x+=step){
   const seed=cellSeed(x,y,72619);
   rect(ctx,grass[seed%grass.length],x+seed%53,y+(seed>>>6)%43,8,3);
  }
  drawSurroundingRiver(ctx,top,bottom);
- drawWorldBiomes(ctx,biomes,bounds);
- drawTerrainScenery(ctx,villageSurroundingsScenery(VILLAGE_WORLD));
- terrain(ctx,population);drawOutskirts(ctx);
+ drawWorldBiomes(ctx,biomes,view);
+ paintVillageWoods(ctx,viewport);
+ if(!viewport||right>0&&left<WIDTH&&bottom>0&&top<HEIGHT)terrain(ctx,population);
+ if(!viewport)drawOutskirts(ctx);
+ else if(right>outskirtsBounds.left&&left<outskirtsBounds.right&&bottom>outskirtsBounds.top&&top<outskirtsBounds.bottom)outskirts(ctx);
 }
 
 // One bounded bitmap replaces hundreds of detailed terrain tiles at overview.
 // Coast contents also invalidate it when a live island keeps the same identity.
 // Camera position and frame time never regenerate the terrain.
 export function drawVillageIslandBackground(ctx,island,{population=0,biomes,viewport}={}){
- const bounds=island.bounds,homes=Math.min(12,Math.ceil(Math.max(0,population)/8));
+ const bounds=island.bounds;
+ // At walking distance a stretched overview would blur the other half of a
+ // river or forest as soon as it crosses the detailed district boundary.
+ if(viewport?.zoom>=.25){drawIslandBackgroundScene(ctx,bounds,population,biomes,viewport);return;}
+ const homes=Math.min(12,Math.ceil(Math.max(0,population)/8));
  const shape=JSON.stringify([bounds,island.coast,island.landPatches,biomes]);
  let cached=islandBackgrounds.get(island);
  if(!cached||cached.homes!==homes||cached.shape!==shape){
@@ -250,9 +311,6 @@ export function drawVillageIslandBackground(ctx,island,{population=0,biomes,view
  }
  if(cached)ctx.drawImage(cached.canvas,bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);
  else drawIslandBackgroundScene(ctx,bounds,population,biomes);
- // The overview bitmap stays bounded; nearby forests and ridges retain their
- // shared model detail when a journey takes the camera outside the village.
- if(cached&&viewport?.zoom>=.25)drawWorldBiomes(ctx,biomes,viewport);
 }
 
 // Draw this before drawVillageWorld, with the same camera transform. The map's
@@ -487,9 +545,26 @@ export function drawWorldSettlement(ctx,settlement,{left=-Infinity,right=Infinit
  const visible=(x,y,rx=0,ry=rx)=>x+rx>=left&&x-rx<=right&&y+ry>=top&&y-ry<=bottom;
  if(layer!=='scenery')for(const clearing of settlement.clearings||[]){
   if(Array.isArray(clearing.patches)){
-   for(const patch of clearing.patches)if(['left','right','top','bottom'].every(key=>Number.isFinite(patch[key]))&&
-    patch.left<patch.right&&patch.top<patch.bottom&&patch.right>=left&&patch.left<=right&&patch.bottom>=top&&patch.top<=bottom)
-    rect(ctx,clearing.color||'#829650',patch.left,patch.top,patch.right-patch.left,patch.bottom-patch.top);
+   const visiblePatches=clearing.patches.filter(patch=>['left','right','top','bottom'].every(key=>Number.isFinite(patch[key]))&&
+    patch.left<patch.right&&patch.top<patch.bottom&&patch.right>=left&&patch.left<=right&&patch.bottom>=top&&patch.top<=bottom);
+   if(!visiblePatches.length)continue;
+   const color=clearing.color||'#829650';
+   if(typeof clearing.id==='string'&&clearing.id.startsWith('conversation-clearing:')){
+    // The three strips reserve exactly the same dry ground as the 3D mesh.
+    // Bring the meadow back to the surrounding grass tone before its edge.
+    const loX=Math.min(...clearing.patches.map(p=>p.left)),hiX=Math.max(...clearing.patches.map(p=>p.right));
+    const loY=Math.min(...clearing.patches.map(p=>p.top)),hiY=Math.max(...clearing.patches.map(p=>p.bottom));
+    const rx=(hiX-loX)/2,ry=(hiY-loY)/2,cx=loX+rx,cy=loY+ry;
+    if(Number.isFinite(cx)&&Number.isFinite(cy)&&rx>0&&ry>0){
+     ctx.save();ctx.translate(cx,cy);ctx.scale(rx,ry);
+     const fade=ctx.createRadialGradient?.(0,0,0,0,0,1);
+     if(fade?.addColorStop){fade.addColorStop(0,color);fade.addColorStop(.86,'#78924f');fade.addColorStop(1,'#78924f');}
+     ctx.fillStyle=fade?.addColorStop?fade:color;
+     for(const p of visiblePatches)ctx.fillRect((p.left-cx)/rx,(p.top-cy)/ry,(p.right-p.left)/rx,(p.bottom-p.top)/ry);
+     ctx.restore();continue;
+    }
+   }
+   for(const p of visiblePatches)rect(ctx,color,p.left,p.top,p.right-p.left,p.bottom-p.top);
    continue;
   }
   const points=(clearing.points||[]).filter(point=>Array.isArray(point)&&point.slice(0,2).every(Number.isFinite));
@@ -507,7 +582,7 @@ export function drawWorldSettlement(ctx,settlement,{left=-Infinity,right=Infinit
 
 export function drawDevelopmentLandscape(ctx,{left,right,top,bottom,zoom=1,scenery,biomes}){
  const step=Math.max(180,Math.ceil(40/zoom/180)*180);
- ctx.fillStyle='#6e8a48';ctx.fillRect(left,top,right-left,bottom-top);
+ ctx.fillStyle=biomes?.landColor||'#6e8a48';ctx.fillRect(left,top,right-left,bottom-top);
  for(let y=Math.floor(top/step)*step;y<bottom;y+=step)for(let x=Math.floor(left/step)*step;x<right;x+=step){
   const seed=seedOf(x+':'+y);rect(ctx,'#819b5544',x+seed%80,y+(seed>>>4)%80,35,2);
   if(!Array.isArray(scenery)){

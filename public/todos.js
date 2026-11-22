@@ -1,3 +1,4 @@
+import {assertVillageInvitation} from './village-initiative.js';
 import {partyStepLabels} from './party-runner.js';
 const labels={todo:'未着手',doing:'進行中',done:'完了'},runLabels={running:'実行中',paused:'中断中',completed:'完了',cancelled:'終了'};
 const node=(tag,value,className)=>{const element=document.createElement(tag);if(value!==undefined)element.textContent=value;if(className)element.className=className;return element;};
@@ -60,12 +61,29 @@ export function initTodos({api,demo,storeKey,getState,getChats,getParty,getMedia
   if(route==='todos/reopen'){task.status='todo';task.updatedAt=Date.now();persistDemo();return structuredClone(task);}
   if(route==='todos/start'){
    if(task.assignee.type==='manual'){task.status='doing';task.updatedAt=Date.now();persistDemo();return structuredClone(task);}
-   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error('現在のクエストを完了または終了してください。');const runId=crypto.randomUUID(),{runs,...snapshot}=task;task.runs.push({id:runId,createdAt:Date.now(),status:'running',snapshot,steps:[],output:'',error:null});task.status='doing';task.updatedAt=Date.now();persistDemo();try{await onDemoStart({text:['TODO: '+task.title,task.description,'達成条件:\n'+task.criteria].join('\n\n'),...getModel(),soloId:task.assignee.type==='chat'?task.assignee.conversationId:null,link:{todoId:task.id,runId}});}catch(error){task.runs.at(-1).status='cancelled';task.runs.at(-1).error=error.message;persistDemo();throw error;}return structuredClone(task);
+   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error('現在のクエストを完了または終了してください。');const runId=crypto.randomUUID(),{runs,...snapshot}=task;task.runs.push({id:runId,createdAt:Date.now(),status:'running',snapshot,steps:[],output:'',error:null});task.status='doing';task.updatedAt=Date.now();persistDemo();try{await onDemoStart({text:['TODO: '+task.title,task.description,'達成条件:\n'+task.criteria].join('\n\n'),model:body.model,effort:body.effort,partyOverride:body.partyOverride,soloId:task.assignee.type==='chat'?task.assignee.conversationId:null,link:{todoId:task.id,runId}});}catch(error){task.runs.at(-1).status='cancelled';task.runs.at(-1).error=error.message;persistDemo();throw error;}return structuredClone(task);
   }
   if(route==='todos/action'){await onDemoAction(body.action,body.retry);return structuredClone(task);}
+ }
+ async function startInvitation(invite,{sampleItem,party}={}){
+  if(busy)throw Error('別の依頼を処理しています。');
+  if(dirty&&selected===invite.id)throw Error('依頼ノートの編集中の内容を先に保存してください。');
+  const existing=current().items.find(task=>task.id===invite.id);
+  const task=existing||(demo&&sampleItem?.id===invite.id?sampleItem:null);
+  assertVillageInvitation(task,party,invite.version);
+  if(!canRun())throw Error('現在は依頼を開始できません。');
+  if(task.source?.provider==='castle'&&task.source.dependsOn?.some(id=>current().items.find(item=>item.id===id)?.status!=='done'))throw Error('先に元の依頼を終えてください。');
+  const body={id:invite.id,invitation:invite.version,...getModel()};
+  if(demo){
+   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error('現在のクエストを完了または終了してください。');
+   if(!existing)demoValue.items.push(structuredClone(sampleItem));
+   if(task.assignee.type==='party')body.partyOverride=party;
+  }
+  busy=true;
+  try{return await request('todos/start',body);}finally{busy=false;render();}
  }
  async function save(){const result=await request('todos/save',values());selected=result.id;detail=result;dirty=false;fieldsKey='';$('#todo-notice').textContent='TODOを保存しました。';render();return result;}
  async function act(action){if(busy)return;busy=true;error('');render();try{if(action==='save')await save();else if(action==='start'){if(!selected||dirty)await save();detail=await request('todos/start',{id:selected,...getModel()});dirty=false;fieldsKey='';}else if(action==='done'){detail=await request('todos/manual',{id:selected,status:'done'});fieldsKey='';}else if(action==='reopen'){detail=await request('todos/reopen',{id:selected});dirty=false;fieldsKey='';}else{detail=await request('todos/action',{id:selected,action,retry:Boolean(getParty()?.quest?.steps.find(step=>step.status!=='completed')?.needsRetry)});fieldsKey='';}}catch(e){error(e.message);}finally{busy=false;render();}}
  $('#todo-new').onclick=()=>choose(null);$('#todo-form').onsubmit=event=>{event.preventDefault();act('save');};$('#todo-form').addEventListener('input',()=>{dirty=true;});$('#todo-assignee').onchange=()=>{dirty=true;render();};for(const action of ['start','done','reopen','pause','resume','cancel'])$('#todo-'+action).onclick=()=>act(action);$('#todo-tavern').onclick=onTavern;
- return {render,open:id=>{if(id)choose(id);else if(!selected&&current().items.length)choose(current().items[0].id);else render();},hydrate:()=>{render();if(selected&&item()?.updatedAt!==detail?.updatedAt)load(selected);},syncDemoQuest:async quest=>{if(!demo||!quest?.link)return;const task=demoValue.items.find(task=>task.id===quest.link.todoId),run=task?.runs.find(run=>run.id===quest.link.runId);if(!run)return;Object.assign(run,{questId:quest.id,status:quest.status==='stopping'?'running':quest.status,steps:structuredClone(quest.steps),party:structuredClone(quest.party),error:quest.error});if(quest.status==='completed'&&quest.steps.every(step=>step.status==='completed')){run.output=quest.steps.at(-1).output;task.status='done';}task.updatedAt=Date.now();persistDemo();if(selected===task.id){detail=structuredClone(task);fieldsKey='';}render();}};
+ return {render,open:id=>{if(id)choose(id);else if(!selected&&current().items.length)choose(current().items[0].id);else render();},hydrate:()=>{render();if(selected&&item()?.updatedAt!==detail?.updatedAt)load(selected);},startInvitation,demoSnapshot:()=>demo?structuredClone(demoValue):null,syncDemoQuest:async quest=>{if(!demo||!quest?.link)return;const task=demoValue.items.find(task=>task.id===quest.link.todoId),run=task?.runs.find(run=>run.id===quest.link.runId);if(!run)return;Object.assign(run,{questId:quest.id,status:quest.status==='stopping'?'running':quest.status,steps:structuredClone(quest.steps),party:structuredClone(quest.party),error:quest.error});if(quest.status==='completed'&&quest.steps.every(step=>step.status==='completed')){run.output=quest.steps.at(-1).output;task.status='done';}task.updatedAt=Date.now();persistDemo();if(selected===task.id){detail=structuredClone(task);fieldsKey='';}render();}};
 }

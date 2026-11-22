@@ -6,6 +6,7 @@ import {buildConversationAffinity} from './conversation-affinity.js';
 import {buildVillageSemanticLayout} from './village-semantic-layout.js';
 import {buildResidentPatrols,residentPatrolPosition} from './village-resident-motion.js';
 import {createVillageContext} from './village-context.js';
+import {invitationsForVillage} from './village-initiative.js';
 import {createAmbientNotice} from './village-ambient.js';
 import {projectVillage,VILLAGE_STAGES} from './village-model.js';
 import {drawVillageWorld,drawVillageIslandBackground,drawVillageConversationFocus,worldPersonColor} from './village-art.js';
@@ -36,14 +37,14 @@ const shortLabels={planned:'構想',building:'建設',testing:'検証',complete:
 const iconPaths={find:'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',history:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',quests:'M5 21V3m0 1h14l-3 5 3 5H5',shop:'m4 4 16 16M7 3 3 7m14 10 4 4M5 19l14-14m-4-2 6 6',tavern:'M4 9h13v11H4zm13 2h3v6h-3M6 3v3m5-3v3m5-3v3',castle:'M3 21V5h4v4h3V3h4v6h3V5h4v16H3m7 0v-6h4v6',board:'M3 4h18v13H3zm4 13v4m10-4v4M7 8h10M7 12h7'};
 function iconButton(node,key,label){node.title=label;node.setAttribute('aria-label',label);node.replaceChildren();const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',iconPaths[key]);icon.append(path);node.append(icon);return node;}
 
-export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest,teamMessaging}){
+export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest,teamMessaging,initiative}){
  const root=document.querySelector('#history-village');if(!root)return {render(){},setVisible(){},focus(){},openSquadRecord(){},getEncounter(){return null;},endEncounter(){},setControlledSquad(){return false;},getControlledSquadId(){return 'protagonist';},getControlledParty(){return null;}};
  root.classList.add('history-village');root.setAttribute('aria-labelledby','village-title');
  let visible=false,disposed=false,projection=projectVillage([],[]),signature='',district=0,selected=null,busy=false;
  let demoOverrides=[],demoRevision=0;
  try{const stored=JSON.parse(mapStorage.getItem(DEMO_KEY)||'null');if(demo&&Array.isArray(stored?.overrides)){demoOverrides=stored.overrides;demoRevision=Number.isSafeInteger(stored.revision)?stored.revision:0;}}catch{}
  const heading=make('header',undefined,'village-heading'),headingCopy=make('div');
- const title=make('h2','冒険者の村');title.id='village-title';title.tabIndex=-1;
+ const title=make('h2','Village');title.lang='en';title.id='village-title';title.tabIndex=-1;
  const intro=make('p','会話が村人に。ソフトづくりが建物に。','village-intro');headingCopy.append(title,intro);
  const headerActions=make('div',undefined,'village-header-actions');
  const find=iconButton(button('village-find','村人を探す',()=>{closeQuestPeek(false);directory.open=true;questDrawer.hidden=true;search.focus();}), 'find','村人を探す');find.setAttribute('aria-expanded','false');
@@ -122,7 +123,16 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const chat=teamChatRecipient(squad,chats);
   return chat?{squadId:squad.id,chat,permitted:Boolean(villageControlTarget(source,squad.id))}:null;
  }});
- questBody.append(teamChat.element,questPeekStatus,questCurrent,questProgress,questTask,questResult,questNote,questMore);
+ const ideaCard=make('section',undefined,'village-idea-offer'),ideaQuote=make('p');
+ const ideaHint=make('p');ideaHint.setAttribute('role','status');
+ const ideaStart=button('village-idea-start','この依頼を始める',()=>startIdea(),'primary');
+ const ideaDismiss=button('village-idea-dismiss','今は見送る',()=>{
+  if(!reviewedIdea||pendingIdea)return;
+  dismissedIdeas.add(reviewedIdea.dismissal);saveView();updateProjection(true);closeQuestPeek();
+ });
+ ideaCard.id='village-idea-offer';ideaCard.hidden=true;
+ ideaCard.append(ideaQuote,ideaStart,ideaDismiss,ideaHint);
+ questBody.append(ideaCard,teamChat.element,questPeekStatus,questCurrent,questProgress,questTask,questResult,questNote,questMore);
  const questFooter=make('footer',undefined,'village-peek-footer'),questActions=make('div',undefined,'village-peek-actions');
  const questOpen=button('village-quest-open','依頼を開く →',()=>{const squad=selectedSquad();closeQuestPeek(false);if(squad?.id==='protagonist')onNavigate?.('tavern');else if(squad)onOpenQuest?.(squad);});
  const questChat=button('village-quest-chat','担当の会話',()=>{const id=questChat.dataset.conversationId;closeQuestPeek(false);if(id)onOpenChat?.(id);});questActions.append(questOpen,questChat);
@@ -197,6 +207,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let semanticLayout=null,semanticSignature='',residentCameraCell='',contextKey='';
  let residentPatrols=new Map(),patrolLayout=null;
  let activities={protagonist:null,squads:[],allSquads:[],stats:{}},activitySignature='',activityReferences=[],squadScenes=[],heroScene=null,selectedSquadId=null,peekSignature='';
+ let invitations=new Map(),reviewedIdea=null,pendingIdea=null,ideaFeedback='';
+ const dismissedIdeas=new Set();
  const homeSquadId='protagonist',soloParty={id:homeSquadId,members:[{seed:'hero',conversationId:null}]};
  let controlledSquadId=homeSquadId;
  const parkedPoses=new Map();
@@ -213,7 +225,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let locallyPaused=false,zoom=1,automaticZoom=true,camera={x:500,y:320},dimensions={width:0,height:0},transform={scale:1,x:0,y:0};
  const viewKey=demo?'chat-ui-demo-village-view':'chat-ui-village-view';
  let savedView=readVillageView(null),savedHero=null,insetVisible=false,showLeaderView=false,insetInitialized=false,insetCamera=null,world3D=null,viewSaveTimer=0,leaderHeading=0,leaderPrevious=null;
- try{const value=JSON.parse(mapStorage.getItem(viewKey)||'null');savedView=readVillageView(value);savedHero=value?.hero||null;showLeaderView=value?.showLeaderView===true;insetVisible=showLeaderView;insetCamera=value?.insetCamera||null;}catch{}
+ try{const value=JSON.parse(mapStorage.getItem(viewKey)||'null');savedView=readVillageView(value);if(Array.isArray(value?.dismissedIdeas))for(const key of value.dismissedIdeas.slice(-200))if(typeof key==='string')dismissedIdeas.add(key);savedHero=value?.hero||null;showLeaderView=value?.showLeaderView===true;insetVisible=showLeaderView;insetCamera=value?.insetCamera||null;}catch{}
  if(savedView.camera){camera={x:savedView.camera.x,y:savedView.camera.y};zoom=savedView.camera.zoom;automaticZoom=false;}
  district=savedView.district;
  let drag=null,suppressMapClick=false,travel=null,arrivalFocus=null,travelVersion=0,arrivalMembers=null;
@@ -224,7 +236,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const motionEnabled=()=>!locallyPaused&&!reducedMotion();
  const canAnimate=()=>visible&&!document.hidden&&!detail.open&&!document.querySelector('dialog[open]')&&motionEnabled()&&(travel||shownResidents.length>0||activities.protagonist||activities.squads.length>0)&&frame.clientWidth>0;
  function saveView(){clearTimeout(viewSaveTimer);viewSaveTimer=0;const homeView=controlledSquadId===homeSquadId?null:parkedPoses.get(homeSquadId);try{mapStorage.setItem(viewKey,JSON.stringify({mode:'2d',camera:homeView?.camera||{...camera,zoom},district,showLeaderView,insetCamera:world3D?.getCameraState()||insetCamera,
-  hero:savedHero||(controlledSquadId===homeSquadId?currentPose():parkedPoses.get(homeSquadId))}));}catch{}}
+  dismissedIdeas:[...dismissedIdeas].slice(-200),hero:savedHero||(controlledSquadId===homeSquadId?currentPose():parkedPoses.get(homeSquadId))}));}catch{}}
  function queueViewSave(){clearTimeout(viewSaveTimer);viewSaveTimer=setTimeout(saveView,300);}
  function fail3D(){setInsetVisible(false);viewError.textContent='目線の小窓を表示できません。俯瞰地図はそのまま使えます。';viewError.hidden=false;insetToggle.disabled=true;}
  function resizeInset(){if(insetVisible&&canvas3D.clientWidth&&canvas3D.clientHeight)world3D?.resize(canvas3D.clientWidth,canvas3D.clientHeight,Math.min(devicePixelRatio||1,2));}
@@ -310,7 +322,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(disposed)return;
   const chats=getChats()||[],cached=cachedProjection(chats);lastProjection=performance.now();
   const state=getState()||{},references=[state.party,state.todos,state.boardDispatch];let activityChanged=false;
-  if(recheckActivities||cached.changed||references.some((value,index)=>value!==activityReferences[index])||!activitySignature){activityReferences=references;const next=projectVillageActivities(state,chats),key=JSON.stringify(next);if(key!==activitySignature){activities=next;activitySignature=key;activityChanged=true;}}
+  if(recheckActivities||cached.changed||references.some((value,index)=>value!==activityReferences[index])||!activitySignature){activityReferences=references;const next=projectVillageActivities(state,chats);invitations=initiative?invitationsForVillage(state,next.allSquads,dismissedIdeas):new Map();const key=JSON.stringify([next,[...invitations.values()]]);if(key!==activitySignature){activities=next;activitySignature=key;activityChanged=true;}}
   if(activityChanged&&controlledSquadId!==homeSquadId&&!villageControlTarget(activities,controlledSquadId))switchParty(homeSquadId);
   if(activityChanged)for(const id of parkedPoses.keys())if(id!==homeSquadId&&!villageControlTarget(activities,id))parkedPoses.delete(id);
   if(!cached.changed&&!activityChanged&&signature){syncAnimation();return;}signature='ready';projection=cached.value;
@@ -435,7 +447,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(!switchParty(id,target))return false;
   syncDistrict();renderQuestPeek();return true;
  }
- function closeQuestPeek(focus=true){questPeek.hidden=true;selectedSquadId=null;peekSignature='';delete root.dataset.selectedSquad;syncDistrict();if(focus&&visible)canvas.focus({preventScroll:true});}
+ function closeQuestPeek(focus=true){reviewedIdea=null;ideaFeedback='';questPeek.hidden=true;selectedSquadId=null;peekSignature='';delete root.dataset.selectedSquad;syncDistrict();if(focus&&visible)canvas.focus({preventScroll:true});}
  function locateSquad(){
   cancelTravel();const squad=selectedSquad();if(!squad)return;
   updateSquadScenes();const scene=squadSceneFor(selectedSquadId);if(!scene)return;
@@ -443,7 +455,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const desiredX=small?dimensions.width/2:Math.max(120,(dimensions.width-questPeek.offsetWidth-36)/2),desiredY=small?Math.max(155,Math.min(200,dimensions.height*.3)):dimensions.height*.47;
   camera={x:scene.x+(dimensions.width/2-desiredX)/scale,y:scene.y+(dimensions.height/2-desiredY)/scale};draw();
  }
- function selectSquad(id,{focus=true}={}){
+ function selectSquad(id,{focus=true,idea=null}={}){
+  reviewedIdea=idea;ideaFeedback='';
   cancelTravel();if(id==='protagonist'&&activities.protagonist?.activityId)id=activities.protagonist.activityId;
   const squad=activities.allSquads.find(item=>item.id===id)||(id==='protagonist'?activities.protagonist:null);if(!squad)return;
   closeSpeech(false);directory.open=false;questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');selectedSquadId=id;root.dataset.selectedSquad=id;peekSignature='';questMore.open=false;questPeek.hidden=false;
@@ -457,9 +470,40 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   else questClose.focus();
  }
  function cycleSquad(direction){const groups=inspectionSquads(),index=groups.findIndex(item=>item.id===selectedSquadId);if(groups.length)selectSquad(groups[(Math.max(0,index)+direction+groups.length)%groups.length].id,{focus:false});}
+ function renderIdea(){
+  const invite=reviewedIdea;
+  ideaCard.hidden=!invite||questPeek.hidden||selectedSquadId!=='todo:'+invite.id;
+  if(ideaCard.hidden)return;
+  const current=invitations.get(selectedSquadId);
+  const stale=current?.version!==invite.version;
+  const blocked=stale?'依頼の状態が変わりました。':initiative?.blocked?.()||'';
+  const accepted=dismissedIdeas.has(invite.dismissal);
+  ideaQuote.hidden=ideaStart.hidden=ideaDismiss.hidden=accepted;
+  ideaQuote.textContent=invite.speaker+'「この依頼、一緒にやってみない？」';
+  ideaStart.disabled=Boolean(pendingIdea||blocked||accepted);
+  ideaDismiss.disabled=Boolean(pendingIdea);
+  ideaHint.textContent=ideaFeedback||(pendingIdea?'依頼を渡しています…':blocked);
+  ideaHint.hidden=!ideaHint.textContent;
+ }
+ async function startIdea(){
+  if(!visible||!initiative||!reviewedIdea||pendingIdea||ideaCard.hidden)return;
+  const invite=reviewedIdea;
+  updateProjection(true);renderIdea();
+  if(ideaStart.disabled)return;
+  pendingIdea=invite.version;ideaFeedback='';renderIdea();
+  try{
+   await initiative.start(invite);
+   dismissedIdeas.add(invite.dismissal);saveView();
+   if(reviewedIdea===invite){
+    ideaFeedback=invite.speaker+'に依頼を渡しました。';
+    if(document.activeElement===ideaStart)questPeekClose.focus({preventScroll:true});
+   }
+  }catch(error){if(reviewedIdea===invite)ideaFeedback=error.message;}
+  finally{pendingIdea=null;updateProjection(true);syncQuestSites();renderIdea();draw();}
+ }
  function renderQuestPeek(){
   if(questPeek.hidden)return;
-  teamChat.render();
+  teamChat.render();renderIdea();
   if(selectedSquadId==='protagonist'&&activities.protagonist?.activityId){selectedSquadId=activities.protagonist.activityId;root.dataset.selectedSquad=selectedSquadId;draw();}
   const squad=selectedSquad();if(!squad){closeQuestPeek();return;}
   questPrevious.disabled=questNext.disabled=inspectionSquads().length<2;
@@ -493,7 +537,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function syncQuestSites(){
   const groups=[...visibleSquads(),...(activities.protagonist&&!activities.protagonist.activityId?[activities.protagonist]:[])];
   returnHome.hidden=getControlledSquadId()==='protagonist';
-  questSites.replaceChildren(...groups.map(squad=>{
+  questSites.replaceChildren(...groups.flatMap(squad=>{
    const control=button('',undefined,()=>selectSquad(squad.id),'village-quest-flag');
    const controlled=squad.id===getControlledSquadId(),home=squad.id==='protagonist';
    const status=home?'自分の隊':squad.statusLabel;
@@ -502,7 +546,15 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
    control.title=[squad.partyName||squad.name,squad.title,label].filter(Boolean).join(' · ');
    control.setAttribute('aria-label',control.title);control.append(make('span',label));
    control.onfocus=()=>{if(control.matches(':focus-visible')){const scene=squadSceneFor(squad.id);if(scene){camera={x:scene.x,y:scene.y};draw();}}};
-   return control;
+   const invite=invitations.get(squad.id);
+   if(!invite||dismissedIdeas.has(invite.dismissal))return [control];
+   const idea=button('',undefined,()=>{selectSquad(squad.id,{focus:false,idea:invite});(ideaStart.disabled?ideaDismiss:ideaStart).focus({preventScroll:true});},'village-resident-idea');
+   idea.dataset.villageIdea=squad.id;idea.dataset.speaker=invite.leaderId;
+   idea.title=invite.speaker+'の提案「'+invite.title+'」';idea.setAttribute('aria-label',idea.title);
+   const mark=make('b','!');mark.setAttribute('aria-hidden','true');
+   idea.append(mark,make('small','ちょっと、相談していい？'));
+   idea.onfocus=control.onfocus;
+   return [control,idea];
   }));
  }
  function renderDirectory(){
@@ -709,7 +761,14 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   }
   if(arrivalFocus){const entry=document.querySelector('#village-enter-'+arrivalFocus);if(entry&&!entry.hidden){entry.focus({preventScroll:true});arrivalFocus=null;}}
   zoomOut.disabled=zoom<=villageOverviewCamera(width,height).zoom+1e-8;zoomIn.disabled=zoom>=2.5;canvas.dataset.zoom=zoom.toFixed(2);
-  for(const control of questSites.children){const scene=squadSceneFor(control.dataset.villageQuest);control.hidden=!scene;control.dataset.selected=String(control.dataset.villageQuest===selectedSquadId);if(scene){control.style.left=transform.x+scene.x*scale-22+'px';control.style.top=transform.y+(scene.y-18)*scale-22+'px';}}
+  for(const control of questSites.children){
+   if(control.dataset.villageIdea){
+    const scene=squadSceneFor(control.dataset.villageIdea),speaker=scene?.members.find(member=>member.conversationId===control.dataset.speaker);
+    control.hidden=!speaker||!questPeek.hidden||Boolean(encounter);
+    if(!control.hidden){control.style.left=(transform.x+speaker.x*scale)+'px';control.style.top=(transform.y+(speaker.y-16)*scale-8)+'px';}
+    continue;
+   }
+   const scene=squadSceneFor(control.dataset.villageQuest);control.hidden=!scene;control.dataset.selected=String(control.dataset.villageQuest===selectedSquadId);if(scene){control.style.left=transform.x+scene.x*scale-22+'px';control.style.top=transform.y+(scene.y-18)*scale-22+'px';}}
   if(encounter?.status==='talking'){
   const avoid=[],parent=frame.getBoundingClientRect();
   if(insetVisible){const box=inset.getBoundingClientRect();avoid.push({left:box.left-parent.left,right:box.right-parent.left,top:box.top-parent.top,bottom:box.bottom-parent.top});}
@@ -759,7 +818,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const motionChanged=()=>{world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(visible&&!document.hidden&&reducedMotion()&&!locallyPaused)travel?.engine.advance(Infinity);syncAnimation();};media.addEventListener('change',motionChanged);addEventListener('chat-ui-motion',motionChanged);document.addEventListener('visibilitychange',motionChanged);
  function render(){
   if(!visible||disposed)return;
-  if(!questPeek.hidden)teamChat.render();
+  if(!questPeek.hidden){teamChat.render();renderIdea();}
   if(performance.now()-lastProjection>220){clearTimeout(projectionTimer);projectionTimer=0;updateProjection();}
   else if(!projectionTimer)projectionTimer=setTimeout(()=>{projectionTimer=0;if(visible)updateProjection();},230);
  }

@@ -71,14 +71,16 @@
 #equipment-view .equipment-fitting-status{display:block;margin-top:12px;color:#efdaaa}
 #equipment-view #equipment-cancel-preview{margin:6px 0 0;min-height:44px}
 #equipment-view .equipment-shop-bar{gap:12px;margin-bottom:18px}
-#equipment-view .equipment-shop-bar nav{gap:8px}
-#equipment-view .equipment-shop-bar nav button{font-size:16px;min-height:48px;padding:10px 16px}
-#equipment-view .equipment-shop-bar nav button[aria-pressed=true]{border-color:#d8bc78;background:#50482f;color:#fff1cc}
+#equipment-view .equipment-shop-bar nav{gap:2px;border-bottom:1px solid #73684e}
+#equipment-view .equipment-shop-bar nav button{font-size:16px;min-height:46px;padding:9px 15px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:#ccc6b5;box-shadow:none}
+#equipment-view .equipment-shop-bar nav button:hover:not(:disabled){background:#34382d;color:#fff0ca}
+#equipment-view .equipment-shop-bar nav button[aria-pressed=true]{border-bottom-color:#dfbb79;background:#393a2e;color:#fff1cc}
 #equipment-view #equipment-refresh{min-height:44px;font-size:14px;background:transparent;color:var(--quest-muted)}
 #equipment-view .equipment-shop{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:24px}
-#equipment-view #equipment-stock{gap:12px}
-#equipment-view .equipment-item{padding:16px;gap:14px;min-height:82px;background:var(--quest-panel);border:1px solid #657e706e;border-radius:12px;text-align:left}
-#equipment-view .equipment-item:hover,#equipment-view .equipment-item[aria-pressed=true]{border-color:#d8bc78;background:#2e3d32;box-shadow:inset 3px 0 #d8bc78}
+#equipment-view #equipment-stock{gap:0;border-top:1px solid #746c54}
+#equipment-view .equipment-item{padding:14px;gap:14px;min-height:78px;border:0;border-bottom:1px solid #555b4b;border-radius:0;background:transparent;box-shadow:none;text-align:left}
+#equipment-view button.equipment-item:hover:not(:disabled){border-color:#928060;background:#30372e;box-shadow:none}
+#equipment-view button.equipment-item[aria-pressed=true]{background:#34392d;border-color:#928060;box-shadow:inset 3px 0 #d7b779}
 #equipment-view .equipment-item .equipment-icon{width:100%;height:auto;aspect-ratio:1}
 #equipment-view .equipment-item strong{font-size:17px;color:#f4eedb}
 #equipment-view .equipment-item small{font-size:14px;line-height:1.6;color:var(--quest-muted)}
@@ -97,11 +99,21 @@
 #equipment-view #equipment-description{font-size:16px;line-height:1.8;clear:both;max-height:260px;overflow:auto}
 #equipment-view #equipment-use-hint{font-size:14px;line-height:1.7;color:var(--quest-muted);order:2}
 #equipment-view .equipment-actions{gap:10px;margin-top:20px}
-#equipment-view #equipment-equip{flex:1;min-width:160px}
+#equipment-view #equipment-equip,#castle-view :is(#castle-start,#castle-work-generate){
+  width:auto;flex:0 1 auto;min-width:0;min-height:44px;padding:8px 18px;
+  text-align:start;border:0;border-left:3px solid #e5c68b;border-radius:0;
+  background:#474436;color:#fff0cd;box-shadow:none;font-size:16px;font-weight:600;
+}
+#equipment-view #equipment-equip:hover:not(:disabled),#castle-view :is(#castle-start,#castle-work-generate):hover:not(:disabled){
+  background:#5b5341;color:#fff5de;border-left-color:#f9dca4;
+}
+#equipment-view #equipment-equip:disabled,#castle-view :is(#castle-start,#castle-work-generate):disabled{
+  background:#2c332d;color:#a6a79a;border-left-color:#707267;opacity:1;
+}
 #equipment-view #equipment-status{font-size:16px;color:#d4e7c3;line-height:1.7;margin-bottom:0;order:3}
 
 /* Skills are displayed like equipment, with an estimate beside every item. */
-#equipment-view .equipment-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;column-gap:14px;row-gap:5px;background:linear-gradient(110deg,#28392e,#1b302b)}
+#equipment-view .equipment-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;column-gap:14px;row-gap:5px}
 #equipment-view .equipment-item>.equipment-icon{grid-column:1;grid-row:1/3}
 #equipment-view .equipment-item>.equipment-item-copy{grid-column:2;grid-row:1;min-width:0}
 #equipment-view .equipment-item>.equipment-token-estimate{grid-column:3;grid-row:1/3;align-self:center;flex:none;min-width:100px;padding-left:12px;border-left:1px solid #c6ac6a40;text-align:right;font-variant-numeric:tabular-nums}
@@ -182,7 +194,6 @@
 #castle-view #castle-work-request{min-height:112px}
 #castle-view #castle-work-artifact{min-height:92px}
 #castle-view .castle-actions{gap:12px;margin-top:18px}
-#castle-view #castle-work-generate{width:100%}
 #castle-view .castle-plan-picker{margin:24px 0 0;padding-top:14px;border-color:#7b8b6b60}
 #castle-view #castle-plan-source{border-color:#d3bd82;background:#182e2d;padding:16px;border-radius:0 8px 8px 0}
 #castle-view #castle-plan-source :is(dl,dd){font-size:16px;line-height:1.75}
@@ -197,7 +208,6 @@
 #castle-view #castle-party-members span{font-size:14px;color:var(--quest-muted)}
 #castle-view #castle-quest{height:170px;min-height:120px}
 #castle-view :is(#castle-model-caption,#castle-readiness){font:14px/1.7 var(--font-ui);color:var(--quest-muted)}
-#castle-view #castle-start{width:100%}
 #castle-view .castle-practice-guide{font-size:16px;line-height:1.8}
 #castle-view .castle-practice-guide h3{font-size:22px;color:#f7e6bb}
 

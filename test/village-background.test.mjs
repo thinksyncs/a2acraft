@@ -67,3 +67,44 @@ test('foreground rendering can omit static terrain without omitting current proj
   assert.ok(building.calls.filter(call=>call.key==='drawImage').length<=1,
     'only a cached building sprite may be painted; static terrain is not painted a second time');
 });
+
+test('close cameras paint the same river and forest at village resolution across the southern border',t=>{
+  const original=Object.getOwnPropertyDescriptor(globalThis,'OffscreenCanvas'),allocated=[];
+  class Canvas {
+    constructor(width,height){this.width=width;this.height=height;this.context=context();allocated.push(this);}
+    getContext(){return this.context;}
+  }
+  Object.defineProperty(globalThis,'OffscreenCanvas',{value:Canvas,configurable:true});
+  t.after(()=>original?Object.defineProperty(globalThis,'OffscreenCanvas',original):delete globalThis.OffscreenCanvas);
+  const island=structuredClone(villageIsland()),overview=context(),close=context();
+  drawVillageIslandBackground(overview,island,{population:8});
+  const atlas=overview.calls.find(call=>call.key==='drawImage').args[0];
+  const viewport={left:400,right:1150,top:440,bottom:940,zoom:1};
+  drawVillageIslandBackground(close,island,{population:8,viewport});
+  const images=close.calls.filter(call=>call.key==='drawImage');
+  assert.ok(!images.some(call=>call.args[0]===atlas),'the close view never enlarges the whole-island thumbnail');
+  const woods=images.find(call=>call.args[1]<-900&&call.args[2]<-900);
+  assert.ok(woods&&woods.args.length===3,'nearby woods are drawn at native world scale');
+  assert.ok(close.calls.some(call=>call.key==='lineTo'&&call.args[1]>640&&call.args[0]>800&&call.args[0]<1000),
+    'the real river bank continues south of the 640-unit village seam');
+  const next=context(),count=allocated.length;
+  drawVillageIslandBackground(next,island,{population:8,viewport:{...viewport,top:620,bottom:1120}});
+  assert.ok(next.calls.some(call=>call.key==='drawImage'&&call.args[0]===woods.args[0]),'moving the camera reuses the high-resolution forest');
+  assert.equal(allocated.length,count);
+});
+
+test('a conversation clearing shades each dry patch without painting outside its reserved footprint',()=>{
+  const screen=context(),stops=[],drawn=[];
+  screen.createRadialGradient=()=>({addColorStop:(at,color)=>stops.push([at,color])});
+  screen.fillRect=(x,y,w,h)=>{
+    const m=screen.getTransform();
+    drawn.push([m.a*x+m.e,m.d*y+m.f,m.a*w,m.d*h]);
+  };
+  const patches=[{left:85,right:133,top:115,bottom:131},
+    {left:69,right:149,top:131,bottom:177},{left:85,right:133,top:177,bottom:193}];
+  drawVillageWorld(screen,{terrainVisible:false,motion:false,clearings:[{
+    id:'conversation-clearing:a',kind:'clearing',color:'#829650',patches}]});
+  assert.deepEqual(stops[0],[0,'#829650']);
+  assert.deepEqual(stops.at(-1),[1,'#78924f']);
+  assert.deepEqual(drawn.map(row=>row.map(Math.round)),patches.map(p=>[p.left,p.top,p.right-p.left,p.bottom-p.top]));
+});

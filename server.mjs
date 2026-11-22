@@ -11,6 +11,7 @@ import {buildResidentContext} from './public/resident-companions.js';
 import {projectVillageActivities} from './public/village-activity.js';
 import {villageControlTarget} from './public/village-party-control.js';
 import {teamChatRecipient} from './public/village-team-chat.js';
+import {assertVillageInvitation} from './public/village-initiative.js';
 import {ensureAgentWorkspace,standingAgentInstructions} from './codex-workspace-policy.mjs';
 import {ConversationWorkspaces,resolveWorkspaceDirectory} from './conversation-workspace.mjs';
 import {prepareCodexLaunch,verifyIsolatedConfig,verifyThreadPermissions,threadPermissionRequest} from './codex-launch.mjs';
@@ -556,12 +557,20 @@ await world.observe({migration:true});
 startupStage('activity-sync');
 activityReady=true;await queueActivitySync();
 const activityTimer=setInterval(()=>{queueActivitySync();queueScheduledExecution();queueBoardExecution();projects?.kick();},1000);activityTimer.unref();
-async function startTodo(id,model,effort){
+async function startTodo(id,model,effort,invitation){
  assertBoardAvailable();
- const item=todos.item(id);if(item.assignee.type==='manual')return todos.manual(id,'doing');
+ let reviewedParty=null;
+ const verifyInvitation=item=>{
+  const party=parties.public().party;
+  assertVillageInvitation(item,party,invitation);
+  reviewedParty=item.assignee.type==='party'?party:null;
+ };
+ const item=todos.item(id);
+ if(invitation!==undefined)verifyInvitation(item);
+ if(item.assignee.type==='manual')return todos.manual(id,'doing');
  if(startingTodo||parties.unfinished)throw Error('現在のクエストを完了または終了してから開始してください。');
  startingTodo=true;emit();let run;
- try{await readyForQuest(model);run=await todos.begin(id);await parties.start({text:todos.prompt(run.item),model,effort,soloId:run.item.assignee.type==='chat'?run.item.assignee.conversationId:null,link:{todoId:id,runId:run.runId}});return todos.item(id);}
+ try{await readyForQuest(model);run=await todos.begin(id,invitation===undefined?undefined:verifyInvitation);await parties.start({text:todos.prompt(run.item),model,effort,soloId:run.item.assignee.type==='chat'?run.item.assignee.conversationId:null,partyOverride:reviewedParty,link:{todoId:id,runId:run.runId}});return todos.item(id);}
  catch(error){if(run)await todos.rejectStart(id,run.runId,error.message);throw error;}
  finally{startingTodo=false;emit();}
 }
@@ -1109,7 +1118,7 @@ const server=http.createServer(async(req,res)=>{
    if(p==='/api/todos/save')return json(res,200,await todos.save(b,conversations,media.public().items));
    if(p==='/api/todos/manual')return json(res,200,await todos.manual(b.id,b.status));
    if(p==='/api/todos/reopen')return json(res,200,await todos.reopen(b.id));
-   if(p==='/api/todos/start')return json(res,200,await startTodo(b.id,b.model,b.effort||'medium'));
+   if(p==='/api/todos/start')return json(res,200,await startTodo(b.id,b.model,b.effort||'medium',b.invitation));
    if(p==='/api/todos/action'){
     if(parties.state.quest?.link?.todoId!==b.id)throw Error('このTODOのクエストは現在選択されていません。');
     if(b.action==='pause')await parties.pause();else if(b.action==='cancel')await parties.cancel();else if(b.action==='resume'){await readyForQuest(parties.state.quest.model);boardStops.delete(parties.state.quest?.board?.attemptId);await parties.resume({retry:b.retry===true});}else throw Error('TODOの操作を確認してください。');

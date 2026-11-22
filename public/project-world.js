@@ -43,6 +43,38 @@ function headingBetween(from, to) {
   return Math.hypot(dx, dy) > 0.01 ? Math.atan2(dx, -dy) : 0;
 }
 
+// Facility streets approach along the east/west lane. Stop where the facade
+// and the street both fit in the leader's field of view.
+export function facilityArrival(facility) {
+  return {x:facility.x + (facility.x < -100 ? 138 : -138), y:facility.y+50};
+}
+
+export function repairProjectPose(previous,geometry) {
+  const terrain={water:geometry.water,bridges:geometry.bridges,obstacles:sceneBuildingObstacles(geometry)};
+  const safe=p=>islandRouteWalkable([p,p],geometry.island,terrain);
+  const legacy=facilities.find(f=>distance(previous,{x:f.x,y:f.y+30})<2);
+  if(legacy){
+    const point=facilityArrival(legacy);
+    if(safe(point))return {point,heading:headingBetween(point,legacy)};
+  }
+  if(safe(previous)&&!legacy)return null;
+  const candidates=[];
+  for(const road of geometry.roads||[])for(let i=1;i<road.points.length;i++){
+    const a=road.points[i-1],b=road.points[i],dx=b.x-a.x,dy=b.y-a.y;
+    const t=Math.max(0,Math.min(1,((previous.x-a.x)*dx+(previous.y-a.y)*dy)/(dx*dx+dy*dy||1)));
+    candidates.push({point:{x:a.x+dx*t,y:a.y+dy*t},toward:t<.5?b:a});
+    candidates.push({point:a,toward:b},{point:b,toward:a});
+  }
+  candidates.sort((a,b)=>distance(a.point,previous)-distance(b.point,previous));
+  for(const {point,toward} of candidates){
+    const gap=distance(point,toward);
+    if(gap<24)continue;
+    const part=Math.min(1,64/gap),ahead={x:point.x+(toward.x-point.x)*part,y:point.y+(toward.y-point.y)*part};
+    if(islandRouteWalkable([point,ahead],geometry.island,terrain))return {point,heading:headingBetween(point,ahead)};
+  }
+  return null;
+}
+
 export function projectOverviewCamera(bounds, width, height) {
   return {
     x: (bounds.left + bounds.right) / 2,
@@ -310,6 +342,11 @@ export function createProjectWorld({
         onGround: (point) => moveGround(point, true),
         onSelect: ({ id }) => selection3D.get(id)?.(),
         onFailure: fail3D,
+        onContextChange: restored => {
+          viewError.hidden = restored || !insetEnabled;
+          if (!restored) viewError.textContent = "目線の描画を復旧しています。";
+          else syncInset();
+        },
       });
       if (!renderer3D || renderer3D.supported === false || threeDFailed) {
         if (!threeDFailed) fail3D();
@@ -408,17 +445,16 @@ export function createProjectWorld({
       to = nearest(target, layout);
     let route = [travel.position, target];
     const sourceFacility = facilities.find(
-      (f) => distance(travel.position, { x: f.x, y: f.y + 30 }) < 90,
+      (f) => distance(travel.position, facilityArrival(f)) < 90,
     );
     const targetFacility = facilities.find(
-      (f) => distance(target, { x: f.x, y: f.y + 30 }) < 5,
+      (f) => distance(target, facilityArrival(f)) < 5,
     );
     const approach = (f) => [
       { x: 500, y: 610 },
       { x: -100, y: 710 },
       { x: -100, y: f.y + 50 },
-      { x: f.x, y: f.y + 50 },
-      { x: f.x, y: f.y + 30 },
+      facilityArrival(f),
     ];
     if (alongRoad) {
       const prefix = sourceFacility ? [travel.position, ...[...approach(sourceFacility)].reverse()] : [travel.position];
@@ -524,8 +560,11 @@ export function createProjectWorld({
   }
   function visit(facility) {
     walk(
-      { x: facility.x, y: facility.y + 30 },
-      () => onRoom?.(facility, travel.count),
+      facilityArrival(facility),
+      () => {
+        leaderHeading=headingBetween(travel.position,facility);lastLeader={...travel.position};
+        persist();onRoom?.(facility, travel.count);
+      },
       facility.name,
     );
   }
@@ -701,7 +740,8 @@ export function createProjectWorld({
     const owner = residents.find(person => person.conversationId === controlled?.id);
     const leader = characterPose({...projectLeaderPose(owner, travel.position, leaderHeading),walking:Boolean(travel.route)},{time:clock,motion});
     inhabitants.push(leader);
-    const scene = {...sceneGeometry(layout, projects, residents), people:inhabitants, leader};
+    const geometry = sceneGeometry(layout, projects, residents);
+    const scene = {...geometry, staticGeometry:geometry, people:inhabitants, leader};
     const delegatedScene = addDelegatesToScene(scene, projectDelegates(residents));
     return encounter?.phase === "talking"
       ? projectEncounterSightline(delegatedScene, encounter.conversationId) : delegatedScene;
@@ -723,17 +763,12 @@ export function createProjectWorld({
       motion = !noMotion() && !document.hidden;
     if(!restoredPositionChecked){
       restoredPositionChecked=true;
-      const geometry=sceneGeometry(layout,projects),obstacles=sceneBuildingObstacles(geometry),
-        terrain={water:geometry.water,bridges:geometry.bridges,obstacles},
-        safe=point=>islandRouteWalkable([point,point],geometry.island,terrain);
-      if(!safe(travel.position)){
-        const previous=travel.position,candidates=obstacles.flatMap(r=>[
-          {x:r.left,y:Math.max(r.top,Math.min(r.bottom,previous.y))},
-          {x:r.right,y:Math.max(r.top,Math.min(r.bottom,previous.y))},
-          {x:Math.max(r.left,Math.min(r.right,previous.x)),y:r.top},
-          {x:Math.max(r.left,Math.min(r.right,previous.x)),y:r.bottom},
-        ]).sort((a,b)=>distance(a,previous)-distance(b,previous)),point=candidates.find(safe);
-        if(point){travel.position={...point};travel.members=Array.from({length:travel.count},()=>({...point}));lastLeader={...point};persist();}
+      const repaired=repairProjectPose(travel.position,sceneGeometry(layout,projects));
+      if(repaired){
+        travel.position=repaired.point;leaderHeading=repaired.heading;
+        travel.members=Array.from({length:travel.count},()=>({...travel.position}));lastLeader={...travel.position};
+        insetCamera={...(renderer3D?.getCameraState()||insetCamera||{}),lookYaw:0,lookPitch:0};
+        renderer3D?.setCameraState(insetCamera);persist();
       }
     }
     if (selected !== "hero") {

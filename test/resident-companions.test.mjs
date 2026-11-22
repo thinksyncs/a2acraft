@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {residentPartyKey, residentVisitFor, companionRoster, buildResidentContext} from '../public/resident-companions.js';
+import {residentDemoReply} from '../public/resident-demo.js';
+
+test('the walking sample answers the packing question and mentions only a present companion', () => {
+  const resident = {title:'山歩きの準備 · 8', characterName:'ミオ'};
+  const question = '雨具と水はどこにしまおう？';
+  const solo = residentDemoReply(resident,question);
+  const withScout = residentDemoReply(resident,question,{companions:[{name:'カイ',role:'調査'}]});
+  assert.match(solo,/上ぶた.*横ポケット/);
+  assert.doesNotMatch(solo,/カイ|ミオ：/);
+  assert.match(withScout,/カイと一緒に帰り道/);
+  assert.doesNotMatch(withScout,/ミオ：|実装/);
+});
 
 const conversations = [
   {id: 'villager', title: '開発相談', messages: [{role: 'assistant', text: '村人の記録'}]},

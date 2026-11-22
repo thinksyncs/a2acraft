@@ -130,7 +130,7 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
     character.setAttribute('aria-label',(chat?.title||'未選択')+'のキャラ'+(trial?' · 試着中':'')+(weapon?' · 手持ち: '+weapon.itemName:'')+(magic?' · 呪文: '+magic.itemName:''));
     fittingStatus.textContent=trial?equipmentPresentation(trial).itemName+'を試着中。まだ装備していません。「装備する」で確定します。':'';fittingStatus.hidden=!trial;cancelFitting.hidden=!trial;
     document.querySelectorAll('[data-shop]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.shop===shop)));
-    $('#equipment-title').textContent={weapon:'武器屋',tool:'道具屋',spell:'呪文屋'}[shop];
+    $('#equipment-title').textContent={weapon:'Armory',tool:'Supplies',spell:'Spell Shop'}[shop];
     const stock=$('#equipment-stock');
     const inShop=catalog.filter(skill=>skill.slot===shop).map(equipmentPresentation);
     if(!inShop.some(skill=>skill.id===selected))selected=inShop[0]?.id||null;
@@ -153,11 +153,11 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
       button.ondragend=endDrag;stock.append(button);
     }
     if(focused)stock.querySelector('[data-skill-id="'+CSS.escape(focused)+'"]')?.focus({preventScroll:true});
-    if(!inShop.length)stock.append(text('p',loading?'品ぞろえを確認しています…':error?'取得できませんでした。「品ぞろえを更新」で再試行できます。':loaded?'このお店に利用可能なskillはありません。':'「品ぞろえを更新」でskillを取得できます。','equipment-empty'));
+    if(!inShop.length)stock.append(text('p',loading?'品ぞろえを確認しています…':error?'取得できませんでした。「品ぞろえを更新」で再試行できます。':loaded?'この店にはまだスキルがありません。':'「品ぞろえを更新」でスキルを読み込めます。','equipment-empty'));
     const skill=equipmentPresentation(selectedSkill()),equipped=Boolean(skill&&chat?.equipment?.[shop]?.id===skill.id),armed=equipped&&chat.armedSkillId===skill.id;
     $('#equipment-preview').replaceChildren(...(skill?[equipmentIcon(skill)]:[]));
     $('#equipment-kind').textContent=skill?(skill.singleUse?'飛び道具 · 一回の指示':slotLabels[skill.slot]+' · SKILL'):'SKILL';
-    $('#equipment-name').textContent=skill?.itemName||'持っていくskillを選ぶ';$('#equipment-source').textContent=skill?(skill.displayName===skill.name?skill.name:skill.displayName+' · '+skill.name):'';
+    $('#equipment-name').textContent=skill?.itemName||'装備を選ぶ';$('#equipment-source').textContent=skill?(skill.displayName===skill.name?skill.name:skill.displayName+' · '+skill.name):'';
     $('#equipment-description').textContent=skill?.description||'';
     const estimate=skill?skillTokenEstimate(skill):null;
     $('#equipment-estimate-box').hidden=!skill;
@@ -165,7 +165,7 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
     $('#equipment-token-caption').textContent=estimate?.basis==='unknown'?'消費目安 · 未見積もり':'消費目安 / 1回';
     $('#equipment-token-scope').textContent=estimate?.scope||'';$('#equipment-token-scope').hidden=!estimate?.scope;
     $('#equipment-token-note').textContent=estimate?[estimate.detail,'1 k token = 1,000 tokens。入力・出力・ツール利用で変動します。'].filter(Boolean).join(' '):'';$('#equipment-token-note').hidden=!skill;
-    $('#equipment-use-hint').textContent=skill?(skill.singleUse?'弓は手持ちに残ります。矢をつがえると、次の送信に一度だけこのskillを指定します。':'装備中は、この会話の送信・追加指示にskillを指定します。'):'';
+    $('#equipment-use-hint').textContent=skill?(skill.singleUse?'矢をつがえると、次の送信で一度だけこの技を使います。弓は装備したままです。':'装備している間は、この会話でメッセージや追加の指示を送るたびに、この技を使います。'):'';
     $('#equipment-equip').disabled=!canChange||!skill||equipped||Boolean(error);$('#equipment-equip').textContent=equipped?'装備中':'装備する';
     $('#equipment-arm').hidden=!equipped||!skill.singleUse;$('#equipment-arm').disabled=!canChange||Boolean(error);$('#equipment-arm').textContent=armed?'矢を外す':'矢をつがえる';
     $('#equipment-use').hidden=!equipped||Boolean(skill.singleUse&&!armed);$('#equipment-use').disabled=mutating;

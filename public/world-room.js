@@ -43,12 +43,12 @@ function portrait(room, name, hero = false, index = 0) {
 }
 export function roomConversation(id, quest, squads = []) {
   if (id === "weapon") return {
-    greeting: "どの仲間に武器を持たせる？　品ぞろえから好きな一本を試着してみな。",
+    greeting: "誰に持たせるんだい？　気になる一本があったら、手に取ってみてくれ。",
     question: "武器は会話でどう使う？",
-    answer: "武器には一つずつ技がある。店で仲間を選び、「装備する」で決めよう。その仲間の次の送信で技を使うぞ。弓は先に矢をつがえておくんだ。",
+    answer: "仲間を選んで「装備する」を押してみな。その仲間に次のメッセージを送ると、武器の技が使える。弓なら、送る前に矢をつがえるんだ。",
   };
   if (id !== "castle") return null;
-  let answer = "まだ隊から冒険の記録は届いておらぬ。依頼を書き、酒場で仲間を編成してから出発しよう。";
+  let answer = "まだ報告は来ていない。依頼を書いたら、酒場で仲間を集めよう。";
   let record = null;
   if (quest) {
     const steps = Array.isArray(quest.steps) ? quest.steps : [];
@@ -58,19 +58,19 @@ export function roomConversation(id, quest, squads = []) {
     const status = partyStatusLabels[quest.status] || "状況を確認中";
     const progress = steps.length ? `工程は${complete}／${steps.length}完了。` : "";
     const role = next?.role && ["running", "paused"].includes(quest.status)
-      ? `${quest.status === "paused" ? "再開する工程" : "現在の担当"}は「${next.role}」だ。` : "";
-    answer = `酒場からの報告では「${team}」は${status}。${progress}${role}`;
+      ? (quest.status === "paused" ? `再開は「${next.role}」からだ。` : `今は「${next.role}」に取りかかっている。`) : "";
+    answer = `「${team}」は${status}。${progress}${role}`;
     record = {label: "酒場で冒険の記録を開く", questId: quest.id};
   } else if (squads.length) {
     const counts = new Map();
     for (const squad of squads) counts.set(squad.statusLabel, (counts.get(squad.statusLabel) || 0) + 1);
     const states = Array.from(counts, ([label, count]) => `${label}が${count}隊`).join("、");
     const first = squads[0];
-    answer = `村の依頼は${squads.length}件。${states}だ。地図で「${first.partyName}」の報告を見てみよう。`;
+    answer = `村の依頼は${squads.length}件。${states}だ。「${first.partyName}」の様子を見ていくか？`;
     record = {label: "地図でこの隊を見る", squadId: first.id};
   }
   return {
-    greeting: "ここで仲間に仕事を頼めるぞ。今日はどんな依頼かな？",
+    greeting: "新しい依頼かね？　それとも、隊の様子を聞きに来たのかね。",
     question: "隊の進み具合を聞く",
     answer, record,
   };
@@ -100,7 +100,9 @@ export function createWorldRoom({ onExit, getProgress, onProgress, id = "world-r
     animation?.cancel();
     animation = null;
     dialog.replaceChildren();
-    const title = node("h2", facility.name);
+    const placeTitle = {castle: "Throne Room", weapon: "Forge", tavern: "Tavern"}[facility.id];
+    const title = node("h2", placeTitle || facility.name);
+    if (placeTitle) title.lang = "en";
     title.id = id + "-title";
     dialog.setAttribute("aria-labelledby", title.id);
     const exit = button("街へ戻る", close, "world-room-exit");
