@@ -1,6 +1,6 @@
 import {finite, clamp, perspective, lookAt, multiply, transform, cameraPose, initialCamera,
   sanitizeCamera, screenRay, rayGround, rayBox, movementTarget, worldBounds} from './world-3d-math.js';
-import {staticMesh, peopleMesh, visiblePeople, buildingShape} from './world-3d-mesh.js';
+import {staticMesh, naturalTiles, naturalTileMesh, peopleMesh, visiblePeople, buildingShape} from './world-3d-mesh.js';
 import {worldDelegateLabels} from './village-delegates.js';
 import {ROAD_SURFACE,ROAD_EARTH,ROAD_WEAR} from './road-material.js';
 const materialColor=hex=>[1,3,5].map(index=>(parseInt(hex.slice(index,index+2),16)/255).toFixed(5)).join(',');
@@ -82,6 +82,36 @@ function staticKey(scene) {
     (scene.buildings || []).map(b => [b.id, b.x, b.y, b.width, b.depth, b.height, b.stage, b.color, b.kind])]);
 }
 
+// Test the positive support vertex against each homogeneous clip plane. If
+// even that corner is outside, the whole tile is outside the eye's frustum.
+export function tileInView(tile,m){
+  for(let axis=0;axis<3;axis++)for(const sign of [-1,1]){
+    const a=m[3]+sign*m[axis],b=m[7]+sign*m[axis+4],c=m[11]+sign*m[axis+8];
+    if(a*(a<0?tile.left:tile.right)+b*(b<0?(tile.floor??0):tile.height)+
+      c*(c<0?tile.top:tile.bottom)+m[15]+sign*m[axis+12]<0)return false;
+  }
+  return true;
+}
+export function groundRanges(mesh){
+  const result=[],batch=576; // 192 consecutive triangles, usually one part of the island.
+  for(let first=0;first<mesh.length/9;first+=batch){
+    const count=Math.min(batch,mesh.length/9-first);
+    let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity,floor=Infinity,height=-Infinity;
+    for(let i=first*9;i<(first+count)*9;i+=9){
+      left=Math.min(left,mesh[i]);right=Math.max(right,mesh[i]);
+      floor=Math.min(floor,mesh[i+1]);height=Math.max(height,mesh[i+1]);
+      top=Math.min(top,mesh[i+2]);bottom=Math.max(bottom,mesh[i+2]);
+    }
+    result.push({first,count,left,right,top,bottom,floor,height});
+  }
+  return result;
+}
+export function distantTile(tile,eye,pixels,fov){
+  const dx=Math.max(tile.left-eye[0],eye[0]-tile.right,0),dy=Math.max(eye[1]-tile.height,-eye[1],0),
+    dz=Math.max(tile.top-eye[2],eye[2]-tile.bottom,0);
+  return Math.hypot(dx,dy,dz)>Math.max(700,tile.height*pixels/(48*Math.tan(fov/2)));
+}
+
 // Reject only complete character volumes outside the view, before building the
 // animated crowd mesh. Actors crossing an edge retain their full geometry.
 export function peopleInView(people,matrix){
@@ -99,12 +129,14 @@ export function peopleInView(people,matrix){
  * and selection to the existing world; this module never calls an application API.
  */
 export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
-  onFailure = () => {}, onCameraChange = () => {}}) {
+  onFailure = () => {}, onContextChange = () => {}, onCameraChange = () => {}}) {
   let gl = null, gpu = null, supported = false, visible = false, destroyed = false;
   let scene = {buildings: [], people: [], leader: {}, bounds: worldBounds()}, camera = initialCamera();
-  let initialized = false, signature = '', staticVertices = 0, shownPeople = [];
+  let initialized = false, signature = '', ground=[], shownPeople = [];
   let frame = 0, drag = null, viewProjection = null, pose = null, keyboardWorldYaw = null;
   let labelCanvas = null, labelContext = null;
+  let tiles=[],tileBytes=0;
+  const tileBuffers=new Map(),tileBudget=12*1024*1024;
   let width = Math.max(1, canvas.clientWidth || 640), height = Math.max(1, canvas.clientHeight || 420), pixelRatio = 1;
   const listeners = [];
   const fail = message => queueMicrotask(() => { if (!destroyed) onFailure(message); });
@@ -118,14 +150,52 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
   function upload(buffer, data, usage) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, data, usage);
   }
-  function renderBuffer(buffer, count) {
-    if (!count) return;
+  function bindBuffer(buffer) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     for (let i = 0; i < gpu.attributes.length; i++) {
       gl.enableVertexAttribArray(gpu.attributes[i]);
       gl.vertexAttribPointer(gpu.attributes[i], 3, gl.FLOAT, false, 36, i * 12);
     }
-    gl.drawArrays(gl.TRIANGLES, 0, count);
+  }
+  function renderBuffer(buffer,count){
+    if(count){bindBuffer(buffer);gl.drawArrays(gl.TRIANGLES,0,count);}
+  }
+  function paintGround(){
+    bindBuffer(gpu.groundBuffer);
+    let first=0,count=0;
+    for(const part of ground){
+      if(tileInView(part,viewProjection)){
+        if(!count)first=part.first;
+        count+=part.count;
+      }else if(count){
+        gl.drawArrays(gl.TRIANGLES,first,count);count=0;
+      }
+    }
+    if(count)gl.drawArrays(gl.TRIANGLES,first,count);
+  }
+  function releaseTiles(){
+    for(const item of tileBuffers.values())gl.deleteBuffer(item.buffer);
+    tileBuffers.clear();tileBytes=0;tiles=[];
+  }
+  function paintNature(){
+    for(const tile of tiles){
+      if(!tileInView(tile,viewProjection))continue;
+      const distant=distantTile(tile,pose.eye,canvas.height,camera.fov);
+      const key=tile.index*2+Number(distant);
+      let item=tileBuffers.get(key);
+      if(item)tileBuffers.delete(key);
+      else{
+        const data=naturalTileMesh(tile,distant),buffer=gl.createBuffer();
+        upload(buffer,data,gl.STATIC_DRAW);
+        item={buffer,count:data.length/9,bytes:data.byteLength};tileBytes+=item.bytes;
+      }
+      tileBuffers.set(key,item);
+      renderBuffer(item.buffer,item.count);
+    }
+    while(tileBytes>tileBudget&&tileBuffers.size>1){
+      const oldest=tileBuffers.keys().next().value,entry=tileBuffers.get(oldest);
+      gl.deleteBuffer(entry.buffer);tileBytes-=entry.bytes;tileBuffers.delete(oldest);
+    }
   }
   function paintLabels() {
     const labels = camera.mode === 'leader' ? [] : worldDelegateLabels(shownPeople, viewProjection, width, height);
@@ -190,7 +260,8 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
       gl.clearColor(0.72, 0.83, 0.85, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.useProgram(gpu.program); gl.uniformMatrix4fv(gpu.viewProjection, false, viewProjection);
       gl.uniform3fv(gpu.eye, pose.eye); gl.uniform1f(gpu.fogDistance, Math.max(1400, span * 1.3, camera.distance * 2));
-      renderBuffer(gpu.groundBuffer, staticVertices);
+      paintGround();
+      paintNature();
       shownPeople = peopleInView(visiblePeople(scene, pose.eye, camera.mode),viewProjection);
       const people = peopleMesh(shownPeople);
       upload(gpu.peopleBuffer, people, gl.DYNAMIC_DRAW); renderBuffer(gpu.peopleBuffer, people.length / 9);
@@ -212,9 +283,12 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     if (keyboardWorldYaw !== null && camera.mode !== 'overview')
       camera.lookYaw = keyboardWorldYaw - finite(scene.leader.heading);
     if (!supported || destroyed) return;
-    const next = staticKey(scene);
+    const next = scene.staticGeometry ?? staticKey(scene);
     if (next !== signature) {
-      const vertices = staticMesh(scene); signature = next; staticVertices = vertices.length / 9;
+      releaseTiles();
+      tiles=naturalTiles(scene);
+      tiles.forEach((tile,index)=>{tile.index=index;});
+      const vertices = staticMesh(scene,{separateNature:true});signature=next;ground=groundRanges(vertices);
       upload(gpu.groundBuffer, vertices, gl.STATIC_DRAW);
     }
     schedule();
@@ -352,7 +426,7 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     destroyed = true; visible = false; supported = false;
     if (frame) cancelAnimationFrame(frame);
     for (const entry of listeners) canvas.removeEventListener(...entry);
-    if (gl && gpu) {gl.deleteBuffer(gpu.groundBuffer); gl.deleteBuffer(gpu.peopleBuffer); gl.deleteProgram(gpu.program);}
+    if (gl && gpu) {releaseTiles();gl.deleteBuffer(gpu.groundBuffer); gl.deleteBuffer(gpu.peopleBuffer); gl.deleteProgram(gpu.program);}
     labelCanvas?.remove();labelCanvas=null;labelContext=null;
     gpu = null; frame = 0;
   }
@@ -372,11 +446,15 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     listen('keydown', keyDown);
     listen('contextmenu', event => event.preventDefault());
     listen('webglcontextlost', event => {
-      event.preventDefault(); supported = false; setVisible(false);
-      fail('3D描画が中断されました。2D表示へ戻れます。');
+      event.preventDefault();supported=false;
+      if(frame)cancelAnimationFrame(frame);
+      frame=0;drag=null;tileBuffers.clear();tileBytes=0;tiles=[];
+      if(labelCanvas)labelCanvas.style.display='none';
+      canvas.dataset.renderer='restoring';onContextChange(false);
     });
     listen('webglcontextrestored', () => {
-      try {gpu = resources(gl); supported = true; signature = ''; update(scene);} catch {fail('3D描画を復旧できませんでした。2D表示を利用できます。');}
+      try {gpu = resources(gl);supported=true;signature='';update(scene);onContextChange(true);}
+      catch {supported=false;fail('3D描画を復旧できませんでした。2D表示を利用できます。');}
     });
   } catch (error) {supported = false; fail(error.message);}
   return api;

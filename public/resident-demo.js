@@ -1,7 +1,13 @@
 // Explicitly scripted examples, used only by demo=1. No model calls or job updates.
 export function residentDemoReply(chat, text, context = null) {
-  const name = chat.characterName || '街の人';
-  if (/ありがとう|またね/.test(text)) return `${name}：こちらこそ。また街で声をかけてください。`;
+  if (/ありがとう|またね/.test(text)) return 'うん、また道で会おうね。';
+  const companions = context?.companions || [];
+  if (chat.title?.startsWith('山歩きの準備') && /雨具|水|尾根|荷物|分岐/.test(text)) {
+    const buddy = companions.find(m => /調査|検証|レビュー/.test(m.role)) || companions[0];
+    const next = buddy ? `分岐に着いたら、${buddy.name}と一緒に帰り道も確かめてね。`
+      : '分岐で一度振り返ると、帰りの目印を覚えやすいよ。';
+    return '雨具は上ぶたの下へ。水は立ち止まってすぐ手が届く横ポケットがいいよ。'+next;
+  }
   if (context?.companions?.length) {
     const perspectives=context.companions.map(member=>{
       const role=member.role;
@@ -13,8 +19,8 @@ export function residentDemoReply(chat, text, context = null) {
         '今回の目的と次に確かめる一歩を整理しましょう。';
       return `- ${member.name}（${role}）の観点：${suggestion}`;
     });
-    return `${name}：「${chat.title}」を、今の仲間と考えてみましょう。\n\n${perspectives.join('\n')}`;
+    return `「${chat.title}」なら、こんな進め方はどう？\n\n${perspectives.join('\n')}`;
   }
-  if (/何|なに|どんな|教え/.test(text)) return `${name}：「${chat.title}」について一緒に考えられます。気になっていることを教えてください。`;
-  return `${name}：声をかけてくれてありがとう。「${chat.title}」について、どんなことを話しましょうか。`;
+  if (/何|なに|どんな|教え/.test(text)) return `「${chat.title}」のどこから話そうか？`;
+  return `「${chat.title}」の続きだね。今日はどうしよう？`;
 }

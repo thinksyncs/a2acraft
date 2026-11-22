@@ -15,7 +15,7 @@ import { villageDemoActivityState, villageDemoChats } from "../public/village-de
 // Run the actual controller, animation and canvas drawing, without a browser,
 // external services or WebGL. Character ground shadows locate the rendered
 // party; real canvas transforms keep viewport culling meaningful in the fixture.
-function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [], withTeams = false, teamMessaging } = {}) {
+function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [], withTeams = false, teamMessaging, initiative } = {}) {
   const frames = new Map(), storage = new Map(), navigations = [], openedChats = [];
   const documentListeners = new Map();
   let nextFrame = 0, now = 0, view, root;
@@ -90,7 +90,7 @@ function fixture(t, { saved, demo = false, sampleWalk = false, building = false,
   const state=withTeams||sampleWalk?structuredClone(villageDemoActivityState(baseState)):baseState;
   const start=()=>{
     root=new Element();root.id="history-village";body.replaceChildren(root);
-    view=initVillage({getChats:()=>chats,getState:()=>state,demo,teamMessaging,onNavigate:id=>navigations.push(id),
+    view=initVillage({getChats:()=>chats,getState:()=>state,demo,teamMessaging,initiative,onNavigate:id=>navigations.push(id),
       onOpenChat:(id,encounter)=>openedChats.push({id,encounter})});
     if(visible)view.setVisible(true);return view;
   };
@@ -452,4 +452,56 @@ test('a companion speaks to a nearby villager after the encounter closes and the
   assert.equal(notice.hidden, true);
   assert.equal(f.storage.get('chat-ui-village-ambient'), 'off');
   assert.equal(f.root.dataset.encounterStatus, undefined);
+});
+
+
+test('a resident offers a saved assignment in the world and waits for one explicit start',async t=>{
+ const calls=[];let finish;
+ const f=fixture(t,{visible:false,initiative:{blocked:()=>'',start:invite=>{calls.push(invite);return new Promise(resolve=>{finish=resolve;});}}});
+ const task={id:'bridge',title:'古い橋を調べる',updatedAt:1,status:'todo',assignee:{type:'chat',conversationId:'b'},runs:[]};
+ f.state.todos={items:[task]};document.body.dataset.motion='reduced';f.view.setVisible(true);
+ const marker=()=>f.root.querySelectorAll('button').find(node=>node.dataset.villageIdea==='todo:bridge');
+ assert.equal(marker().dataset.speaker,'b');assert.ok(marker().style.left.endsWith('px'));
+ assert.match(marker().getAttribute('aria-label'),/古い橋を調べる/);
+ assert.equal(f.element('village-idea-offer').hidden,true);marker().click();
+ assert.equal(f.element('village-idea-offer').hidden,false);assert.equal(calls.length,0);
+ assert.equal(f.element('village-quest-peek-title').textContent,task.title);
+ assert.match(f.element('village-idea-offer').children[0].textContent,/^b「/);
+ const accept=f.element('village-idea-start');accept.click();accept.click();
+ assert.equal(calls.length,1);assert.equal(calls[0].id,'bridge');assert.equal(calls[0].leaderId,'b');
+ finish();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(accept.hidden,true);assert.equal(f.element('village-idea-dismiss').hidden,true);
+ f.element('village-quest-peek-close').click();
+ assert.equal(marker(),undefined);f.reload();f.view.setVisible(true);assert.equal(marker(),undefined);
+});
+
+test('a stale proposal, dependency or unavailable model cannot start work',t=>{
+ const calls=[];let block='利用枠を確認してください。';
+ const f=fixture(t,{visible:false,initiative:{blocked:()=>block,start:invite=>calls.push(invite)}});
+ const task={id:'bridge',title:'古い橋を調べる',updatedAt:1,status:'todo',assignee:{type:'chat',conversationId:'b'},runs:[]};
+ f.state.todos={items:[{...task,id:'blocked',source:{provider:'castle',dependsOn:['bridge']}},task]};f.view.setVisible(true);
+ const markers=()=>f.root.querySelectorAll('button').filter(node=>node.dataset.villageIdea);
+ assert.equal(markers().length,1);markers()[0].click();
+ const accept=f.element('village-idea-start');assert.ok(accept.disabled);accept.click();assert.deepEqual(calls,[]);
+ block='';f.state.todos={items:[{...task,assignee:{type:'chat',conversationId:'c'}}]};
+ accept.click();assert.ok(accept.disabled);assert.deepEqual(calls,[]);
+ f.element('village-quest-peek-close').click();markers()[0].click();assert.equal(markers()[0].dataset.speaker,'c');
+ f.element('village-idea-dismiss').click();assert.equal(markers().length,0);assert.deepEqual(calls,[]);
+});
+
+test('dismissing one invitation reveals the same resident’s next assignment, including after reload',t=>{
+ const starts=[];
+ const f=fixture(t,{visible:false,initiative:{start:invite=>starts.push(invite)}});
+ const first={id:'well',title:'井戸を直す',status:'todo',updatedAt:2,assignee:{type:'chat',conversationId:'b'},runs:[]};
+ const second={...first,id:'bridge',title:'橋を渡る',updatedAt:1};
+ f.state.todos={items:[first,second]};f.view.setVisible(true);
+ const markers=()=>f.root.querySelectorAll('button').filter(node=>node.dataset.villageIdea);
+ const remaining=()=>markers().map(node=>[node.dataset.speaker,node.dataset.villageIdea]);
+ assert.deepEqual(remaining(),[['b','todo:well']]);
+ markers()[0].click();f.element('village-idea-dismiss').click();
+ assert.deepEqual(remaining(),[['b','todo:bridge']]);
+ f.reload();f.view.setVisible(true);assert.deepEqual(remaining(),[['b','todo:bridge']]);
+ markers()[0].click();assert.equal(f.element('village-quest-peek-title').textContent,second.title);
+ f.element('village-idea-dismiss').click();assert.deepEqual(remaining(),[]);
+ assert.deepEqual(starts,[]);
 });

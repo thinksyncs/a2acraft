@@ -346,3 +346,28 @@ body[data-view="chat"] #workspace-tabs .workspace-add-chat{width:28px;height:28p
  #chat-view #chat-navigation,#chat-actions>summary,#chat-view #chat-connect,#chat-view #chat-layout button{min-height:40px;min-width:40px}
  #chat-view #chat-layout{margin-left:auto}
 }
+
+/* One still landscape behind the whole transcript, including split panes. */
+@media (prefers-reduced-transparency: no-preference) and (prefers-contrast: no-preference) and (forced-colors: none) {
+  body[data-view="chat"] #chat-view,
+  #town-view.with-resident-chat #chat-view {
+    background: linear-gradient(110deg, rgb(15 24 28 / 86%), rgb(15 24 28 / 78%)),
+      #141b20 url("/assets/adventure-landscape.png") center 48% / cover no-repeat;
+  }
+  #chat-view .chat-panel {
+    background: rgb(16 27 30 / 27%);
+  }
+  #chat-view .panel-head,
+  #chat-view .panel-foot {
+    background: rgb(22 39 39 / 75%);
+  }
+  #chat-view.multi-chat .chat-panel.selected .panel-head {
+    background: rgb(48 60 49 / 82%);
+  }
+  #chat-view .msg.user {
+    background: rgb(47 65 52 / 78%);
+  }
+  #chat-view #composer {
+    background: rgb(24 41 41 / 83%);
+  }
+}

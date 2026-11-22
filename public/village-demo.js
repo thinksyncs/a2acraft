@@ -79,5 +79,5 @@ export function villageDemoActivityState(state){
  // Opening the tavern initializes an empty demo runner. Keep the map's sample
  // formation until the user saves members or starts an actual demo quest.
  const savedParty=state.party?.party;
- return {...state,party:state.party?.quest?state.party:{...(state.party||{}),party:savedParty?.members?.length?savedParty:hero,quest:sampleQuest},todos:{...(state.todos||{}),items:[...(state.todos?.items||[]),...sampleItems]}};
+ return {...state,party:state.party?.quest?state.party:{...(state.party||{}),party:savedParty?.members?.length?savedParty:hero,quest:sampleQuest},todos:{...(state.todos||{}),items:[...(state.todos?.items||[]),...sampleItems.filter(sample=>!(state.todos?.items||[]).some(task=>task.id===sample.id))]}};
 }

@@ -109,6 +109,8 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 #village-speech .message-markdown a{color:#24513e}
 #village-speech .message-markdown a:hover{color:#123d2b}
 #village-speech .message-markdown blockquote{color:#43513c;border-color:#748066}
+#village-speech .message-markdown :not(pre)>code{background:#d8ccaa;color:#26392e}
+#village-speech .message-markdown pre{color:#e5eedf}
 #village-speech .message-markdown th{background:#d8ccaa;color:#25372b}
 #village-speech .message-markdown th,#village-speech .message-markdown td{border-color:#8f9b7b}
 #village-detail-content{margin:16px 22px 24px}
@@ -123,7 +125,7 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 .village-speech-actions{position:relative;z-index:1;display:flex;gap:8px;margin-top:14px}
 .history-village .village-speech-actions button{flex:1;padding:8px 10px;background:#e7d7af;color:#2a412f;border-color:#b5b385;box-shadow:none}
 .history-village .village-speech-actions button.primary{background:#395a3b;border-color:#395a3b;color:#fff2ca}
-.village-quest-peek{right:12px;bottom:140px;background:#17372feb;color:#e7eedb;border-color:#c2ba8855;backdrop-filter:blur(12px)}
+.village-quest-peek{right:12px;bottom:140px;color:#e7eedb;border-color:#c2ba8855}
 .village-quest-peek h3{margin:0;padding-right:36px;color:#f1e2b8;font-size:18px;line-height:1.5;overflow-wrap:anywhere}
 #village-quest-peek-close{color:#e6d6a7}
 #village-quest-peek-status{margin:12px 0 4px;color:#ecd297;font-size:16px}
@@ -201,7 +203,7 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 }
 
 /* Party inspection keeps the work site visible while its record stays open. */
-.history-village .village-quest-peek{display:flex;flex-direction:column;right:12px;bottom:12px;width:min(390px,calc(100% - 24px));max-height:calc(100% - 24px);padding:0;overflow:hidden;background:#142e29f5;border-color:#cdb77c88}
+.history-village .village-quest-peek{display:flex;flex-direction:column;right:12px;bottom:12px;width:min(390px,calc(100% - 24px));max-height:calc(100% - 24px);padding:0;overflow:hidden;background:#142e29;border-color:#cdb77c88}
 .village-peek-heading{position:relative;flex:none;padding:14px 16px 12px;border-bottom:1px solid #b9c29b26}
 #village-quest-party-name{margin:0 34px 5px 0;color:#c4cba7;font-size:13px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .village-peek-heading h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:19px;line-height:1.45;font-weight:600}
@@ -264,3 +266,46 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 .village-quest-chat-input{width:100%;min-width:0;height:2.35em;min-height:0;resize:none;padding:.35em .5em;font:inherit;line-height:1.45}
 .village-quest-chat-hint{color:#e9cf96}
 .history-village .village-quest-chat-refresh{justify-self:start;width:auto;min-height:32px;padding:3px 8px;font-size:12px}
+
+@media (prefers-reduced-transparency: no-preference) and (prefers-contrast: no-preference) and (forced-colors: none) {
+  .history-village .village-quest-peek {
+    background: rgb(20 46 41 / 87%);
+    backdrop-filter: blur(3px);
+  }
+  .village-peek-footer {
+    background: rgb(23 52 44 / 65%);
+  }
+  .village-speech {
+    background: rgb(245 233 203 / 92%);
+    backdrop-filter: blur(3px);
+  }
+}
+
+/* A resident's invitation sits just above the speaker's head. */
+.history-village button.village-resident-idea {
+ position:absolute; z-index:2; transform:translate(-50%,-100%);
+ display:grid; place-items:center; width:42px; height:42px; min-height:0;
+ padding:0; border:0; border-radius:50%; background:transparent; box-shadow:none; pointer-events:auto;
+}
+.history-village .village-resident-idea[hidden],.village-idea-offer[hidden] {display:none}
+.village-resident-idea b {
+ display:grid; place-items:center; width:26px; height:28px; box-sizing:border-box;
+ background:#ffde88; color:#392917; border:2px solid #493624; border-radius:55% 55% 48% 48%;
+ font: bold 21px/1 Georgia,serif; box-shadow:0 2px 1px #35412888;
+}
+.village-resident-idea b::after {
+ content:""; position:absolute; left:16px; bottom:5px; width:6px; height:6px;
+ background:#ffde88; border-right:2px solid #493624; border-bottom:2px solid #493624; transform:rotate(45deg);
+}
+.village-resident-idea small {
+ position:absolute; left:calc(100% - 5px); max-width:min(14em,24vw); width:max-content;
+ padding:3px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+ background:#f3e5bc; border:1px solid #695438; border-radius:4px; color:#3a3023;
+ font-family:inherit; font-size:11px; font-weight:600; line-height:1.4; pointer-events:none;
+}
+.village-idea-offer {border-inline-start:3px solid #c6a76a; padding:5px 9px; margin:0 0 8px}
+.village-idea-offer p {margin:0 0 5px; overflow-wrap:anywhere}
+.village-idea-offer button {margin-inline-end:6px}
+@media(max-width:600px) {
+ .village-resident-idea:not(:focus-visible):not(:hover) small {display:none}
+}

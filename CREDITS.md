@@ -20,9 +20,9 @@ The film uses a 45-second excerpt with sample-rate conversion, volume adjustment
 
 ## Visuals / 映像
 
-Town, character, and item visuals come from the project's artwork and are assembled for this concept film. Dialogue, tasks, and project examples are fictional. Service names identify their respective services and do not imply partnership, sponsorship, or endorsement.
+The films use screen captures from the running A2ACraft 0.4.23 frontend. A party walks across the village with its leader’s view open, speaks with a resident and receives a companion’s quest proposal. The posters combine the island map with artwork of the throne room and king from the game. All recorded conversations and quests are from the built-in fictional sample.
 
-`media/prototype-village.png` is a screenshot of the running development frontend, captured in Chromium with fictional sample data. It is separate from the concept film and does not demonstrate live model execution or a packaged native application.
+`media/prototype-village.png` shows the running village frontend with fictional sample data. The Japanese and English films retain the original narration and music mix.
 
 Voice and music credits also appear in the film. Model weights and speech tools are not included in this portfolio. The licenses above apply to the named third-party components; they do not grant a blanket license to the project or film.
 

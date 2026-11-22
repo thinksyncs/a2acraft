@@ -17,18 +17,18 @@ test("the king reports the recorded squad, its actual progress and the interrupt
   assert.equal(record.squadId, undefined);
   assert.match(answer, /地図の隊.*中断中/);
   assert.match(answer, /1／2完了/);
-  assert.match(answer, /再開する工程は「製図」/);
+  assert.match(answer, /再開は「製図」から/);
 
   quest.steps[1].status = "completed";
   quest.status = "completed";
   const complete = roomConversation("castle", quest).answer;
   assert.match(complete, /クエスト完了.*2／2完了/);
-  assert.doesNotMatch(complete, /再開|現在の担当/);
+  assert.doesNotMatch(complete, /再開|取りかかっている/);
 });
 
 test("the king gives a starting point when there is no record; the shop explains how a weapon is used", () => {
-  assert.match(roomConversation("castle", null).answer, /まだ.*依頼を書き/);
-  assert.match(roomConversation("weapon").answer, /「装備する」.*次の送信/);
+  assert.match(roomConversation("castle", null).answer, /まだ.*依頼を書いたら/);
+  assert.match(roomConversation("weapon").answer, /「装備する」.*次のメッセージを送る/);
   assert.equal(roomConversation("building"), null);
   assert.equal(roomConversation("tavern"), null);
 });
