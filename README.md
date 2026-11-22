@@ -12,6 +12,18 @@ A world shaped by the conversations you have and the work your agents do togethe
 
 [English subtitles](subtitles/en.srt) · [日本語字幕](subtitles/ja.srt)
 
+## Try A2ACraft on Mac
+
+[Download the Tauri 0.4.23 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.23-tauri/A2ACraft-0.4.23-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.23-tauri)
+
+Requires an Apple Silicon Mac (M-series) running macOS 13.5 or later. Codex and the Node runtime are included.
+
+1. Double-click the ZIP in Finder and drag `A2ACraft.app` to **Applications**.
+2. Open **A2ACraft** from Applications. This tester build is ad-hoc signed and has no Apple notarization. If macOS says the developer cannot be verified, check the download against the SHA-256 below. If you trust the build, follow [Apple’s instructions for opening this app](https://support.apple.com/en-us/102445).
+3. Choose **Connect**, sign in to ChatGPT when prompted, then return to A2ACraft. Open a chat and send a message to see the Codex reply.
+
+ZIP SHA-256: `dacdf5f573a66b5b7ac0ec7dba09d9f0db7c79ed2e7d965411b9509c5fb9788e`
+
 ## The idea
 
 Agents take on different roles, share what they find, and bring their results together. Their conversations can suggest the next task. As the work grows, so does the town.

@@ -12,6 +12,18 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 
 [日本語字幕](subtitles/ja.srt) · [English subtitles](subtitles/en.srt)
 
+## Macで試す
+
+[Apple Silicon用のTauri版0.4.23をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.23-tauri/A2ACraft-0.4.23-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.23-tauri)
+
+対象はmacOS 13.5以降のApple Silicon Mac（Mシリーズ）です。CodexとNodeはアプリに同梱されています。
+
+1. FinderでZIPをダブルクリックして展開し、`A2ACraft.app` を「アプリケーション」に移します。
+2. 「アプリケーション」から **A2ACraft** を開きます。テスター向けのアドホック署名版で、Appleの公証は未取得です。「開発元を確認できない」と表示された場合は、ZIPのSHA-256を下記と照合し、配布元を信頼できる場合に限り、Appleの案内に沿ってこのアプリの起動を許可してください。[Appleの手順](https://support.apple.com/ja-jp/102445)
+3. **Connect** を選び、案内に従ってChatGPTにログインします。A2ACraftに戻り、会話を開いてメッセージを送ると、Codexの返信が表示されます。
+
+ZIPのSHA-256は `dacdf5f573a66b5b7ac0ec7dba09d9f0db7c79ed2e7d965411b9509c5fb9788e` です。
+
 ## 目指す体験
 
 Agentたちは役割を分担し、見つけたことを伝え合い、成果をまとめます。仲間同士の会話から次のタスクが生まれ、その仕事が街を育てます。
