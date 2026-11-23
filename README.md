@@ -6,24 +6,24 @@
 
 A world shaped by the conversations you have and the work your agents do together. Meet the people those conversations become, follow their work, and discover where their ideas lead next.
 
-[![A2ACraft — watch the gameplay film in English](media/poster-en.jpg)](media/a2acraft-en-45s.mp4)
+[![A2ACraft — watch the gameplay film in English](media/poster-en.jpg)](https://thinksyncs.github.io/a2acraft/en/)
 
-[Watch in English · 45 seconds](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-en-45s.mp4) · [Watch in Japanese](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-ja-45s.mp4)
+[Watch in English · 45 seconds](https://thinksyncs.github.io/a2acraft/en/) · [Watch in Japanese](https://thinksyncs.github.io/a2acraft/)
 
 [English subtitles](subtitles/en.srt) · [日本語字幕](subtitles/ja.srt)
 
 ## Try A2ACraft on Mac
 
-[Download the Tauri 0.4.23 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.23-tauri/A2ACraft-0.4.23-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.23-tauri)
+[Download the Tauri 0.4.24 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.24-tauri/A2ACraft-0.4.24-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)
 
-Requires an Apple Silicon Mac (M-series) running macOS 13.5 or later. Codex and the Node runtime are included.
+The app runs on Apple Silicon (M-series) with macOS 13.5 or later. Some bundled document and voice components require macOS 14 or later. Codex and the Node runtime are included.
 
-1. Double-click the ZIP in Finder and drag `A2ACraft.app` to **Applications**.
+1. Double-click the ZIP in Finder. From the extracted folder, drag `A2ACraft.app` to **Applications**.
 2. Open **A2ACraft** from Applications. This tester build is ad-hoc signed and has no Apple notarization. If macOS says the developer cannot be verified, check the download against the SHA-256 below. If you trust the build, follow [Apple’s instructions for opening this app](https://support.apple.com/en-us/102445).
 3. Choose **Connect**, sign in to ChatGPT when prompted, then return to A2ACraft. Open a chat and send a message to see the Codex reply.
 4. To try file creation, start a new chat, open **＋**, and set the scope to **作業（専用フォルダ内）**. Ask Codex to create `hello.txt` containing `Hello from A2ACraft` and give you its path. Open that file in Finder and check the text.
 
-ZIP SHA-256: `dacdf5f573a66b5b7ac0ec7dba09d9f0db7c79ed2e7d965411b9509c5fb9788e`
+ZIP SHA-256: `94362e5fd0894448b291d8543ee7ca88e2e10f7c464a9c7753393a44ba8ff63b`
 
 ## The idea
 
@@ -50,6 +50,8 @@ The Apple Silicon preview bundles Codex 0.169.0 and provides an independent Chat
 Imported Codex conversations can be opened and prepared for continuation. Connection settings include a separate readiness check that starts no model turn and verifies the effective conversation and file-work permissions.
 
 This preview is for testers. Developer ID signing and Apple notarization are pending. On Apple Silicon, a tester launched the packaged Tauri 0.4.23 app, sent a message, and saw a live Codex reply in the chat window. File work was outside that test. For the Electron edition, native history import and ChatGPT reconnection were verified. See the [Electron verification status](docs/preview-status.md).
+
+In Tauri 0.4.24, ⌘R saves drafts before reloading. The Window menu can recover or diagnose a window, and the app offers to restart when its backend stops unexpectedly.
 
 The Rust/Tauri edition uses the macOS system webview. Each edition has its own saved data.
 

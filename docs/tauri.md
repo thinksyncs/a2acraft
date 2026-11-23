@@ -6,7 +6,7 @@ Tauri 版は、Mac 標準の WebKit に A2ACraft の地図と会話を表示し�
 
 Apple Silicon Mac、macOS 13.5 以降、Xcode Command Line Tools、Rust と Cargo、公式配布の Node.js 22 以降を用意します。アプリにはビルドに使った Node 実行ファイルとライセンスを同梱するため、Mac と同じアーキテクチャの Node と Rust を使います。参照する npm と Rust の依存関係はリポジトリのロックファイルで固定しています。
 
-0.4.23 のビルド確認環境は Rust/Cargo 1.100.0 と Node.js 24.22.3 です。
+0.4.24 のビルド確認環境は Rust/Cargo 1.100.0 と Node.js 24.22.3 です。
 
 ```sh
 npm ci
