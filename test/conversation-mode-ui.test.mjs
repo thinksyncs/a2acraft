@@ -1,4 +1,5 @@
-import {ui} from '../public/interface-language.js';
+import {getLocale, setLocale} from '../public/i18n.js';
+import {chatText} from '../public/i18n-chat.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -13,7 +14,7 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{reso
 function fixture(values={}){
   const elements=new Map(),calls=[],pending=deferred();let context;
   const node=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);};
-  context=vm.createContext({ui, 
+  context=vm.createContext({chatText,
     chats:[{id:'one',status:'idle',messages:[]}],selected:'one',demo:false,serverUnavailable:false,
     drafts:{one:'Do not alter this draft'},pendingSends:new Set(),conversationModeRequests:new Map(),...values,
     $:node,setText:(id,text)=>{node(id).textContent=text;},
@@ -62,4 +63,20 @@ test('a slow save applies to its original conversation after selection changes',
   assert.equal(f.context.selected,'two');assert.equal(f.context.chats[0].workMode,'work');
   assert.equal(f.context.chats[1].workMode,undefined);assert.equal(f.node('#conversation-mode').value,'chat');
   assert.equal(f.context.drafts.two,'Other conversation draft');
+});
+
+test('switching to English updates the scope explanation without saving or changing the draft',async t=>{
+  const old=getLocale();t.after(()=>setLocale(old));
+  const f=fixture(), draft='未送信の下書き　Send exactly as typed';
+  f.context.drafts.one=draft;
+  await setLocale('en');f.context.updateComposer();
+  assert.equal(f.node('#conversation-mode-note').textContent,'Chat mode leaves files unchanged.');
+  const save=f.context.changeConversationMode('work');
+  assert.deepEqual(f.calls,[{route:'conversation-mode',id:'one',mode:'work'}]);
+  f.pending.resolve({id:'one',workMode:'work'});await save;
+  assert.match(f.node('#conversation-mode-note').textContent,/dedicated folder/);
+  await setLocale('ja');f.context.updateComposer();
+  assert.match(f.node('#conversation-mode-note').textContent,/専用フォルダ/);
+  assert.equal(f.context.drafts.one,draft);
+  assert.equal(f.calls.length,1);
 });

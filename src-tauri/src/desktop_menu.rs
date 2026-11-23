@@ -8,12 +8,10 @@ use tauri::{
 };
 use tauri_plugin_dialog::DialogExt;
 
-use crate::{desktop_language::Language, window_diagnostics, Desktop};
+use crate::{language::label, window_diagnostics, Desktop};
 
 struct Controls {
     view: Submenu<Wry>,
-    window_menu: Option<Submenu<Wry>>,
-    custom_items: Vec<(MenuItem<Wry>, &'static str, &'static str)>,
     reading: CheckMenuItem<Wry>,
     focus_chat: MenuItem<Wry>,
     zoom_step: Mutex<i32>,
@@ -21,13 +19,51 @@ struct Controls {
     original_tab_behavior: Mutex<Option<bool>>,
 }
 
+fn title(id: &str) -> Option<&'static str> {
+    Some(match id {
+        "view" => label("表示", "View"),
+        "window" => label("ウィンドウ", "Window"),
+        "saved-reload" => label("画面を再読み込み", "Save and Reload"),
+        "zoom-in" => label("拡大", "Zoom In"),
+        "zoom-out" => label("縮小", "Zoom Out"),
+        "zoom-reset" => label("実際のサイズ", "Actual Size"),
+        "screen-reading" => label("画面の読み取りに対応", "Screen Reader Support"),
+        "focus-chat" => label("会話履歴と入力欄を移動", "Focus Chat or Message Box"),
+        "diagnose-window" => label("表示の診断", "Window Diagnostics"),
+        "recover-window" => label("表示を復帰", "Bring Window into View"),
+        _ => return None,
+    })
+}
+
+pub(crate) fn translate(app: &AppHandle) -> tauri::Result<()> {
+    let Some(controls) = app.try_state::<Controls>() else { return Ok(()); };
+    let mut menus = vec![controls.view.clone()];
+    controls.view.set_text(title("view").unwrap())?;
+    if let Some(MenuItemKind::Submenu(window)) = app.menu().and_then(|menu| menu.get(WINDOW_SUBMENU_ID)) {
+        window.set_text(title("window").unwrap())?;
+        menus.push(window);
+    }
+    for submenu in menus {
+        for item in submenu.items()? {
+            if let Some(title) = title(item.id().as_ref()) {
+                match item {
+                    MenuItemKind::MenuItem(entry) => entry.set_text(title)?,
+                    MenuItemKind::Check(entry) => entry.set_text(title)?,
+                    _ => {}
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let menu = Menu::default(app)?;
-    let language = Language::current(app);
     let mut view = None;
     for item in menu.items()? {
         if let MenuItemKind::Submenu(sub) = item {
             if sub.text()? == "View" {
+                sub.set_text(title("view").unwrap())?;
                 view = Some(sub);
                 break;
             }
@@ -36,68 +72,74 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let view = match view {
         Some(existing) => existing,
         None => {
-            let view = Submenu::new(app, language.text("表示", "View"), true)?;
+            let view = Submenu::new(app, title("view").unwrap(), true)?;
             menu.append(&view)?;
             view
         }
     };
 
-    let mut custom_items = Vec::new();
-    let mut item = |id, ja, en, enabled, shortcut| -> tauri::Result<MenuItem<Wry>> {
-        let control = MenuItem::with_id(app, id, language.text(ja, en), enabled, shortcut)?;
-        custom_items.push((control.clone(), ja, en));
-        Ok(control)
-    };
-    view.prepend(&item("saved-reload", "画面を再読み込み", "Reload Window", true, Some("CmdOrCtrl+R"))?)?;
-    for (id, ja, en, key) in [
-        ("zoom-in", "拡大", "Zoom In", "CmdOrCtrl+Equal"),
-        ("zoom-out", "縮小", "Zoom Out", "CmdOrCtrl+Minus"),
-        ("zoom-reset", "実際のサイズ", "Actual Size", "CmdOrCtrl+0"),
+    view.prepend(&MenuItem::with_id(
+        app,
+        "saved-reload",
+        title("saved-reload").unwrap(),
+        true,
+        Some("CmdOrCtrl+R"),
+    )?)?;
+    for (id, title, key) in [
+        ("zoom-in", title("zoom-in").unwrap(), "CmdOrCtrl+Equal"),
+        ("zoom-out", title("zoom-out").unwrap(), "CmdOrCtrl+Minus"),
+        ("zoom-reset", title("zoom-reset").unwrap(), "CmdOrCtrl+0"),
     ] {
-        view.append(&item(id, ja, en, true, Some(key))?)?;
+        view.append(&MenuItem::with_id(app, id, title, true, Some(key))?)?;
     }
 
-    let reading = CheckMenuItem::with_id(app, "screen-reading",
-        language.text("画面の読み取りに対応", "Screen Reader Support"), false, false, None::<&str>)?;
-    let focus_chat = item("focus-chat", "会話履歴と入力欄を移動",
-        "Switch Between Chat History and Message Input", false, Some("F6"))?;
+    let reading = CheckMenuItem::with_id(
+        app,
+        "screen-reading",
+        title("screen-reading").unwrap(),
+        false,
+        false,
+        None::<&str>,
+    )?;
+    let focus_chat = MenuItem::with_id(
+        app,
+        "focus-chat",
+        title("focus-chat").unwrap(),
+        false,
+        Some("F6"),
+    )?;
     view.append_items(&[&PredefinedMenuItem::separator(app)?, &reading, &focus_chat])?;
-    let window_menu = match menu.get(WINDOW_SUBMENU_ID) {
-        Some(MenuItemKind::Submenu(window)) => {
-            window.prepend(&PredefinedMenuItem::separator(app)?)?;
-            window.prepend(&item("diagnose-window", "表示の診断", "Window Diagnostics", true, None)?)?;
-            window.prepend(&item("recover-window", "表示を復帰", "Restore Window", true, None)?)?;
-            Some(window)
-        }
-        _ => None,
-    };
+    if let Some(MenuItemKind::Submenu(window)) = menu.get(WINDOW_SUBMENU_ID) {
+        window.set_text(title("window").unwrap())?;
+        window.prepend(&PredefinedMenuItem::separator(app)?)?;
+        window.prepend(&MenuItem::with_id(
+            app,
+            "diagnose-window",
+            title("diagnose-window").unwrap(),
+            true,
+            None::<&str>,
+        )?)?;
+        window.prepend(&MenuItem::with_id(
+            app,
+            "recover-window",
+            title("recover-window").unwrap(),
+            true,
+            None::<&str>,
+        )?)?;
+    }
     app.manage(Controls {
-        view, window_menu, custom_items, reading, focus_chat,
+        view,
+        reading,
+        focus_chat,
         zoom_step: Mutex::new(0),
         #[cfg(target_os = "macos")]
         original_tab_behavior: Mutex::default(),
     });
-    apply_language(app)?;
     app.manage(window_diagnostics::History::default());
     Ok(menu)
 }
 
-pub(crate) fn apply_language(app: &AppHandle) -> tauri::Result<()> {
-    let language = Language::current(app);
-    let controls = app.state::<Controls>();
-    controls.view.set_text(language.text("表示", "View"))?;
-    if let Some(window_menu) = &controls.window_menu {
-        window_menu.set_text(language.text("ウィンドウ", "Window"))?;
-    }
-    controls.reading.set_text(language.text("画面の読み取りに対応", "Screen Reader Support"))?;
-    for (item, ja, en) in &controls.custom_items {
-        item.set_text(language.text(ja, en))?;
-    }
-    Ok(())
-}
-
 pub(crate) fn restore_preferences(window: &WebviewWindow) -> Result<(), String> {
-    apply_language(window.app_handle()).map_err(|e| e.to_string())?;
     let state = window.state::<Desktop>();
     let enabled = state.settings.lock().map_err(|e| e.to_string())?["accessibilitySupportEnabled"]
         .as_bool()
@@ -189,7 +231,7 @@ pub(crate) fn handle(app: &AppHandle, event: MenuEvent) {
     };
     if result.is_err() {
         app.dialog()
-            .message(Language::current(app).text("表示設定を変更できませんでした。", "The display setting could not be changed."))
+            .message(label("表示設定を変更できませんでした。", "Could not change the display settings."))
             .title("A2ACraft")
             .show(|_| {});
     }

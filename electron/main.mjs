@@ -7,8 +7,6 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {startPreviewServer} from './preview-server.mjs';
 import {registeredProjectLink} from './project-links.mjs';
-import {nativeMenuTemplate, systemInterfaceLanguage} from './native-menu.mjs';
-import {createDesktopSettings} from './desktop-settings.mjs';
 import {createUiStateStore} from './ui-state-store.mjs';
 import {createCloseCoordinator} from './close-coordinator.mjs';
 import {createMapStateStore} from './map-state.mjs';
@@ -47,16 +45,9 @@ if (smoke) {
   if (!smokePath || !path.isAbsolute(smokePath)) throw Error('Smoke test requires an isolated absolute data directory');
   app.setPath('userData', smokePath);
 }
-let window, backend, previewServer, origin, quitting = false, starting = true;
+let window, backend, previewServer, origin, settings = {}, quitting = false, starting = true, restartRequired = false;
 let relaunchRequested = false;
-const desktopSettings = createDesktopSettings(path.join(app.getPath('userData'), 'desktop-settings.json'));
-let refreshMenu = () => {};
-let systemLanguage;
-function nativeText(japanese, english) {
-  if (!systemLanguage && app.isReady()) systemLanguage = systemInterfaceLanguage(app.getPreferredSystemLanguages());
-  const language = desktopSettings.read().interfaceLanguage ?? systemLanguage ?? 'en';
-  return language === 'ja' ? japanese : english;
-}
+let settingsWriting = Promise.resolve();
 let rendererFlushReady = false, rendererFlushWaiter = null;
 let windowDiagnostics;
 let closingRequest=null;
@@ -92,7 +83,7 @@ function flushRendererDrafts() {
   if (!rendererFlushReady || !window || window.isDestroyed()) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const id = randomBytes(16).toString('hex');
-    const timer = setTimeout(() => finish(Error(nativeText('画面の下書き保存を確認できませんでした。',"Saving the draft could not be confirmed."))), 10000);
+    const timer = setTimeout(() => finish(Error(nativeText('画面の下書き保存を確認できませんでした。', 'The window did not confirm that your drafts were saved.'))), 10000);
     const finish = error => {
       clearTimeout(timer); rendererFlushWaiter = null;
       error ? reject(error) : resolve();
@@ -110,14 +101,14 @@ const coordinatedClose = createCloseCoordinator({
     if (!starting && window && !window.isDestroyed()) {
       await flushWindowState();
     }
-    await desktopSettings.flush();
+    try { await settingsWriting; } catch { await writeSettings(); }
   },
   onFailure: async error => {
     const options = {
-      type: 'warning', title: nativeText('終了前の保存',"Save Before Closing"),
-      message: nativeText('下書き・地図・設定を保存できませんでした。',"Drafts, the map, or settings could not be saved."),
-      detail: String(error?.message || error) + '\n'+nativeText('保存せずに終了すると、未保存の変更は失われます。','Quitting without saving will discard unsaved changes.'),
-      buttons: [nativeText('戻る',"Go Back"), nativeText('保存を再試行',"Try Saving Again"), nativeText('保存せずに終了',"Quit Without Saving")], defaultId: 0, cancelId: 0,
+      type: 'warning', title: nativeText('終了前の保存', 'Save Before Quitting'),
+      message: nativeText('下書き・地図・設定を保存できませんでした。', 'Your drafts, map and settings could not be saved.'),
+      detail: String(error?.message || error) + nativeText('\n保存せずに終了すると、未保存の変更は失われます。', '\nQuitting without saving will discard your latest changes.'),
+      buttons: [nativeText('戻る', 'Go Back'), nativeText('保存を再試行', 'Retry Save'), nativeText('保存せずに終了', 'Quit Without Saving')], defaultId: 0, cancelId: 0,
       noLink: true
     };
     const result = await revealForDialog(window,parent=>parent?dialog.showMessageBox(parent,options):dialog.showMessageBox(options));
@@ -126,7 +117,7 @@ const coordinatedClose = createCloseCoordinator({
   },
   close: async () => {
     quitting = true;
-    await Promise.allSettled([stopBackend(), desktopSettings.idle()]);
+    await Promise.allSettled([stopBackend(), settingsWriting]);
     if(relaunchRequested)relaunchAfterRecovery(app);
     app.exit(process.exitCode || 0);
   }
@@ -149,18 +140,10 @@ const requestReload=createSavedReload({
   resume:resumeRenderer,
   onFailure:async stage=>{
     if(quitting||closingRequest)return;
-    const options={type:'warning',title:nativeText('画面の再読み込み',"Reload Window"),
-      message:stage === 'save'
-        ? nativeText('保存を確認できないため、画面を再読み込みしませんでした。',
-          'The window stayed open because saving could not be confirmed.')
-        : nativeText('下書きと地図は保存しましたが、画面を再読み込みできませんでした。',
-          'Drafts and the map were saved, but the window could not reload.'),
-      detail:stage === 'save'
-        ? nativeText('下書きと地図を保持するため、現在の画面を残しています。保存先の空き容量や画面の応答を確認し、もう一度「画面を再読み込み」を選んでください。',
-          'Your drafts and map are still open. Check available disk space and whether the window responds, then choose Reload Window again.')
-        : nativeText('「ウィンドウ → 表示を復帰」を試してください。改善しない場合は、アプリを終了して開き直してください。',
-          'Choose Window → Restore Window. If that does not help, quit and reopen the app.'),
-      buttons:[nativeText('画面へ戻る',"Return to Window")],defaultId:0,cancelId:0,noLink:true};
+    const options={type:'warning',title:nativeText('画面の再読み込み', 'Reload Window'),
+      message:stage==='save'?nativeText('保存を確認できないため、画面を再読み込みしませんでした。', 'The window is still open because the save did not complete.'):nativeText('下書きと地図は保存しましたが、画面を再読み込みできませんでした。', 'Your drafts and map were saved, but the window could not reload.'),
+      detail:stage==='save'?nativeText('下書きと地図を保持するため、現在の画面を残しています。保存先の空き容量や画面の応答を確認し、もう一度「画面を再読み込み」を選んでください。', 'Check the available disk space and that the window responds, then choose Save and Reload again.'):nativeText('「ウィンドウ → 表示を復帰」を試してください。改善しない場合は、アプリを終了して開き直してください。', 'Choose Window → Bring Window into View. If that does not help, quit and reopen the app.'),
+      buttons:[nativeText('画面へ戻る', 'Back to Window')],defaultId:0,cancelId:0,noLink:true};
     await revealForDialog(window,parent=>parent?dialog.showMessageBox(parent,options):dialog.showMessageBox(options));
   }
 });
@@ -168,15 +151,15 @@ const requestReload=createSavedReload({
 function closeWithSavedDrafts() {
   void requestClose().catch(error => {
     if (window && !window.isDestroyed()) window.webContents.send('ui:close-cancelled');
-    revealForDialog(window,()=>dialog.showErrorBox(nativeText('終了前の保存',"Save Before Closing"),error.message));
+    revealForDialog(window,()=>dialog.showErrorBox(nativeText('終了前の保存', 'Save Before Quitting'),error.message));
   });
 }
 
 const recoverRuntime=createRuntimeRecovery({
   present:async detail=>{
-    const options={type:'error',title:'A2ACraft',message:nativeText('アプリの画面を表示できません。',"The app window could not be displayed."),
-      detail:detail+'\n'+nativeText('保存済みの会話と設定は保持します。再起動して接続し直してください。','Your saved conversations and settings are kept. Restart to reconnect.'),
-      buttons:[nativeText('再起動',"Restart"),nativeText('終了',"Quit")],defaultId:0,cancelId:1,noLink:true};
+    const options={type:'error',title:'A2ACraft',message:nativeText('アプリの画面を表示できません。', 'The app window is unavailable.'),
+      detail:detail+nativeText('\n保存済みの会話と設定は保持します。再起動して接続し直してください。', '\nRestart to reconnect and reopen your saved chats and settings.'),
+      buttons:[nativeText('再起動', 'Restart'),nativeText('終了', 'Quit')],defaultId:0,cancelId:1,noLink:true};
     const parent=window;
     if(revealAppWindow(parent))return (await dialog.showMessageBox(parent,options)).response;
     return (await dialog.showMessageBox(options)).response;
@@ -194,47 +177,94 @@ function reportRuntimeFailure(detail,{rendererLost=false}={}){
   if(quitting)return;
   if(rendererLost){
     rendererFlushReady=false;
-    rendererFlushWaiter?.finish(Error(nativeText('画面との接続が失われました。',"The connection to the window was lost.")));
+    rendererFlushWaiter?.finish(Error(nativeText('画面との接続が失われました。', 'Lost the connection to the window.')));
   }
   void recoverRuntime(detail).catch(()=>{
     relaunchRequested=false;
-    dialog.showErrorBox('A2ACraft',nativeText('終了処理を完了できませんでした。アプリを終了して開き直してください。',"The app could not finish closing. Quit and reopen it."));
+    dialog.showErrorBox('A2ACraft',nativeText('終了処理を完了できませんでした。アプリを終了して開き直してください。', 'Could not finish shutting down. Quit the app and reopen it.'));
   });
 }
 
+let windowLanguage;
+function nativeText(ja, en) {
+  const locale = windowLanguage || settings.uiLanguage || (app.isReady() ? app.getLocale() : 'en');
+  return /^ja(?:-|$)/i.test(locale) ? ja : en;
+}
+function rebuildMenu() {
+  const supportsScreenReading = ['darwin','win32'].includes(process.platform);
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
+    { label: nativeText('編集', 'Edit'), submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    { label: nativeText('表示', 'View'), submenu: [
+      {label:nativeText('画面を再読み込み', 'Save and Reload'),accelerator:'CmdOrCtrl+R',click:()=>{void requestReload().catch(()=>{
+        resumeRenderer();revealForDialog(window,()=>dialog.showErrorBox(nativeText('画面の再読み込み', 'Reload Window'),nativeText('画面を再読み込みできませんでした。現在の画面で保存状態を確認してください。', 'Could not reload the window. Check the save status before trying again.')));
+      });}},
+      { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' },
+      ...(supportsScreenReading?[{type:'separator'},accessibilityMenuItem()]:[])] },
+    { label: nativeText('ウィンドウ', 'Window'), submenu: [
+      {label:nativeText('表示を復帰', 'Bring Window into View'),click:()=>{if(!quitting)revealApp();}},
+      {label:nativeText('表示の診断', 'Window Diagnostics'),click:()=>{void windowDiagnostics.show().catch(()=>dialog.showErrorBox(nativeText('表示の診断', 'Window Diagnostics'),nativeText('診断画面を開けませんでした。', 'Could not open window diagnostics.')));}},
+      {type:'separator'},{ role: 'minimize' }, { role: 'close' }] }
+  ]));
+}
+
+function settingsFile() { return path.join(app.getPath('userData'), 'desktop-settings.json'); }
 async function readSettings() {
-  await desktopSettings.load();
+  try {
+    const value = JSON.parse(await readFile(settingsFile(), 'utf8'));
+    settings = {};
+    for (const key of ['codexPath','workDirectory'])
+      if(typeof value[key]==='string'&&path.isAbsolute(value[key]))settings[key]=value[key];
+    if(value.uiLanguage === 'en' || value.uiLanguage === 'ja') settings.uiLanguage = value.uiLanguage;
+    if(typeof value.accessibilitySupportEnabled==='boolean')settings.accessibilitySupportEnabled=value.accessibilitySupportEnabled;
+  } catch { settings = {}; }
   await uiStore.load();
   // Failed map reads remain protected: map:read retries and reports the error,
   // and map:save cannot replace the unreadable file with default positions.
   await mapStore.load().catch(() => {});
 }
+async function writeSettings({requiresRestart=true}={}) {
+  const file = settingsFile();
+  const snapshot = JSON.stringify(settings, null, 2);
+  settingsWriting = settingsWriting.catch(() => {}).then(async () => {
+    await writeFile(file + '.tmp', snapshot, { mode: 0o600 });
+    await rename(file + '.tmp', file);
+  });
+  await settingsWriting;
+  if(requiresRestart)restartRequired = true;
+  return publicSettings();
+}
 function accessibilityMenuItem(){
-  return {id:'screen-reading',label:nativeText('画面の読み取りに対応',"Screen Reader Support"),type:'checkbox',checked:app.isAccessibilitySupportEnabled(),
+  return {id:'screen-reading',label:nativeText('画面の読み取りに対応', 'Screen Reader Support'),type:'checkbox',checked:app.isAccessibilitySupportEnabled(),
     click:async item=>{
-      const enabled=item.checked;
+      const previous=settings.accessibilitySupportEnabled,enabled=item.checked;
       item.enabled=false;
       try{
         app.setAccessibilitySupportEnabled(enabled);
-        await desktopSettings.update({accessibilitySupportEnabled:enabled},false);
+        settings.accessibilitySupportEnabled=enabled;
+        await writeSettings({requiresRestart:false});
       }catch{
-        dialog.showErrorBox(nativeText('画面の読み取り',"Screen Reader Support"),nativeText('設定を保存できませんでした。次回の起動時に、もう一度この項目を選んでください。',"The setting could not be saved. Try selecting it again after reopening the app."));
+        if(previous===undefined)delete settings.accessibilitySupportEnabled;
+        else settings.accessibilitySupportEnabled=previous;
+        dialog.showErrorBox(nativeText('画面の読み取り', 'Screen Reader Support'),nativeText('設定を保存できませんでした。次回の起動時に、もう一度この項目を選んでください。', 'Could not save this setting. Try selecting it again when you next open the app.'));
       }finally{
         item.checked=app.isAccessibilitySupportEnabled();item.enabled=true;
       }
     }};
 }
+function publicSettings(){return {uiLanguage:settings.uiLanguage || null,codexPath:settings.codexPath||'',workDirectory:settings.workDirectory||'',restartRequired};}
 async function saveWorkDirectory(directory){
   const backendRoot=app.isPackaged?path.join(process.resourcesPath,'backend'):app.getAppPath();
   const {ensureAgentWorkspace}=await import(pathToFileURL(path.join(backendRoot,'codex-workspace-policy.mjs')).href);
   const result=await ensureAgentWorkspace(directory);
-  return desktopSettings.update({workDirectory:result.directory});
+  settings.workDirectory=result.directory;
+  return writeSettings();
 }
 function requireAppFrame(event) {
   if (!isMainFrame(event, window, origin)) throw Error('Untrusted IPC sender');
 }
 async function openTrustedExternal(url) {
-  if (!isTrustedExternal(url)&&!await registeredProjectLink(path.join(app.getPath('userData'),'data'),url)) throw Error(nativeText('このURLはログイン先や保存された成果に登録されていません。',"This link is not a registered sign-in page or saved project link."));
+  if (!isTrustedExternal(url)&&!await registeredProjectLink(path.join(app.getPath('userData'),'data'),url)) throw Error(nativeText('このURLはログイン先や保存された成果に登録されていません。', 'This URL is not a sign-in destination or a saved project link.'));
   await shell.openExternal(url);
 }
 
@@ -250,12 +280,20 @@ function installIpc() {
   });
   handle('window:close', () => window.close());
   handle('app:open-external', openTrustedExternal);
-  handle('settings:read', desktopSettings.read);
-  handle('settings:set-interface-language', async language => {
-    const saved = await desktopSettings.setInterfaceLanguage(language);
-    refreshMenu();
-    return saved;
-  });
+  handle('settings:read', publicSettings);
+  async function updateLanguage(lang, persist) {
+    if (lang !== 'ja' && lang !== 'en') throw Error('Unsupported language');
+    if (persist) {
+      const previous = settings.uiLanguage;
+      settings.uiLanguage = lang;
+      try { await writeSettings({requiresRestart:false}); }
+      catch (error) { settings.uiLanguage = previous; throw error; }
+    }
+    windowLanguage = lang;
+    rebuildMenu();
+  }
+  handle('settings:set-language', lang => updateLanguage(lang, true));
+  handle('settings:use-language', lang => updateLanguage(lang, false));
   handle('ui:read', () => uiStore.read());
   handle('map:read', (value = {}) => mapStore.read(demo || value.demo === true));
   handle('map:save', value => {
@@ -273,27 +311,28 @@ function installIpc() {
   });
   handle('settings:choose-codex', async () => {
     const choice = await dialog.showOpenDialog(window, {
-      title: nativeText('Codex CLI の実行ファイルを選択',"Choose the Codex CLI Executable"),
+      title: nativeText('Codex CLI の実行ファイルを選択', 'Choose the Codex CLI executable'),
       properties: ['openFile'],
-      ...(process.platform === 'win32' ? { filters: [{ name: nativeText('実行ファイル',"Executable"), extensions: ['exe'] }] } : {})
+      ...(process.platform === 'win32' ? { filters: [{ name: nativeText('実行ファイル', 'Executable'), extensions: ['exe'] }] } : {})
     });
-    if (choice.canceled || !choice.filePaths.length) return desktopSettings.read();
+    if (choice.canceled || !choice.filePaths.length) return { codexPath: settings.codexPath || '', restartRequired };
     const chosen = choice.filePaths[0];
-    if (!path.isAbsolute(chosen) || !(await stat(chosen)).isFile()) throw Error(nativeText('実行ファイルを選択してください。',"Choose an executable file."));
+    if (!path.isAbsolute(chosen) || !(await stat(chosen)).isFile()) throw Error(nativeText('実行ファイルを選択してください。', 'Choose an executable file.'));
     // Windows .cmd scripts are not executables accepted by spawn without a shell.
     // Keep shell execution disabled. Choose the native codex.exe instead.
-    if (process.platform === 'win32' && !chosen.toLowerCase().endsWith('.exe')) throw Error(nativeText('Codex のネイティブ codex.exe を選択してください。',"Choose the native Codex executable, codex.exe."));
+    if (process.platform === 'win32' && !chosen.toLowerCase().endsWith('.exe')) throw Error(nativeText('Codex のネイティブ codex.exe を選択してください。', 'Choose the native codex.exe executable.'));
     if (process.platform !== 'win32') await access(chosen, constants.X_OK);
-    return desktopSettings.update({codexPath:chosen});
+    settings.codexPath = chosen;
+    return writeSettings();
   });
-  handle('settings:reset-codex', () => desktopSettings.update({codexPath:undefined}));
+  handle('settings:reset-codex', async () => { delete settings.codexPath; return writeSettings(); });
   handle('settings:choose-workspace', async () => {
     const choice=await dialog.showOpenDialog(window,{
-      title:nativeText('A2ACraftの専用作業フォルダを選択',"Choose an A2ACraft Workspace Folder"),
-      defaultPath:desktopSettings.read().workDirectory||path.join(app.getPath('userData'),'data','workspace'),
+      title:nativeText('A2ACraftの専用作業フォルダを選択', 'Choose a dedicated A2ACraft workspace'),
+      defaultPath:settings.workDirectory||path.join(app.getPath('userData'),'data','workspace'),
       properties:['openDirectory','createDirectory']
     });
-    if(choice.canceled||!choice.filePaths.length)return desktopSettings.read();
+    if(choice.canceled||!choice.filePaths.length)return publicSettings();
     return saveWorkDirectory(choice.filePaths[0]);
   });
   handle('settings:set-workspace', directory => saveWorkDirectory(directory));
@@ -313,7 +352,6 @@ async function startBackend(token) {
   if(quitting)return;
   const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: '0', CHAT_UI_DESKTOP: '1', CHAT_UI_SESSION_TOKEN: token, CHAT_UI_DATA_DIR: dataDir, CHAT_UI_PACKAGE_ROOT: app.getAppPath() };
   delete env.OPENAI_API_KEY; delete env.CODEX_API_KEY;
-  const settings=desktopSettings.read();
   if(settings.workDirectory)env.CHAT_UI_WORKSPACE_DIR=settings.workDirectory;
   else delete env.CHAT_UI_WORKSPACE_DIR;
   // GUI launches on macOS typically have a shorter PATH than a login shell.
@@ -328,9 +366,9 @@ async function startBackend(token) {
   const started = await waitForBackendReady(child);
   origin = started.origin;
   child.on('exit', (code,signal) => {
-    if (!starting)reportRuntimeFailure(nativeText('GUIサーバーとの接続が終了しました。 ',"The connection to the app server closed. ")+processDiagnostic({code,signal}));
+    if (!starting)reportRuntimeFailure(nativeText('GUIサーバーとの接続が終了しました。 ', 'The app server disconnected. ')+processDiagnostic({code,signal}));
   });
-  child.on('error', error=>reportRuntimeFailure(nativeText('GUIサーバーとの接続でエラーが発生しました。 ',"The connection to the app server failed. ")+processDiagnostic({code:error?.code})));
+  child.on('error', error=>reportRuntimeFailure(nativeText('GUIサーバーとの接続でエラーが発生しました。 ', 'The app server connection failed. ')+processDiagnostic({code:error?.code})));
 
 }
 
@@ -375,10 +413,10 @@ function createWindow(desktopSession) {
   });
   window.webContents.on('did-start-loading', () => { rendererFlushReady = false; });
   window.webContents.on('did-fail-load',(_event,code,_description,_url,isMainFrame)=>{
-    if(origin&&isMainFrame&&code!==-3)reportRuntimeFailure(nativeText('画面の読み込みに失敗しました。 ',"The window failed to load. ")+processDiagnostic({code}),{rendererLost:true});
+    if(origin&&isMainFrame&&code!==-3)reportRuntimeFailure(nativeText('画面の読み込みに失敗しました。 ', 'The window could not load. ')+processDiagnostic({code}),{rendererLost:true});
   });
   window.webContents.on('render-process-gone',(_event,details)=>{
-    reportRuntimeFailure(nativeText('画面の処理が終了しました。 ',"The window process exited. ")+processDiagnostic({code:details?.exitCode}),{rendererLost:true});
+    reportRuntimeFailure(nativeText('画面の処理が終了しました。 ', 'The window process exited. ')+processDiagnostic({code:details?.exitCode}),{rendererLost:true});
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (isAppUrl(window.webContents.getURL(), origin)) openTrustedExternal(url).catch(() => {});
@@ -475,7 +513,7 @@ else {
     if(quitting)return;
     installIpc();
     const supportsScreenReading=['darwin','win32'].includes(process.platform);
-    if(supportsScreenReading&&desktopSettings.accessibilitySupportEnabled)app.setAccessibilitySupportEnabled(true);
+    if(supportsScreenReading&&settings.accessibilitySupportEnabled===true)app.setAccessibilitySupportEnabled(true);
     const diagnosticPath=path.join(app.getPath('logs'),'window-diagnostics.json');
     windowDiagnostics=createWindowDiagnostics({text:nativeText,getWindow:()=>window,version:app.getVersion(),logPath:diagnosticPath,
       getWorkArea:target=>screen.getDisplayMatching(target.getBounds()).workArea,
@@ -487,19 +525,7 @@ else {
         // The diagnostic snapshot is already recorded before this recovery.
         return revealAppWindow(parent)?dialog.showMessageBox(parent,options):dialog.showMessageBox(options);
       }});
-    refreshMenu = () => Menu.setApplicationMenu(Menu.buildFromTemplate(nativeMenuTemplate({
-      platform:process.platform, text:nativeText,
-      reload:()=>{ void requestReload().catch(()=>{
-        resumeRenderer();
-        revealForDialog(window,()=>dialog.showErrorBox(nativeText('画面の再読み込み','Reload Window'),
-          nativeText('画面を再読み込みできませんでした。現在の画面で保存状態を確認してください。','The window could not reload. Check that your work is saved.')));
-      }); },
-      recover:revealApp,
-      diagnose:()=>{ void windowDiagnostics.show().catch(()=>dialog.showErrorBox(nativeText('表示の診断','Window Diagnostics'),
-        nativeText('診断画面を開けませんでした。','Window Diagnostics could not open.'))); },
-      reading:supportsScreenReading ? accessibilityMenuItem() : null
-    })));
-    refreshMenu();
+    rebuildMenu();
     app.on('accessibility-support-changed',(_event,enabled)=>{
       const item=Menu.getApplicationMenu()?.getMenuItemById('screen-reading');
       if(item)item.checked=enabled;
@@ -513,6 +539,6 @@ else {
     await loadProductWindow(navigate);
   }).catch(error => {
     process.exitCode=1;
-    reportRuntimeFailure(error.publicDiagnostic||nativeText('アプリを起動できませんでした。 ',"The app could not start. ")+processDiagnostic({code:error?.code}));
+    reportRuntimeFailure(error.publicDiagnostic||nativeText('アプリを起動できませんでした。 ', 'The app could not start. ')+processDiagnostic({code:error?.code}));
   });
 }

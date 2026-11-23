@@ -1,4 +1,4 @@
-use crate::{desktop_language::Language, Desktop};
+use crate::Desktop;
 use std::time::Duration;
 use tauri::{Manager, WebviewWindow};
 use tauri_plugin_dialog::{
@@ -83,7 +83,6 @@ fn resume(window: &WebviewWindow) {
 }
 
 fn run_action(window: &WebviewWindow, action: Action) {
-    let language = Language::current(window.app_handle());
     match action {
         Action::Quit => window.app_handle().exit(0),
         Action::Restart => {
@@ -103,8 +102,8 @@ fn run_action(window: &WebviewWindow, action: Action) {
                 window
                     .app_handle()
                     .dialog()
-                    .message(language.text("保存は完了しましたが、画面を再読み込みできませんでした。", "Your work was saved, but the window could not reload."))
-                    .title(language.text("画面の再読み込み", "Reload Window"))
+                    .message(crate::language::label("保存は完了しましたが、画面を再読み込みできませんでした。", "Your changes were saved, but the window could not reload."))
+                    .title(crate::language::label("画面の再読み込み", "Reload Window"))
                     .show(|_| {});
             }
         }
@@ -112,33 +111,32 @@ fn run_action(window: &WebviewWindow, action: Action) {
 }
 
 fn confirm_failure(window: &WebviewWindow, id: u64, action: Action) {
-    let language = Language::current(window.app_handle());
     reveal(window);
     if action == Action::Reload {
-        window.app_handle().dialog().message(language.text("下書きと地図を保存できませんでした。保存先を確認し、画面の再読み込みを再試行してください。", "Drafts and the map could not be saved. Check the save location, then try Reload Window again."))
-            .title(language.text("画面の再読み込み", "Reload Window")).kind(MessageDialogKind::Warning).parent(window)
+        window.app_handle().dialog().message(crate::language::label("下書きと地図を保存できませんでした。保存先を確認し、画面の再読み込みを再試行してください。", "Your drafts and map could not be saved. Check the storage location, then try reloading."))
+            .title(crate::language::label("画面の再読み込み", "Reload Window")).kind(MessageDialogKind::Warning).parent(window)
             .show({ let window = window.clone(); move |_| choose(&window, id, action, Choice::Cancel) });
         return;
     }
     let discard = if action == Action::Restart {
-        language.text("保存せずに再起動", "Restart Without Saving")
+        crate::language::label("保存せずに再起動", "Restart Without Saving")
     } else {
-        language.text("保存せずに終了", "Quit Without Saving")
+        crate::language::label("保存せずに終了", "Quit Without Saving")
     };
-    let retry = language.text("保存を再試行", "Try Saving Again");
+    let retry = crate::language::label("保存を再試行", "Retry Save");
     window
         .app_handle()
         .dialog()
         .message(
-            language.text("下書きと地図を保存できませんでした。保存せずに続行すると未保存の変更が失われます。", "Drafts and the map could not be saved. Continuing without saving will discard your changes."),
+            crate::language::label("下書きと地図を保存できませんでした。保存せずに続行すると未保存の変更が失われます。", "Your drafts and map could not be saved. Continuing without saving will discard your latest changes."),
         )
-        .title(language.text("終了前の保存", "Save Before Closing"))
+        .title(crate::language::label("終了前の保存", "Save Before Quitting"))
         .kind(MessageDialogKind::Warning)
         .parent(window)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
             retry.into(),
             discard.into(),
-            language.text("戻る", "Go Back").into(),
+            crate::language::label("戻る", "Go Back").into(),
         ))
         .show_with_result({
             let window = window.clone();
@@ -284,8 +282,6 @@ pub(crate) fn backend_lost(window: WebviewWindow) {
 }
 
 fn present_pending_recovery(window: &WebviewWindow) {
-    let language = Language::current(window.app_handle());
-    let restart_label = language.text("再起動", "Restart");
     let state = window.state::<Desktop>();
     let mut close = state.close.lock().unwrap_or_else(|e| e.into_inner());
     if close.recovery != Recovery::Pending || close.phase != Phase::Idle {
@@ -295,16 +291,16 @@ fn present_pending_recovery(window: &WebviewWindow) {
     close.recovery = Recovery::Notified;
     drop(close);
     reveal(window);
-    window.app_handle().dialog().message(language.text("アプリの接続が終了しました。再起動すると保存済みの会話を開けます。中断した作業は自動送信されません。", "The app disconnected. Restart to reopen your saved conversations. Interrupted work will not be sent automatically."))
-        .title(language.text("A2ACraft の再接続", "Reconnect A2ACraft")).kind(MessageDialogKind::Error).parent(window)
-        .buttons(MessageDialogButtons::OkCancelCustom(restart_label.into(), language.text("終了", "Quit").into()))
+    window.app_handle().dialog().message(crate::language::label("アプリの接続が終了しました。再起動すると保存済みの会話を開けます。中断した作業は自動送信されません。", "The app lost its connection. Restart to reopen your saved chats. Interrupted work will stay paused."))
+        .title(crate::language::label("A2ACraft の再接続", "Reconnect A2ACraft")).kind(MessageDialogKind::Error).parent(window)
+        .buttons(MessageDialogButtons::OkCancelCustom(crate::language::label("再起動", "Restart").into(), crate::language::label("終了", "Quit").into()))
         .show_with_result({ let window = window.clone(); move |response| {
             let state = window.state::<Desktop>();
             let mut close = state.close.lock().unwrap_or_else(|e| e.into_inner());
             if close.phase != Phase::Recovering { return; }
             close.phase = Phase::Idle;
             drop(close);
-            let restart = matches!(response, MessageDialogResult::Custom(s) if s == restart_label);
+            let restart = matches!(response, MessageDialogResult::Custom(s) if s == crate::language::label("再起動", "Restart"));
             request(&window, if restart { Action::Restart } else { Action::Quit });
         }});
 }

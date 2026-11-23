@@ -1,4 +1,5 @@
-import {ui} from '../public/interface-language.js';
+import {chatText, chatError, messageCount} from '../public/i18n-chat.js';
+import {getLocale, setLocale} from '../public/i18n.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -40,7 +41,7 @@ function fixture(){
   document.createElement=()=>new Element();
   const element=new Element(),list=element.querySelector('.messages');
   const panel={element,messages:new Map()};
-  const context=vm.createContext({ui, document,panels:new Map([['imported',panel]]),
+  const context=vm.createContext({chatText, getLocale, chatError, messageCount, document,panels:new Map([['imported',panel]]),
     selected:'imported',demo:false,subagentSample:false,activeEncounter:null,
     active:chat=>['starting','running','stopping'].includes(chat.status),
     statusLabels:{failed:'エラー',completed:'完了'},
@@ -108,4 +109,26 @@ test('resident chat shows visible text in order and restores the original transc
   assert.equal(body('mixed'),original[0].text);
   assert.equal(body('internal'),wrapper);
   assert.deepEqual(chat.messages,original);
+});
+
+test('switching language updates the existing pane and preserves the title, chat text and reading position', async t => {
+  const saved=getLocale();t.after(()=>setLocale(saved));
+  const f=fixture();
+  const chat={id:'imported',title:'会話',status:'completed',messages:[
+    {id:'user',role:'user',text:'会話'},
+    {id:'reply',role:'assistant',text:'ファイル作業'}
+  ]};
+  const original=structuredClone(chat);
+  await setLocale('en');
+  f.context.updatePanel(chat,0);
+  assert.equal(f.element.querySelector('.panel-index').textContent,'Chat 1');
+  assert.equal(f.list.attributes.get('aria-label'),'Conversation history for 会話');
+  assert.equal(f.element.querySelector('.panel-title').textContent,'会話');
+  assert.equal(f.panel.messages.get('reply').querySelector('.msg-text').textContent,'ファイル作業');
+  assert.equal(f.panel.messages.get('user').querySelector('.msg-text').textContent,'会話');
+  await setLocale('ja');
+  f.context.updatePanel(chat,0);
+  assert.equal(f.list.attributes.get('aria-label'),'会話の会話履歴');
+  assert.deepEqual(chat,original);
+  assert.equal(f.list.scrollTop,1200);
 });
