@@ -20,6 +20,7 @@ jobs:
           node-version: '24.22.3'
           package-manager-cache: false
       - run: npm ci
+      - run: node node_modules/electron/install.js
       - run: npm test
       - run: npm run prepare:distribution
       - run: npm run dist:mac:arm64
