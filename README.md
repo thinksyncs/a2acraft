@@ -16,16 +16,16 @@ A world shaped by the conversations you have and the work your agents do togethe
 
 Starting with 0.4.25, choose **English** or **日本語** on the Connect screen or under **Settings → Language**. Read the [English first-launch guide](docs/mac-first-start.en.md) for sign-in and the file-creation walkthrough.
 
-[Download the Tauri 0.4.24 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.24-tauri/A2ACraft-0.4.24-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)
+[Download the Tauri 0.4.25 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.25-tauri/A2ACraft-0.4.25-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.25-tauri)
 
 The app runs on Apple Silicon (M-series) with macOS 13.5 or later. Some bundled document and voice components require macOS 14 or later. Codex and the Node runtime are included.
 
 1. Double-click the ZIP in Finder. From the extracted folder, drag `A2ACraft.app` to **Applications**.
 2. Open **A2ACraft** from Applications. This tester build is ad-hoc signed and has no Apple notarization. If macOS says the developer cannot be verified, check the download against the SHA-256 below. If you trust the build, follow [Apple’s instructions for opening this app](https://support.apple.com/en-us/102445).
 3. Choose **Connect**, sign in to ChatGPT when prompted, then return to A2ACraft. Open a chat and send a message to see the Codex reply.
-4. To try file creation, start a new chat, open **＋**, and set the scope to **作業（専用フォルダ内）**. Ask Codex to create `hello.txt` containing `Hello from A2ACraft` and give you its path. Open that file in Finder and check the text.
+4. To try file creation, start a new chat, open **＋**, and choose **Work scope → Work (dedicated folder)**. Ask Codex to create `hello.txt` containing `Hello from A2ACraft` and give you its path. Open that file in Finder and check the text.
 
-ZIP SHA-256: `94362e5fd0894448b291d8543ee7ca88e2e10f7c464a9c7753393a44ba8ff63b`
+ZIP SHA-256: `fc5b4a27a7baf7810caf534fc8aca0c7ce23e0f1e703b7c13be8f1e1cd4ea2f4`
 
 ## The idea
 
