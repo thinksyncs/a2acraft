@@ -21,6 +21,7 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 1. FinderでZIPをダブルクリックして展開し、`A2ACraft.app` を「アプリケーション」に移します。
 2. 「アプリケーション」から **A2ACraft** を開きます。テスター向けのアドホック署名版で、Appleの公証は未取得です。「開発元を確認できない」と表示された場合は、ZIPのSHA-256を下記と照合し、配布元を信頼できる場合に限り、Appleの案内に沿ってこのアプリの起動を許可してください。[Appleの手順](https://support.apple.com/ja-jp/102445)
 3. **Connect** を選び、案内に従ってChatGPTにログインします。A2ACraftに戻り、会話を開いてメッセージを送ると、Codexの返信が表示されます。
+4. ファイル作成を試すには、新しい会話で入力欄の **＋** を開き、実行範囲を **作業（専用フォルダ内）** にします。「`hello.txt` に `Hello from A2ACraft` と書いて、保存場所を教えて」と送ります。Finderでそのファイルを開き、本文を確認します。
 
 ZIPのSHA-256は `dacdf5f573a66b5b7ac0ec7dba09d9f0db7c79ed2e7d965411b9509c5fb9788e` です。
 
@@ -50,20 +51,25 @@ Apple Silicon向けにCodex 0.169.0を同梱し、アプリ専用のChatGPTロ�
 
 現在はテスター向けの確認版です。Developer ID署名とAppleの公証は未取得です。Apple Silicon MacでTauri版0.4.23を起動し、会話画面から送ったメッセージに実際のCodexが返信したことをテスターが確認しました。ファイル作業は今回の確認対象外です。Electron版では履歴の取り込みとChatGPTへの再接続を確認しています。[Electron版の検証状況](docs/preview-status.md)
 
-Rust/Tauri版はMac標準のWebKitで地図と会話を表示します。地図・チャット・Codex接続の処理はElectron版と共通で、保存先はそれぞれ独立しています。Apple Silicon Macで `npm ci`、`npm run tauri:build` の順に実行するとTauri版を作れます。
+Rust/Tauri版はMac標準のWebKitで地図と会話を表示します。保存先はそれぞれの版で独立しています。
+
+## A2ACraftを開発する
+
+両版の開発・配布元は [thinksyncs/a2acraft](https://github.com/thinksyncs/a2acraft) です。開発には `main` を使い、公開版を再現する場合は対応するリリースタグを使います。地図とチャットの共通画面は `public/`、共通のCodexバックエンドはリポジトリ直下、デスクトップ固有の実装は `src-tauri/` と `electron/` にあります。
+
+```sh
+git clone https://github.com/thinksyncs/a2acraft.git
+cd a2acraft
+npm ci
+npm test
+```
+
+Apple Silicon MacとNode.js 22以降で、Tauri版は `npm run tauri:build`、Electron版は `npm run dist:mac:arm64` でビルドします。Tauri版にはRust、Cargo、Xcode Command Line Toolsも必要です。
 
 - [Rust/Tauri版をビルドする](docs/tauri.md)
 - [Electron版をビルドする](docs/electron.md)
 - [初回起動と確認手順](docs/mac-first-start.md)
 - [同梱ソフトウェアの通知](NOTICE.md)
-
-```sh
-npm ci
-npm test
-npm run dist:mac:arm64
-```
-
-Apple Silicon MacとNode.js 22以降を使用します。テスト用のアドホック署名付きアプリ・ZIP・DMGを生成します。APIキーや開発者証明書は含みません。
 
 ## 最初のクエストを一緒に考える
 
