@@ -316,4 +316,14 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 @media (max-width:440px){
   html:lang(en) .village-header-actions{flex-direction:column}
   html:lang(en) .village-statistics{gap:7px}
+  html:lang(en) .history-village,
+  html:lang(en) .history-village:has(#village-walk-sample){
+    --village-legend-top:156px;
+    --village-map-access-top:calc(var(--village-legend-top) + 44px);
+  }
+  html:lang(en) .village-preview-note{right:60px;max-width:none}
+  html:lang(en) .history-village .world-3d-inset,
+  html:lang(en) .village-leader-toggle{top:var(--village-map-access-top)}
+  html:lang(en) .history-village .village-leader-toggle{font-size:14px;padding-inline:8px}
+  html:lang(en) .village-camera-controls #village-fit{width:auto;font-size:12px}
 }
