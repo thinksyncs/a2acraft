@@ -38,7 +38,21 @@ test('an accepted sample quest keeps its language on resume and preserves player
   assert.match(prompts.at(-1), /利用者の成果/);
 
   await setLocale('ja');
-  assert.equal(partyPrompt(saved, saved.steps[0]).split('\n\n')[1], 'Your role: 私の役割');
+  const checkpoint = structuredClone(saved);
+  checkpoint.status = 'paused';
+  checkpoint.steps.at(-1).status = 'pending';
+  checkpoint.steps.at(-1).output = '';
+  const resumedPrompts = [];
+  const resumed = await new PartyRunner({getConversations:() => chats,
+    read:async () => ({...runner.public(), quest:checkpoint}),
+    execute:async ({prompt}) => {resumedPrompts.push(prompt); return {output:'確認済み'};},
+  }).load();
+  await resumed.resume();
+  await resumed.task;
+  assert.equal(resumed.public().quest.status, 'completed');
+  assert.equal(resumedPrompts.length, 1);
+  assert.match(resumedPrompts[0], /Your role: Leader’s final report/);
+  assert.match(resumedPrompts[0], /利用者の依頼文/);
   assert.equal(saved.party.members[0].role, '私の役割');
   assert.equal(saved.text, text);
   const legacy = {...saved};
