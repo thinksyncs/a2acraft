@@ -2,14 +2,14 @@
 
 [English](mac-first-start.en.md)
 
-[A2ACraft の公式リリース](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)で配布している Mac 用 ZIP は **Tauri 版 0.4.24** です。地図と会話の操作は Electron 版と共通です。保存先は版ごとに異なり、過去の会話や下書きを引き継ぐため、保存フォルダの名前には旧名の `chatui` や `chat-ui` が残っています。
+[A2ACraft の公式リリース](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.25-tauri)で配布している Mac 用 ZIP は **Tauri 版 0.4.25** です。地図と会話の操作は Electron 版と共通です。保存先は版ごとに異なり、過去の会話や下書きを引き継ぐため、保存フォルダの名前には旧名の `chatui` や `chat-ui` が残っています。
 
 0.4.25以降は、初回のConnect画面か「設定 → 言語」で **English** と **日本語** を選べます。選択は次回の起動にも引き継がれます。会話や下書き、取り込んだ履歴は元の言語で表示します。
 
 ## アプリを入れる
 
 1. Appleメニューの「このMacについて」で、お使いのMacを確認します。今回の確認版はApple Mシリーズの `arm64` が対象です。Intel Macは文書取り込み用部品が未対応のため、配布対象に含めません。
-2. リリースに添付されている `A2ACraft-0.4.24-Tauri-mac-arm64.zip` をダウンロードします。Finder で ZIP をダブルクリックし、展開された `A2ACraft.app` を「アプリケーション」へドラッグします。
+2. リリースに添付されている `A2ACraft-0.4.25-Tauri-mac-arm64.zip` をダウンロードします。Finder で ZIP をダブルクリックし、展開された `A2ACraft.app` を「アプリケーション」へドラッグします。
 3. コピーしたアプリを開きます。利用する側でNode.jsやHomebrewを用意する必要はありません。
 
 開発者署名・公証前のアプリについてmacOSが警告する場合があります。配布元と内容を確認できた確認用ビルドに限り、macOSの「システム設定 → プライバシーとセキュリティ」に表示される個別の起動操作を使います。通常配布に進む前に、配布者が署名・公証を済ませる必要があります。
