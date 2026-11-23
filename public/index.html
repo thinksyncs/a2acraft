@@ -36,24 +36,50 @@
 <link rel="stylesheet" href="/resident-conversation.css">
 <link rel="stylesheet" href="/refined-chat.css">
 <link rel="stylesheet" href="/message-markdown.css">
+<link rel="stylesheet" href="/connect-screen.css">
+<link rel="stylesheet" href="/chat-surface.css">
 </head>
 <body data-motion="full">
 <section id="connect-screen" aria-labelledby="connect-title">
   <div class="window-controls connect-window-controls" aria-label="ウィンドウ操作" data-i18n-aria-label="shell.window.controls"><button data-window-action="minimize" aria-label="最小化" data-i18n-aria-label="shell.window.minimize">−</button><button data-window-action="maximize" aria-label="最大化" data-i18n-aria-label="shell.window.maximize">□</button><button data-window-action="close" aria-label="閉じる" data-i18n-aria-label="shell.close">×</button></div>
-  <div class="connect-card">
-    <div class="setting-row"><label for="connect-language" data-i18n="shell.language">言語</label> <select id="connect-language" data-ui-language><option value="ja" lang="ja">日本語</option><option value="en" lang="en">English</option></select><span id="connect-language-status" role="status"></span></div>
-    <span class="connect-mark" aria-hidden="true">✳</span>
-    <div class="eyebrow">A2ACRAFT · TOPPY</div>
-    <h1 id="connect-title">Connect</h1>
-    <p><!--i18n:shell.connect.intro-->AIとの会話・作業・成果を、街として見渡す。<br><small data-i18n="shell.connect.preview">Research Preview · 開発中</small></p>
-    <div id="connect-practice-badge" class="practice-banner" hidden><strong data-i18n="shell.practice.town">練習用の街</strong><span><!--i18n:shell.practice.separate-->通常の街とは別のデータを使います。<br><!--i18n:shell.practice.allowance-->AIの処理には実際のChatGPT利用枠を使います。</span></div>
-    <button id="start-connect" class="primary" disabled><span id="connect-spinner" class="pane-spinner" aria-hidden="true" hidden></span><span id="start-connect-label">Connect</span></button>
-    <p id="connect-status" role="status" aria-live="polite" hidden></p>
-    <p id="connect-error" role="alert" hidden></p>
-    <a id="connect-login-link" class="login-link" target="_blank" rel="noopener noreferrer" hidden><!--i18n:shell.connect.browserLogin-->ブラウザでChatGPTにログイン →</a>
-    <button id="open-offline" type="button" class="outline connect-history" disabled><!--i18n:shell.connect.offline-->接続せずに開く</button>
-    <button type="button" class="outline connect-history" data-history-open aria-haspopup="dialog" aria-controls="history-dialog" data-i18n="shell.history.openSaved">保存した履歴を開く</button>
-    <button id="connect-settings" type="button" class="outline connect-history"><!--i18n:shell.connect.openSettings-->接続設定を開く</button>
+  <div class="entry-shell">
+    <div class="entry-landscape" aria-hidden="true"></div>
+    <header class="entry-bar">
+      <div class="entry-maker"><span class="entry-sigil" aria-hidden="true"></span>Toppy</div>
+      <div class="entry-language">
+        <label class="sr-only" for="connect-language" data-i18n="shell.language">言語</label>
+        <div class="entry-language-control">
+          <select id="connect-language" data-ui-language><option value="ja" lang="ja">日本語</option><option value="en" lang="en">English</option></select>
+        </div>
+        <span id="connect-language-status" role="status"></span>
+      </div>
+    </header>
+    <div class="entry-content">
+      <div class="entry-intro">
+        <h1 id="connect-title" lang="en">A2ACraft</h1>
+        <p data-i18n="shell.connect.intro">AIとの会話・作業・成果を、街として見渡す。</p>
+      </div>
+      <div id="connect-practice-badge" class="entry-practice" hidden>
+        <strong data-i18n="shell.practice.town">練習用の街</strong>
+        <span><!--i18n:shell.practice.separate-->通常の街とは別のデータを使います。<br><!--i18n:shell.practice.allowance-->AIの処理には実際のChatGPT利用枠を使います。</span>
+      </div>
+      <div class="entry-actions">
+        <button id="start-connect" type="button" disabled><span id="connect-spinner" class="pane-spinner" aria-hidden="true" hidden></span><span id="start-connect-label">Connect</span><span class="entry-arrow" aria-hidden="true">→</span></button>
+        <button id="open-offline" type="button" class="entry-offline" disabled data-i18n="shell.connect.offline">接続せずに開く</button>
+      </div>
+      <div class="entry-feedback">
+        <p id="connect-status" role="status" aria-live="polite" hidden></p>
+        <p id="connect-error" role="alert" hidden></p>
+        <a id="connect-login-link" class="login-link" target="_blank" rel="noopener noreferrer" hidden data-i18n="shell.connect.browserLogin">ブラウザでChatGPTにログイン →</a>
+      </div>
+    </div>
+    <div class="entry-footer">
+      <div class="entry-tools">
+        <button type="button" data-history-open aria-haspopup="dialog" aria-controls="history-dialog" data-i18n="shell.history.openSaved">保存した履歴を開く</button>
+        <button id="connect-settings" type="button" data-i18n="shell.connect.openSettings">接続設定を開く</button>
+      </div>
+      <small class="entry-edition" data-i18n="shell.connect.preview">Research Preview · 開発中</small>
+    </div>
   </div>
 </section>
 <div id="workspace" class="app" hidden inert>
