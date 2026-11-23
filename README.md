@@ -16,7 +16,7 @@ A world shaped by the conversations you have and the work your agents do togethe
 
 Starting with 0.4.25, choose **English** or **日本語** on the Connect screen or under **Settings → Language**. Read the [English first-launch guide](docs/mac-first-start.en.md) for sign-in and the file-creation walkthrough.
 
-[Download the Tauri 0.4.25 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.25-tauri/A2ACraft-0.4.25-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.25-tauri)
+[Download the Tauri 0.4.26 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.26-tauri/A2ACraft-0.4.26-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.26-tauri)
 
 The app runs on Apple Silicon (M-series) with macOS 13.5 or later. Some bundled document and voice components require macOS 14 or later. Codex and the Node runtime are included.
 
@@ -25,7 +25,7 @@ The app runs on Apple Silicon (M-series) with macOS 13.5 or later. Some bundled 
 3. Choose **Connect**, sign in to ChatGPT when prompted, then return to A2ACraft. Open a chat and send a message to see the Codex reply.
 4. To try file creation, start a new chat, open **＋**, and choose **Work scope → Work (dedicated folder)**. Ask Codex to create `hello.txt` containing `Hello from A2ACraft` and give you its path. Open that file in Finder and check the text.
 
-ZIP SHA-256: `fc5b4a27a7baf7810caf534fc8aca0c7ce23e0f1e703b7c13be8f1e1cd4ea2f4`
+ZIP SHA-256: `80d48e7a718106a28f59cc2a406eae25c2ceea946dbc2308de77f8b036853c79`
 
 ## The idea
 
