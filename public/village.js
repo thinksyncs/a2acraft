@@ -44,7 +44,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let demoOverrides=[],demoRevision=0;
  try{const stored=JSON.parse(mapStorage.getItem(DEMO_KEY)||'null');if(demo&&Array.isArray(stored?.overrides)){demoOverrides=stored.overrides;demoRevision=Number.isSafeInteger(stored.revision)?stored.revision:0;}}catch{}
  const heading=make('header',undefined,'village-heading'),headingCopy=make('div');
- const title=make('h2','Village');title.lang='en';title.id='village-title';title.tabIndex=-1;
+ const title=make('h2',worldBinding('村'));title.id='village-title';title.tabIndex=-1;
  const intro=make('p',worldBinding('会話が村人に。ソフトづくりが建物に。'),'village-intro');headingCopy.append(title,intro);
  const headerActions=make('div',undefined,'village-header-actions');
  const find=iconButton(button('village-find',undefined,()=>{closeQuestPeek(false);directory.open=true;questDrawer.hidden=true;search.focus();}), 'find','村人を探す');find.setAttribute('aria-expanded','false');
@@ -53,6 +53,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const statistics=make('div',undefined,'village-statistics');setWorldLabel(statistics,'村の成長','aria-label');
  const stat=(id,label)=>{const row=make('div'),value=make('strong','0');value.id=id;row.append(value,make('span',label));statistics.append(row);return value;};
  const population=stat('village-population',worldBinding('人')),projectCount=stat('village-project-count',worldBinding('棟')),finished=stat('village-completed-count',worldBinding('完成'));
+ headingCopy.append(statistics);
  const previewNote=make('p',undefined,'village-preview-note');previewNote.id='village-preview-note';previewNote.hidden=!demo;
  if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',worldBinding(sample?'サンプル':'自分の村')));if(!sample){const link=make('a',worldBinding('サンプルの村へ →'));link.href='/?demo=1&village=sample';previewNote.append(link);}const back=make('a',worldBinding('自分の村に戻る'));back.id='village-preview-return';back.href='/';previewNote.append(back);}
  const mapSection=make('section',undefined,'village-map-section');setWorldLabel(mapSection,'村の風景','aria-label');
@@ -150,7 +151,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  for(const place of VILLAGE_PLACES){const guide=button('village-travel-'+place.id,place.shortName,()=>travelTo(place.id),'village-waypoint');guide.dataset.destination=place.id;setWorldLabel(guide,place.shortLabel);guide.setAttribute('aria-label',worldText("{name}へ向かう",{name:place.name}));wayfinding.append(guide);}
  const journey=make('p',undefined,'village-journey');journey.id='village-journey';journey.setAttribute('role','status');journey.hidden=true;
  const neighborhoodContext=createVillageContext({onTalk:id=>openSpeech(id)});
- root.replaceChildren(mapSection,heading,statistics,previewNote,services,wayfinding,journey,directory,questDrawer,questPeek,neighborhoodContext.element,note);
+ root.replaceChildren(mapSection,heading,previewNote,services,wayfinding,journey,directory,questDrawer,questPeek,neighborhoodContext.element,note);
 
  const detail=make('dialog',undefined,'village-detail');detail.id='village-detail';detail.setAttribute('aria-labelledby','village-detail-title');
  const detailHeader=make('div',undefined,'village-detail-header'),detailTitle=make('h2');detailTitle.id='village-detail-title';

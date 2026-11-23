@@ -1,0 +1,28 @@
+name: Record the Japanese village tour
+on:
+  push:
+    branches: [feats/record-japanese-ui]
+permissions:
+  contents: read
+jobs:
+  film:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GIT_SSH_COMMAND: /bin/false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install the encoder and Japanese subtitle font
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          fc-match 'Noto Sans CJK JP'
+      - run: node scripts/capture-bilingual-tour.mjs "$RUNNER_TEMP/film" ja
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: japanese-gameplay-film
+          path: ${{ runner.temp }}/film
+          retention-days: 3

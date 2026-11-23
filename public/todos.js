@@ -56,6 +56,7 @@ export function initTodos({api,demo,storeKey,getState,getChats,getParty,getMedia
   const nextHistory=JSON.stringify([getLocale(),selected,(detail||value)?.runs]);if(!dirty&&nextHistory!==historyKey){historyKey=nextHistory;history(detail||value);}
  }
  async function request(route,body){
+  if(route==='todos/start')body={...body,locale:getLocale()};
   if(!demo)return api(route,body);
   if(route==='todos/save'){if(!body.title)throw Error(questText('タイトルを入力してください。'));let task=demoValue.items.find(task=>task.id===body.id);if(!task){task={id:crypto.randomUUID(),status:'todo',runs:[],createdAt:Date.now()};demoValue.items.push(task);}Object.assign(task,body,{id:task.id,updatedAt:Date.now()});persistDemo();return structuredClone(task);}
   const task=demoValue.items.find(task=>task.id===body.id);if(!task)throw Error(questText('TODOが見つかりません。'));
@@ -63,7 +64,7 @@ export function initTodos({api,demo,storeKey,getState,getChats,getParty,getMedia
   if(route==='todos/reopen'){task.status='todo';task.updatedAt=Date.now();persistDemo();return structuredClone(task);}
   if(route==='todos/start'){
    if(task.assignee.type==='manual'){task.status='doing';task.updatedAt=Date.now();persistDemo();return structuredClone(task);}
-   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error(questText('現在のクエストを完了または終了してください。'));const runId=crypto.randomUUID(),{runs,...snapshot}=task;task.runs.push({id:runId,createdAt:Date.now(),status:'running',snapshot,steps:[],output:'',error:null});task.status='doing';task.updatedAt=Date.now();persistDemo();try{await onDemoStart({text:['TODO: '+task.title,task.description,questText('達成条件:\n')+task.criteria].join('\n\n'),model:body.model,effort:body.effort,partyOverride:body.partyOverride,soloId:task.assignee.type==='chat'?task.assignee.conversationId:null,link:{todoId:task.id,runId}});}catch(error){task.runs.at(-1).status='cancelled';task.runs.at(-1).error=error.message;persistDemo();throw error;}return structuredClone(task);
+   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error(questText('現在のクエストを完了または終了してください。'));const runId=crypto.randomUUID(),{runs,...snapshot}=task;task.runs.push({id:runId,createdAt:Date.now(),status:'running',snapshot,steps:[],output:'',error:null});task.status='doing';task.updatedAt=Date.now();persistDemo();try{await onDemoStart({text:['TODO: '+task.title,task.description,questText('達成条件:\n')+task.criteria].join('\n\n'),model:body.model,effort:body.effort,locale:body.locale,partyOverride:body.partyOverride,soloId:task.assignee.type==='chat'?task.assignee.conversationId:null,link:{todoId:task.id,runId}});}catch(error){task.runs.at(-1).status='cancelled';task.runs.at(-1).error=error.message;persistDemo();throw error;}return structuredClone(task);
   }
   if(route==='todos/action'){await onDemoAction(body.action,body.retry);return structuredClone(task);}
  }
