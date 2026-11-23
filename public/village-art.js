@@ -1,4 +1,4 @@
-import {worldText} from './i18n-world.js';
+import {ui} from './interface-language.js';
 import {drawMapBuilding,drawMapPerson,drawMapScenery,drawIntoTerrainBitmap} from './world-map-models.js';
 import {projectModel,facilityModel,cottageModel,characterPose} from './world-model-descriptors.js';
 import {VILLAGE_PLACES,VILLAGE_WORLD} from './village-world.js';
@@ -395,7 +395,7 @@ function identityZoom(ctx){
 function identityBadge(ctx,x,y,label,{helper=false,color='#c5cfb1',compact=false}={}){
  const zoom=identityZoom(ctx);ctx.save();ctx.translate(x,y);ctx.scale(1/zoom,1/zoom);
  ctx.font=helper?'italic 11px sans-serif':'bold 11px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
- let shown=compact?(helper?worldText('補'):worldText('主')):label;
+ let shown=compact?(helper?ui('補', "Helper"):ui('主', "Lead")):label;
  while(ctx.measureText(shown).width>165&&shown.length>3)shown=shown.slice(0,-2)+'…';
  const w=ctx.measureText(shown).width+24,left=-w/2;
  ctx.fillStyle=helper?'#142d2bf2':'#192b2af2';ctx.fillRect(left,-10,w,20);
@@ -453,15 +453,15 @@ export function villageConversationMarkers({person,leader,name,transform,width,h
  const scale=transform.scale,clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
  const overlap=(a,b)=>Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))*
   Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
- const markers=[{actor:person,role:'resident',name:name||person.name||worldText('住民'),color:'#a7eee6'},
-  {actor:leader,role:'leader',name:worldText('リーダー'),color:'#ffe49b'}].map(item=>{
+ const markers=[{actor:person,role:'resident',name:name||person.name||ui('住民', "Resident"),color:'#a7eee6'},
+  {actor:leader,role:'leader',name:ui('リーダー', "Leader"),color:'#ffe49b'}].map(item=>{
    const x=transform.x+item.actor.x*scale,y=transform.y+item.actor.y*scale,
     half=Math.max(12,10*scale),top=Math.max(30,26*scale),bottom=Math.max(9,7*scale);
    return {...item,x,y,body:{left:x-half,right:x+half,top:y-top,bottom:y+bottom}};
   });
  const placed=[];
  for(const marker of markers){
-  let text=marker.role==='resident'?worldText('話し相手 · ')+marker.name:marker.name;
+  let text=marker.role==='resident'?ui('話し相手 · ', "Talking to · ")+marker.name:marker.name;
   const measure=measureText||((text)=>text.length*12);
   while(measure(text)>150&&text.length>4)text=text.slice(0,-2)+'…';
   const w=measure(text)+18,h=24,body=marker.body,other=markers.find(item=>item!==marker),

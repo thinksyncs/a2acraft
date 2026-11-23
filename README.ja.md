@@ -12,9 +12,11 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 
 [日本語字幕](subtitles/ja.srt) · [English subtitles](subtitles/en.srt)
 
-## Macで試す
+## 表示言語
 
-0.4.25以降は、起動時の **Connect** か **設定 → 言語** で **English / 日本語** を切り替えられます。[英語の初回起動ガイド](docs/mac-first-start.en.md)にも、Codexへの接続と専用フォルダへのファイル作成の手順を載せています。
+接続画面または村のナビゲーションで **English** と **日本語** を切り替えられます。選んだ言語は次回の起動時にも使われます。自分で書いた会話のタイトルと本文は元の言語で表示されます。言語を切り替えられるのは、日英対応のプレビュー版と `main` から起動したアプリです。
+
+## Macで試す
 
 [Apple Silicon用のTauri版0.4.24をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.24-tauri/A2ACraft-0.4.24-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)
 

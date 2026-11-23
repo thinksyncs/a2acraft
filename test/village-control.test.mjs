@@ -64,7 +64,7 @@ function fixture(t, { saved, demo = false, sampleWalk = false, building = false,
   }
   const body = new Element("body");
   const globals = {
-    location:{search:sampleWalk?'?demo=1&village=sample&walk=resident':''}, devicePixelRatio:1,
+    location:new URL(sampleWalk?'/?demo=1&village=sample&walk=resident':'/', 'http://127.0.0.1:4317'), devicePixelRatio:1,
     document:{body,hidden:false,activeElement:null,createElement:tag=>new Element(tag),
       createDocumentFragment:()=>new Element('fragment'),createTextNode:text=>Object.assign(new Element('text'),{textContent:text}),
       createElementNS:(_,tag)=>new Element(tag),querySelector:selector=>body.querySelector(selector),

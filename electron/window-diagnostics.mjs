@@ -7,8 +7,7 @@ const validRect = value => value && ['x','y','width','height'].every(key => Numb
 // Window/process state only. Never query renderer content, its URL, cookies,
 // account details, titles, arguments or other applications' windows.
 export function createWindowDiagnostics({getWindow, version, writeReport, present, logPath = '',
-  text = ja => ja, getWorkArea, now = () => new Date(), timeoutMs = 2000}) {
-  const yesNo = value => value === true ? text('はい', 'Yes') : value === false ? text('いいえ', 'No') : text('不明', 'Unknown');
+  getWorkArea, text = japanese => japanese, now = () => new Date(), timeoutMs = 2000}) {
   let loadState = 'not-created', responsiveness = 'unknown', lastErrorCode = null;
   let sequence = 0, events = [], pending = null, detach = () => {};
   const timestamp = () => now().toISOString();
@@ -87,26 +86,27 @@ export function createWindowDiagnostics({getWindow, version, writeReport, presen
       const report = snapshot(), saved = await save(report), window = getWindow();
       const parent = window && read(() => window.isDestroyed()) === false ? window : undefined;
       const w = report.window, r = report.renderer;
-      const states = {'not-created':text('未作成', 'Not created'),created:text('作成済み', 'Created'),loading:text('読込中', 'Loading'),loaded:text('読込完了', 'Loaded'),
-        'load-failed':text('読込失敗', 'Failed to load'),'renderer-gone':text('画面の処理が終了', 'Window process exited'),closed:text('閉じています', 'Closed')};
-      const responses = {unknown:text('未検出', 'Unknown'),responsive:text('応答あり', 'Responsive'),unresponsive:text('応答なし', 'Unresponsive')};
+      const yesNo = value => value === true ? text('はい','Yes') : value === false ? text('いいえ','No') : text('不明','Unknown');
+      const states = {'not-created':text('未作成',"Not created"),created:text('作成済み',"Created"),loading:text('読込中',"Loading"),loaded:text('読込完了',"Loaded"),
+        'load-failed':text('読込失敗',"Load failed"),'renderer-gone':text('画面の処理が終了',"Window process exited"),closed:text('閉じています',"Closed")};
+      const responses = {unknown:text('未検出',"Unknown"),responsive:text('応答あり',"Responding"),unresponsive:text('応答なし',"Unresponsive")};
       const detail = [
-        text('バージョン: ', 'Version: ')+report.appVersion,
-        text('ウィンドウID: ', 'Window ID: ')+(w.electronId ?? text('なし', 'None')),
-        text('表示: ', 'Visible: ')+yesNo(w.visible)+text(' / 最小化: ', ' / Minimized: ')+yesNo(w.minimized)+text(' / フォーカス: ', ' / Focused: ')+yesNo(w.focused),
-        text('フルスクリーン: ', 'Full screen: ')+yesNo(w.fullScreen),
-        text('位置・大きさ: ', 'Window bounds: ')+(w.bounds ? `${w.bounds.x}, ${w.bounds.y} / ${w.bounds.width} × ${w.bounds.height}` : text('不明', 'Unknown')),
-        text('画面の作業領域: ', 'Available area: ')+(w.workArea ? `${w.workArea.x}, ${w.workArea.y} / ${w.workArea.width} × ${w.workArea.height}` : text('不明', 'Unknown')),
-        text('ウィンドウ全体が作業領域内: ', 'Window fits available area: ')+yesNo(w.fullyWithinWorkArea),
-        text('画面の読込: ', 'Page status: ')+states[r.loadState]+text(' / 読込中: ', ' / Loading: ')+yesNo(r.loading),
-        text('応答の通知: ', 'Response status: ')+responses[r.responsiveness]+text(' / クラッシュ: ', ' / Crashed: ')+yesNo(r.crashed),
-        text('読込エラー番号: ', 'Load error code: ')+(r.lastErrorCode ?? text('なし', 'None')),
-        text('直近の状態: ', 'Recent events: ')+report.events.slice(-8).map(event => event.event).join(' → '),
-        saved === 'saved' ? text('保存先: ', 'Saved to: ')+logPath : saved === 'timed-out' ? text('診断の保存が時間内に完了しませんでした。', 'Saving the report timed out.') : text('診断を保存できませんでした。', 'Could not save the report.'),
-        text('会話本文・URL・認証情報・画面画像は含みません。', 'The report contains only window and process status.')
+        text('バージョン: ',"Version: ")+report.appVersion,
+        text('ウィンドウID: ',"Window ID: ")+(w.electronId ?? text('なし',"None")),
+        text('表示: ',"Visible: ")+yesNo(w.visible)+text(' / 最小化: '," / Minimized: ")+yesNo(w.minimized)+text(' / フォーカス: '," / Focused: ")+yesNo(w.focused),
+        text('フルスクリーン: ',"Full screen: ")+yesNo(w.fullScreen),
+        text('位置・大きさ: ',"Position and size: ")+(w.bounds ? `${w.bounds.x}, ${w.bounds.y} / ${w.bounds.width} × ${w.bounds.height}` : text('不明',"Unknown")),
+        text('画面の作業領域: ',"Display work area: ")+(w.workArea ? `${w.workArea.x}, ${w.workArea.y} / ${w.workArea.width} × ${w.workArea.height}` : text('不明',"Unknown")),
+        text('ウィンドウ全体が作業領域内: ',"Fits within work area: ")+yesNo(w.fullyWithinWorkArea),
+        text('画面の読込: ',"Window load state: ")+states[r.loadState]+text(' / 読込中: '," / Loading: ")+yesNo(r.loading),
+        text('応答の通知: ',"Responsiveness: ")+responses[r.responsiveness]+text(' / クラッシュ: '," / Crashed: ")+yesNo(r.crashed),
+        text('読込エラー番号: ',"Load error code: ")+(r.lastErrorCode ?? text('なし',"None")),
+        text('直近の状態: ',"Recent events: ")+report.events.slice(-8).map(event => event.event).join(' → '),
+        saved === 'saved' ? text('保存先: ',"Saved to: ")+logPath : saved === 'timed-out' ? text('診断の保存が時間内に完了しませんでした。',"Saving the diagnostics timed out.") : text('診断を保存できませんでした。',"The diagnostics could not be saved."),
+        text('会話本文・URL・認証情報・画面画像は含みません。',"The report excludes conversation text, URLs, credentials, and screenshots.")
       ].join('\n');
-      await present(parent, {type:'info',title:text('表示の診断', 'Window Diagnostics'),message:text('A2ACraftの表示状態', 'A2ACraft Window Status'),
-        detail,buttons:[text('閉じる', 'Close')],defaultId:0,cancelId:0,noLink:true});
+      await present(parent, {type:'info',title:text('表示の診断',"Window Diagnostics"),message:text('A2ACraftの表示状態',"A2ACraft window status"),
+        detail,buttons:[text('閉じる',"Close")],defaultId:0,cancelId:0,noLink:true});
       return {report, saved};
     })().finally(() => { pending = null; });
     return pending;

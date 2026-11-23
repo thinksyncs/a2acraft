@@ -12,9 +12,11 @@ A world shaped by the conversations you have and the work your agents do togethe
 
 [English subtitles](subtitles/en.srt) · [日本語字幕](subtitles/ja.srt)
 
-## Try A2ACraft on Mac
+## Interface language
 
-Starting with 0.4.25, choose **English** or **日本語** on the Connect screen or under **Settings → Language**. Read the [English first-launch guide](docs/mac-first-start.en.md) for sign-in and the file-creation walkthrough.
+Choose **English** or **日本語** on the Connect screen or in the village navigation. The app remembers your choice. Your own conversation titles and messages keep their original wording. The selector is available in the bilingual preview and when running from `main`.
+
+## Try A2ACraft on Mac
 
 [Download the Tauri 0.4.24 ZIP for Apple Silicon](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.24-tauri/A2ACraft-0.4.24-Tauri-mac-arm64.zip) · [Release notes and SHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)
 

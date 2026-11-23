@@ -1,4 +1,4 @@
-import {chatText} from '../public/i18n-chat.js';
+import {ui} from '../public/interface-language.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -20,7 +20,7 @@ async function fixture({write,files=[]}={}){
   const server={conversations:[{id:'chat',status:'idle',messages:[]}]};
   let context,sequence=0,fetchCount=0;
   const desktopDrafts=write?createDraftPersistence({write}):null;
-  context=vm.createContext({chatText,
+  context=vm.createContext({ui, 
     $:selector=>({'#composer':composer,'#prompt':prompt,'#model':{value:'model'},'#effort':{value:'medium'}})[selector],
     residentVisitForChat:()=>null,
     demo:false,sendBlocked:false,pendingSends:new Set(),selected:'chat',drafts:{chat:'original'},sendRequests:{},steerPending:false,

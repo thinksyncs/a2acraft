@@ -18,6 +18,13 @@ nav, .brand, footer, .actions { display: flex; align-items: center; }
 nav { min-height: 4.5rem; justify-content: space-between; gap: 1rem; }
 .brand { gap: .6rem; color: var(--ink); font: bold 1.6rem Georgia, serif; text-decoration: none; }
 .brand img { width: 2rem; height: 2rem; }
+.languages { display: inline-flex; border: 1px solid var(--line); border-radius: .5rem; padding: .15rem; }
+.languages a {
+  display: grid; place-items: center; min-height: 2.75rem; padding-inline: .8rem;
+  border-radius: .35rem; color: var(--muted); text-decoration: none; font-size: .9rem;
+}
+.languages a:hover { color: white; text-decoration: underline; }
+.languages a[aria-current="page"] { color: #19231c; background: var(--ink); font-weight: 650; }
 a { color: var(--gold); text-underline-offset: .25em; }
 a:hover { color: white; }
 a:focus-visible, video:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }

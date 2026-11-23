@@ -1,5 +1,4 @@
-import {chatText} from './i18n-chat.js';
-
+import {ui} from './interface-language.js';
 // A conversation belongs to one four-pane workspace. Legacy conversations remain
 // visible until a saved group is available, without changing the saved records.
 export function chatGroupsFor(groups,chats){
@@ -15,7 +14,7 @@ export function chatGroupsFor(groups,chats){
     }
     if(!conversationIds.length)continue;
     ids.add(item.id);
-    result.push({id:item.id,title:typeof item.title==='string'&&item.title.trim()?item.title.trim():chatText('チャット {index}', {index:result.length+1}),conversationIds});
+    result.push({id:item.id,title:typeof item.title==='string'&&item.title.trim()?item.title.trim():ui(`チャット ${result.length+1}`, `Chat ${result.length+1}`),conversationIds});
   }
   const remaining=[...available].filter(id=>!assigned.has(id));
   for(let start=0;start<remaining.length;start+=4){
@@ -23,7 +22,7 @@ export function chatGroupsFor(groups,chats){
     let id=`legacy:${conversationIds[0]}`;
     while(ids.has(id))id+=':legacy';
     ids.add(id);
-    result.push({id,title:chatText('チャット {index}', {index:result.length+1}),conversationIds});
+    result.push({id,title:ui(`チャット ${result.length+1}`, `Chat ${result.length+1}`),conversationIds});
   }
   return result;
 }
@@ -37,13 +36,14 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
   const home=root.parentElement,homeNext=root.nextElementSibling;
   const chatToolbar=document.querySelector('#chat-view .workspace-toolbar');
   const list=document.createElement('div');
-  list.className='workspace-tab-list';list.setAttribute('role','tablist');
+  list.className='workspace-tab-list';list.setAttribute('role','tablist');list.setAttribute('aria-label',ui('マップとチャット', "Map and chats"));
   const map=document.createElement('button');
   map.type='button';map.id='workspace-map-tab';map.className='workspace-tab workspace-map-tab';
-  map.setAttribute('role','tab');map.setAttribute('aria-controls','town-view');map.onclick=()=>onMap();
+  map.setAttribute('role','tab');map.setAttribute('aria-controls','town-view');map.textContent=ui('⌖ 街マップ', "⌖ Town map");map.onclick=()=>onMap();
   list.append(map);
   const add=document.createElement('button');
   add.type='button';add.id='workspace-add-chat';add.className='workspace-add-chat';add.textContent='＋';
+  add.title=ui('新しい2×2チャットを追加', "Add a 2 × 2 chat");add.setAttribute('aria-label',add.title);
   const status=document.createElement('p');
   status.className='workspace-tabs-status';status.setAttribute('role','status');status.hidden=true;
   root.replaceChildren(list,add,status);
@@ -72,8 +72,6 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
   }
   function announce(message,kind='status'){status.textContent=message;status.hidden=!message;status.dataset.kind=kind;}
   function render(){
-    list.setAttribute('aria-label',chatText('マップとチャット'));map.textContent=chatText('⌖ 街マップ');
-    add.title=chatText('新しい2×2チャットを追加');add.setAttribute('aria-label',add.title);
     const groups=chatGroupsFor(getGroups(),getChats()),selected=getSelected(),view=getView();
     // Reuse the same tabs and handlers in the chat's single toolbar. Other
     // screens retain their original navigation position and keyboard order.
@@ -97,7 +95,7 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
         button.setAttribute('role','tab');button.setAttribute('aria-controls','chat-view');button.dataset.chatGroup=group.id;
         buttons.set(group.id,button);
       }
-      button.textContent=group.title;button.title=chatText('{title} · {count}チャット', {title:group.title,count:group.conversationIds.length});
+      button.textContent=group.title;button.title=ui(`${group.title} · ${group.conversationIds.length}チャット`, `${group.title} · ${group.conversationIds.length} chats`);
       button.setAttribute('aria-selected',String(active?.id===group.id));button.tabIndex=active?.id===group.id?0:-1;
       button.onclick=()=>onGroup(group);
       // Leave nodes in place during ordinary state updates, including while a
@@ -120,9 +118,9 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
   });
   add.onclick=async()=>{
     if(busy)return;
-    busy=true;announce(chatText('新しい2×2チャットを追加しています…'));render();
-    try{await onAdd();announce(chatText('新しい2×2チャットを追加しました。'));}
-    catch(error){announce(chatText('チャットを追加できませんでした。')+(error?.message||chatText('もう一度お試しください。')),'error');}
+    busy=true;announce(ui('新しい2×2チャットを追加しています…', "Adding a 2 × 2 chat…"));render();
+    try{await onAdd();announce(ui('新しい2×2チャットを追加しました。', "Added a 2 × 2 chat."));}
+    catch(error){announce(ui('チャットを追加できませんでした。', "Could not add a chat.")+(error?.message||ui('もう一度お試しください。', "Please try again.")),'error');}
     finally{busy=false;render();}
   };
   render();
