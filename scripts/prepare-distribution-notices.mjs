@@ -49,6 +49,11 @@ export async function prepareDistributionNotices({
     if (installed.name !== expected.name || installed.version !== expected.version)
       throw Error(`Notice review required for ${expected.name}: expected ${expected.version}, installed ${installed.version}`);
   }
+  // Electron installs its checksummed desktop runtime on first use. A clean
+  // npm ci contains the package, but not the Chromium notices inside it.
+  if (root === path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')) {
+    await import('electron');
+  }
   const prepared = [], names = new Set();
   for (const entry of manifest.notices) {
     if (!componentPath(entry.output) || entry.output.includes('/') || entry.output === 'NOTICE-INDEX.json' || names.has(entry.output))
@@ -97,6 +102,5 @@ export async function prepareDistributionNotices({
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length > 2) throw Error('This build step takes no arguments');
-  await import('electron');
   console.log(JSON.stringify(await prepareDistributionNotices()));
 }
