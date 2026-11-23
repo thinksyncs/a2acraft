@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
-import {copyFile, mkdir, mkdtemp, rm, symlink, writeFile} from 'node:fs/promises';
+import {copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createInterface} from 'node:readline';
 import {setTimeout as delay} from 'node:timers/promises';
 import {fileURLToPath} from 'node:url';
+import {runInNewContext} from 'node:vm';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -87,7 +88,17 @@ test('Tauri companion runs a protected chat turn, flushes on stdin EOF, and rest
   const {port, origin} = await first.ready();
   assert.equal(origin, 'http://127.0.0.1:' + port);
   assert.equal((await fetch(origin + '/api/state')).status, 403);
+  const initialPage = origin + '/?desktop=1';
+  assert.equal((await fetch(initialPage)).status, 403);
+  // Match the first native WKWebView navigation: the verified HttpOnly session
+  // cookie is present, before an app-specific Codex login has been started.
+  const page = await fetch(initialPage, {headers:{Cookie:'chat_ui_session=' + first.token}});
+  assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /id="start-connect"/);
+  assert.match(html, /id="open-offline"/);
   const call = api(origin, first.token);
+  assert.equal((await (await call('state')).json()).connected, false);
   const connected = await (await call('connect', {})).json();
   assert.equal(connected.account?.type, 'chatgpt');
   assert.equal(connected.policy.ok, true);
@@ -140,4 +151,79 @@ test('Closing a Tauri window during startup leaves no running backend', async t 
       }
     });
   }
+});
+
+test('offline state worker preserves drafts and map after a demo sidecar crash without a server', {timeout:15000}, async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'a2acraft-tauri-recovery-'));
+  const sessions = [];
+  t.after(async () => {
+    for (const session of sessions) {
+      if (session.child.exitCode === null && session.child.signalCode === null) session.child.kill('SIGTERM');
+      await session.exited;
+    }
+    await rm(directory, {recursive:true, force:true});
+  });
+  const script = await stage(directory);
+  const launch = (...args) => {
+    const session = start(script, directory, args);
+    sessions.push(session);
+    return session;
+  };
+  const original = launch('--demo');
+  await original.ready();
+  original.child.kill('SIGKILL');
+  await original.exited;
+
+  const local = launch('--state-only', '--demo');
+  assert.deepEqual(await local.ready(), {type:'ready'});
+  const ui = {drafts:{quest:'旅の下書き'}, sendRequests:{}, selected:'quest', layout:1, motion:'system'};
+  const items = {'chat-ui-demo-village-view':JSON.stringify({zoom:2})};
+  assert.deepEqual((await local.control('uiSave', ui)).result, {ok:true});
+  assert.deepEqual((await local.control('mapSave', {demo:true, items})).result, {ok:true});
+  assert.ok((await local.control('prepareWorkspace', directory)).error);
+  assert.equal(await local.close(), 0);
+
+  const reopened = launch('--demo');
+  await reopened.ready();
+  assert.deepEqual((await reopened.control('uiRead')).result, ui);
+  assert.deepEqual((await reopened.control('mapRead', {demo:true})).result, {version:1, items});
+  assert.equal(await reopened.close(), 0);
+});
+
+test('Tauri renderer reports only the current flush and resumes only after a native cancellation', async () => {
+  const window = new EventTarget();
+  const origin = 'http://127.0.0.1:23456';
+  const acknowledgements = [];
+  window.top = window;
+  window.__TAURI__ = {core:{invoke:async (_, {action, value}) => {
+    if (action === 'flushComplete') acknowledgements.push([value.id, value.ok]);
+  }}};
+  const bridge = await readFile(path.join(root, 'src-tauri/bridge.js'), 'utf8');
+  runInNewContext(bridge, {window, location:new URL(origin),
+    __CHAT_UI_PLATFORM__:'darwin', __CHAT_UI_VERSION__:'test', __CHAT_UI_PRACTICE__:false});
+  const saves = [];
+  let resumes = 0;
+  const unsubscribe = window.desktop.onBeforeClose(shouldSave => {
+    if (!shouldSave) { resumes++; return; }
+    return new Promise((resolve, reject) => saves.push({resolve, reject}));
+  });
+  const flush = id => window.dispatchEvent(new CustomEvent('a2acraft-native-close', {detail:id}));
+  flush(1);
+  flush(2);
+  saves[0].reject(Error('late disk result'));
+  saves[1].reject(Error('disk full'));
+  await delay(0);
+  assert.deepEqual(acknowledgements, [[2, false]]);
+  assert.equal(resumes, 0);
+  window.dispatchEvent(new Event('a2acraft-close-cancelled'));
+  assert.equal(resumes, 1);
+  flush(3);
+  saves[2].resolve();
+  await delay(0);
+  assert.deepEqual(acknowledgements, [[2, false], [3, true]]);
+  flush(4);
+  unsubscribe();
+  saves[3].resolve();
+  await delay(0);
+  assert.deepEqual(acknowledgements, [[2, false], [3, true]]);
 });

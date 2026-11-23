@@ -14,6 +14,7 @@ const data = process.env.CHAT_UI_DATA_DIR;
 if (!path.isAbsolute(data || '') || path.basename(data) !== 'data') throw Error('Invalid desktop data directory');
 const profile = path.dirname(data);
 const demo = process.argv.includes('--demo');
+const stateOnly = process.argv.includes('--state-only');
 
 function jsonFile(name) {
   const target = path.join(profile, name);
@@ -48,7 +49,7 @@ const handlers = {
     return map.save(value);
   },
   prepareWorkspace: async value => {
-    if (demo) throw Error('作業フォルダは通常起動で選択できます。');
+    if (demo || stateOnly) throw Error('作業フォルダは通常起動で選択できます。');
     const {directory} = await ensureAgentWorkspace(value);
     return directory;
   }
@@ -65,7 +66,11 @@ controls.on('line', line => {
   }).catch(() => {});
 });
 
-if (demo) {
+if (stateOnly) {
+  // After a backend failure the host can still flush local drafts and the map.
+  // No server, authentication or Codex process is started in this mode.
+  console.log(JSON.stringify({type:'ready'}));
+} else if (demo) {
   const {startPreviewServer} = await import('./electron/preview-server.mjs');
   const {staticFiles} = await import('./public-assets.mjs');
   const server = await startPreviewServer({root:path.join(root,'public'),assets:staticFiles,token:process.env.CHAT_UI_SESSION_TOKEN});

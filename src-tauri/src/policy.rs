@@ -4,6 +4,17 @@ use serde_json::Value;
 use std::{fs, path::Path};
 use tauri::Url;
 
+// Only this bundled page may be loaded before the authenticated sidecar is ready.
+pub fn is_startup_url(url: &Url) -> bool {
+    matches!(
+        url.as_str(),
+        "about:blank"
+            | "tauri://localhost/desktop-startup.html"
+            | "http://tauri.localhost/desktop-startup.html"
+            | "https://tauri.localhost/desktop-startup.html"
+    )
+}
+
 pub fn is_app_url(url: &Url, origin: &str) -> bool {
     url.username().is_empty()
         && url.password().is_none()
@@ -101,6 +112,23 @@ pub fn executable(path: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn startup_only_accepts_the_packaged_loading_document() {
+        for url in [
+            "tauri://localhost/desktop-startup.html",
+            "http://tauri.localhost/desktop-startup.html",
+        ] {
+            assert!(is_startup_url(&Url::parse(url).unwrap()));
+        }
+        for url in [
+            "tauri://localhost/index.html",
+            "http://127.0.0.1:4317/desktop-startup.html",
+            "https://example.org/desktop-startup.html",
+            "tauri://localhost/desktop-startup.html?next=1",
+        ] {
+            assert!(!is_startup_url(&Url::parse(url).unwrap()));
+        }
+    }
     #[test]
     fn urls_are_bounded_to_the_session_and_official_login() {
         assert!(is_app_url(
