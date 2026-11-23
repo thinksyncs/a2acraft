@@ -1,7 +1,7 @@
 name: Capture the localized film
 on:
   push:
-    branches: [feats/capture-localized-tour]
+    branches: [feats/capture-localized-motion]
   workflow_dispatch:
 
 permissions:

@@ -31,6 +31,7 @@ const chrome = spawn(process.env.CHROME || 'google-chrome', ['--headless','--rem
   '--no-proxy-server','--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost','about:blank'],
   {env:{HOME:scratch,TMPDIR:scratch,PATH:process.env.PATH,LANG:'en_US.UTF-8'},stdio:['ignore','ignore','inherit']});
 const shots = [];
+const recordedMotion = {};
 const notes = {};
 let socket, evaluate, screenshot;
 async function poll(read, name, ms=20000) {
@@ -89,11 +90,41 @@ async function click(s, ms=20000) {
   await poll(()=>isVisible(s),s,ms);
   await evaluate(`(() => {const n=${sel(s)};if(n.disabled)throw Error('Disabled control');n.click();})()`);
 }
-async function capture(name, seconds) {
+async function capture(name, seconds, moving=false) {
   await present(name);
   if(language==='ja')return;
-  shots.push({name,seconds});
+  const shot={name,seconds};
+  if(moving){
+    const fps=4, count=fps*seconds;
+    const first=await readFile(path.join(out,'en-'+name+'.jpg'));
+    const frames=[first], started=Date.now();
+    let unique=1;
+    while(frames.length<count){
+      const scheduled=started+frames.length*1000/fps;
+      await delay(Math.max(0,scheduled-Date.now()));
+      const remaining=started+seconds*1000-Date.now();
+      if(remaining<120)break;
+      let timer, next;
+      try {
+        next=await Promise.race([screenshot(),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),Math.min(remaining,1800));})]);
+      } finally {clearTimeout(timer);}
+      if(!next)break;
+      if(!next.equals(frames.at(-1)))unique++;
+      const slot=Math.min(count-1,Math.round((Date.now()-started)*fps/1000));
+      while(frames.length<slot)frames.push(frames.at(-1));
+      frames.push(next);
+    }
+    while(frames.length<count)frames.push(frames.at(-1));
+    recordedMotion[name]={seconds,fps,sampledFrames:unique};
+    await writeFile(path.join(out,'motion.json'),JSON.stringify(recordedMotion,null,2));
+    if(unique>1){
+      shot.dir=path.join(scratch,name);shot.fps=fps;await mkdir(shot.dir);
+      for(let i=0;i<frames.length;i++)await writeFile(path.join(shot.dir,String(i).padStart(3,'0')+'.jpg'),frames[i]);
+    }
+  }
+  shots.push(shot);
 }
+
 async function setup(lang, call) {
   language=lang;
   const route=await call('Page.navigate',{url:origin+'/?demo=1&village=sample&walk=resident&lang='+lang});
@@ -103,9 +134,12 @@ async function setup(lang, call) {
   await evaluate('document.fonts.ready.then(()=>true)');
 }
 async function tour(call) {
+  const motion=value=>call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:value?'no-preference':'reduce'}]});
   await setup('en',call);
   await click('#village-zoom-in');
-  await capture('walk',3);
+  await motion(true);
+  await capture('walk',3,true);
+  await motion(false);
   if(!await evaluate("document.querySelector('#village-context').open"))await click('#village-context > summary');
   await click('.village-context-row');
   await poll(()=>isVisible('#village-speech-chat'),'nearby resident arrival',15000);
@@ -125,20 +159,26 @@ async function tour(call) {
   await capture('accepted',4);
   await click('#village-quest-peek-close');
   await click('#village-zoom-in');
-  await capture('village',3);
+  await motion(true);
+  await capture('village',3,true);
+  await motion(false);
   await click('#village-fit');
   await capture('world',3);
   // Each district has its own homes and groups of related conversations.
   await click('#village-district-next');
-  await capture('district',4);
+  await motion(true);
+  await capture('district',4,true);
+  await motion(false);
   await click('#village-zoom-in');
   await capture('details',3);
   if(await isVisible('#village-speech-close'))await click('#village-speech-close');
   if(await isVisible('#village-enter-castle'))await click('#village-enter-castle');
   else await click('#village-castle');
   await poll(()=>isVisible('#village-room[open] .world-room-host'),'throne room');
+  await motion(true);
   await click('#village-room .world-room-host');
-  await capture('castle',6);
+  await capture('castle',6,true);
+  await motion(false);
   const roomClip=await evaluate("(()=>{const r=document.querySelector('#village-room .world-room-stage').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
   const roomImage=(await call('Page.captureScreenshot',{format:'jpeg',quality:96,clip:roomClip})).data;
   const mapImage=(await readFile(path.join(out,'en-world.jpg'))).toString('base64');
@@ -175,7 +215,8 @@ function encode() {
   const master=path.resolve('media/a2acraft-en-45s.mp4'), clips=[];
   for(const shot of shots){
     const dest=path.join(scratch,shot.name+'.mp4');
-    ff('-loop','1','-framerate','24','-i',path.join(out,'en-'+shot.name+'.jpg'),'-t',String(shot.seconds),'-vf','format=yuv420p','-c:v','libx264','-preset','fast','-crf','20','-an',dest); clips.push(dest);
+    const input=shot.dir?['-framerate',String(shot.fps),'-i',path.join(shot.dir,'%03d.jpg')]:['-loop','1','-framerate','24','-i',path.join(out,'en-'+shot.name+'.jpg')];
+    ff(...input,'-t',String(shot.seconds),'-vf','fps=24,format=yuv420p','-c:v','libx264','-preset','fast','-crf','20','-an',dest); clips.push(dest);
   }
   const credits=path.join(scratch,'credits.mp4');
   ff('-loop','1','-framerate','24','-i',path.join(out,'en-end-card.jpg'),'-t','5','-an','-vf','format=yuv420p','-c:v','libx264','-preset','fast','-crf','20',credits);clips.push(credits);
