@@ -42,3 +42,24 @@ test('switching sample language rebuilds authored fixtures and carries player ch
   assert.deepEqual(next[0].messages, [{text:'New sample fixture'}, player]);
   assert.deepEqual(next[1], added);
 });
+
+test('a running English quest localizes the assignment and preserves the player’s role and quest text', async t => {
+  initializeInterfaceLanguage({requested:'en'});
+  t.after(() => initializeInterfaceLanguage({requested:'ja'}));
+  const {PartyRunner} = await import('../public/party-runner.js');
+  const chats = [{id:'author',title:'執筆メモ'}, {id:'lead',title:'自分の会話'}];
+  const prompts = [];
+  const runner = new PartyRunner({getConversations:() => chats, execute:async ({prompt}) => {
+    prompts.push(prompt);
+    return {output:'A sample result'};
+  }});
+  await runner.start({model:'sample',text:'提案を作成',partyOverride:{name:'私の隊',leaderId:'lead',members:[
+    {conversationId:'author',role:'執筆担当'}, {conversationId:'lead',role:'私の役割'},
+  ]}});
+  await runner.task;
+  assert.equal(runner.public().quest.status,'completed');
+  assert.match(prompts[0], /Your role: 執筆担当/);
+  assert.match(prompts[0], /Quest:\n提案を作成/);
+  assert.match(prompts[1], /Your role: Lead and summarize/);
+  assert.equal(runner.public().quest.party.members[1].role,'私の役割');
+});

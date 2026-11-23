@@ -129,13 +129,14 @@ for(const conversation of conversations){
 const namedCharacters=assignCharacterNames(conversations);
 if(migratedGroups||namedCharacters||recoveredDelegations)await save();
 function newConversation(title,index){return {id:randomUUID(),title:String(title||`会話 ${index+1}`).slice(0,80),status:'idle',threadId:null,turnId:null,messages:[],model:null,error:null};}
-function createConversations({title,groupTitle,newGroup=false}){
+const requestedLocale = value => value === 'en' ? 'en' : 'ja';
+function createConversations({title,groupTitle,newGroup=false,locale='ja'}){
  writing=writing.catch(()=>{}).then(async()=>{
   const current=groupsFor(conversations),revision=current.revision+1;
   let group=newGroup?null:current.items.findLast(item=>item.conversationIds.length<4);
-  if(!group)group={id:randomUUID(),title:groupTitle||`チャット ${current.items.length+1}`,conversationIds:[]};
-  const created=Array.from({length:newGroup?4:1},(_,index)=>({...newConversation(newGroup?null:title,conversations.length+index),chatGroup:groupMetadata(group,revision)}));
-  assignCharacterNames([...conversations,...created]);
+  if(!group)group={id:randomUUID(),title:groupTitle||(locale==='en'?`Chat ${current.items.length+1}`:`チャット ${current.items.length+1}`),conversationIds:[]};
+  const created=Array.from({length:newGroup?4:1},(_,index)=>({...newConversation((!newGroup&&title)||(locale==='en'?`Chat ${conversations.length+index+1}`:null),conversations.length+index),chatGroup:groupMetadata(group,revision)}));
+  assignCharacterNames([...conversations,...created],{locale});
   // Publish only after a durable save; failure creates neither chats nor an empty tab.
   await writeConversations([...conversations,...created]);
   conversations.push(...created);
@@ -149,7 +150,7 @@ function hasImportedHistory(id){return conversations.some(c=>c.migration?.source
 const historyImportIds=new Set();
 const historyDigest=messages=>createHash('sha256').update(JSON.stringify(messages.filter(m=>['user','assistant'].includes(m.role)).map(({role,text})=>({role,text})))).digest('hex');
 const canRefreshHistory=chat=>chat.migration?.contextSent===false&&!chat.threadId&&!['starting','running','stopping'].includes(chat.status);
-function importHistories(histories,method,archived=false){
+function importHistories(histories,method,{archived=false,locale='ja'}={}){
  writing=writing.catch(()=>{}).then(async()=>{
   if(Buffer.byteLength(JSON.stringify(histories))>32*1024*1024)throw Error('選択した履歴は32 MiBを超えています。件数を減らして取り込んでください。');
   const seen=new Set(),pending=[];let skipped=0;
@@ -169,7 +170,7 @@ function importHistories(histories,method,archived=false){
     migration:{source:'codex',method,sourceThreadId:history.sourceThreadId,sourceCwd:history.cwd,sourceTitle:history.title,sourceDigest:digest,sourceDigests:[...new Set([...versions,digest])],importedAt:Date.now(),archived,warnings:history.warnings||[],contextSent:false}};
    if(existing){updates.set(existing.id,patch);historyImportIds.add(existing.id);}
    else{
-    if(created.length%4===0)group={id:randomUUID(),title:'Codexから移行 '+new Date().toISOString().slice(0,10)};
+    if(created.length%4===0)group={id:randomUUID(),title:(locale==='en'?'Imported from Codex ':'Codexから移行 ')+new Date().toISOString().slice(0,10)};
     created.push({...newConversation(history.title,conversations.length+created.length),...patch,chatGroup:groupMetadata(group,revision)});
    }
   }
@@ -177,7 +178,7 @@ function importHistories(histories,method,archived=false){
    const backup='history-backups/conversations-'+Date.now()+'-'+randomUUID()+'.json';
    await mkdir(path.join(data,'history-backups'),{recursive:true,mode:0o700});
    await writeFile(path.join(data,backup),JSON.stringify(durableConversations),{mode:0o600,flag:'wx'});
-   assignCharacterNames([...structuredClone(conversations),...created]);
+   assignCharacterNames([...structuredClone(conversations),...created],{locale});
    await writeConversations([...conversations.map(c=>updates.has(c.id)?{...c,...updates.get(c.id)}:c),...created]);
    const refreshed=conversations.filter(c=>updates.has(c.id));
    for(const chat of refreshed)Object.assign(chat,updates.get(chat.id));
@@ -1028,12 +1029,12 @@ const server=http.createServer(async(req,res)=>{
      if(totalBytes>32*1024*1024)throw Error('選択した履歴は32 MiBを超えています。件数を減らして取り込んでください。');
      histories.push(history);
     }
-    const result=await importHistories(histories,'local',b.archived===true);
+    const result=await importHistories(histories,'local',{archived:b.archived===true,locale:requestedLocale(b.locale)});
     return json(res,200,result);
    }
    if(p==='/api/history/codex/file'){
     if(typeof b.name!=='string'||!b.name.toLowerCase().endsWith('.jsonl'))throw Error('Codexのrollout履歴（.jsonl）を選択してください。');
-    return json(res,200,await importHistories(parseCodexRolloutBundle(b.text),'rollout'));
+    return json(res,200,await importHistories(parseCodexRolloutBundle(b.text),'rollout',{locale:requestedLocale(b.locale)}));
    }
    if(['/api/equipment','/api/party/configure'].includes(p))assertBoardAvailable();
    if(['/api/todos/save','/api/todos/manual','/api/todos/reopen'].includes(p)&&boardBusy()&&boardDispatch.value.active?.todoId===b.id)throw Error('掲示板で受注中のクエストです。巡回・実行を停止してから編集してください。');
@@ -1180,9 +1181,9 @@ const server=http.createServer(async(req,res)=>{
    }
    if(p==='/api/chat-groups'){
     if(b.title!==undefined&&typeof b.title!=='string')throw Error('チャットの名前を確認してください。');
-    return json(res,200,await createConversations({newGroup:true,groupTitle:b.title?.trim().slice(0,80)}));
+    return json(res,200,await createConversations({newGroup:true,groupTitle:b.title?.trim().slice(0,80),locale:requestedLocale(b.locale)}));
    }
-   if(p==='/api/conversations')return json(res,200,(await createConversations({title:b.title})).conversations[0]);
+   if(p==='/api/conversations')return json(res,200,(await createConversations({title:b.title,locale:requestedLocale(b.locale)})).conversations[0]);
    const c=conversations.find(c=>c.id===b.id);if(!c)throw Error('会話が見つかりません。');
    if(p==='/api/conversation-mode')return json(res,200,await conversationWorkspaces.change(c,b.mode));
    if(p==='/api/equipment'){

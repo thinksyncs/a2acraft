@@ -1,5 +1,6 @@
+import {questText} from './i18n-quests.js';
 export const equipmentSlots = ['weapon','tool','spell'];
-export const slotLabels = {weapon:'武器',tool:'道具',spell:'呪文'};
+export const slotLabels = {get weapon(){return questText('武器');},get tool(){return questText('道具');},get spell(){return questText('呪文');}};
 
 const namedItems = {
   'assess-patch-risk':['balance','見定めの天秤'],
@@ -58,12 +59,12 @@ function fingerprint(value){let hash=2166136261;for(const char of value){hash^=c
 export function skillAppearance(name) {
   const key = String(name).normalize('NFKC').toLowerCase();
   const shortName=key.split(/[:/]/).filter(Boolean).at(-1)||key;
-  if (/(?:gmail|e?mail|メール)/.test(key)) return {slot:'weapon',icon:'bow',itemName:'便りの弓',singleUse:true};
+  if (/(?:gmail|e?mail|メール)/.test(key)) return {slot:'weapon',icon:'bow',itemName:questText('便りの弓'),singleUse:true};
   const slot=/(?:openai-docs|knowledge|reference|知識|research|paper|論文)/.test(key)?'spell':/(?:document|pdf|presentation|slides|spreadsheet|sheets|image|visualize|pet|template)/.test(key)?'tool':'weapon';
   const known=namedItems[shortName];
-  if(known)return {slot,icon:known[0],itemName:known[1],singleUse:false};
+  if(known)return {slot,icon:known[0],itemName:questText(known[1]),singleUse:false};
   const hash=fingerprint(key),[icon,label]=silhouettes[slot][hash%silhouettes[slot].length];
-  return {slot,icon,itemName:epithets[(hash>>>8)%epithets.length]+label,singleUse:false,rune:hash.toString(16).padStart(8,'0')};
+  return {slot,icon,itemName:questText(epithets[(hash>>>8)%epithets.length])+questText(label),singleUse:false,rune:hash.toString(16).padStart(8,'0')};
 }
 
 // Refresh old saved display fields without changing the skill's slot or behavior.
@@ -71,7 +72,11 @@ export function equipmentPresentation(skill){
   if(!skill||typeof skill!=='object')return skill;
   if(!skill.name)return {...skill};
   const appearance=skillAppearance(skill.name),{rune,...saved}=skill;
-  return {...saved,icon:appearance.icon,itemName:appearance.itemName,...(appearance.rune?{rune:appearance.rune}:{})};
+  const sample=demoEquipmentSkills.find(item=>item.id===saved.id&&item.name===saved.name);
+  const demoLabels={};
+  if(sample && saved.displayName===sample.displayName)demoLabels.displayName=questText(sample.displayName);
+  if(sample && saved.description===sample.description)demoLabels.description=questText(sample.description);
+  return {...saved,...demoLabels,icon:appearance.icon,itemName:appearance.itemName,...(appearance.rune?{rune:appearance.rune}:{})};
 }
 
 // Planning ranges for a standard task, not metered usage or a model tariff.
@@ -104,8 +109,8 @@ export function skillTokenEstimate(skill){
  const name=typeof skill==='string'?skill:skill?.name;
  const key=typeof name==='string'?name.normalize('NFKC').trim().toLowerCase().split(/[:/]/).filter(Boolean).at(-1)||'':'';
  const profile=tokenProfiles[tokenProfileByName[key]||(/(?:gmail|e?mail|メール)/.test(key)?'quick':'')];
- if(!profile)return {minTokens:null,maxTokens:null,label:'— k token',basis:'unknown',scope:'目安未登録',detail:key==='imagegen'||key==='yolozu-image-service'?'画像処理の利用量を含むため、テキストのtoken数だけでは見積もれません。':'このスキルの消費目安はまだ登録されていません。'};
- return {...profile,label:profile.minTokens/1000+'–'+profile.maxTokens/1000+' k token',basis:'reference',detail:'入力・出力・ツール利用を含む参考見積もりです。実測値ではなく、長い履歴や繰り返し作業では範囲を超えることがあります。'};
+ if(!profile)return {minTokens:null,maxTokens:null,label:'— k token',basis:'unknown',scope:questText('目安未登録'),detail:key==='imagegen'||key==='yolozu-image-service'?questText('画像処理の利用量を含むため、テキストのtoken数だけでは見積もれません。'):questText('このスキルの消費目安はまだ登録されていません。')};
+ return {...profile,scope:questText(profile.scope),label:profile.minTokens/1000+'–'+profile.maxTokens/1000+' k token',basis:'reference',detail:questText('入力・出力・ツール利用を含む参考見積もりです。実測値ではなく、長い履歴や繰り返し作業では範囲を超えることがあります。')};
 }
 
 export const demoEquipmentSkills = [

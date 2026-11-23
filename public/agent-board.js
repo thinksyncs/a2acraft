@@ -1,10 +1,11 @@
+import {worldText, worldBinding, getLocale} from './i18n-world.js';
 import { node, button } from "./world-room.js";
 
 const kinds = {
-  finding: "発見",
-  decision: "決定",
-  blocker: "障害",
-  handoff: "引継ぎ",
+  get finding(){return worldText("発見");},
+  get decision(){return worldText("決定");},
+  get blocker(){return worldText("障害");},
+  get handoff(){return worldText("引継ぎ");},
 };
 export function createAgentBoard({
   api,
@@ -18,26 +19,26 @@ export function createAgentBoard({
   dialog.id = "agent-board";
   dialog.setAttribute("aria-labelledby", "agent-board-title");
   const header = node("header"),
-    title = node("h2", "隊の掲示板");
+    title = node("h2", worldBinding("隊の掲示板"));
   title.id = "agent-board-title";
   header.append(
-    node("small", "仲間からの便り"),
+    node("small", worldBinding("仲間からの便り")),
     title,
-    button("閉じる", () => dialog.close()),
+    button(worldBinding("閉じる"), () => dialog.close()),
   );
-  const scopeLabel = node("label", "読む場所"),
+  const scopeLabel = node("label", worldBinding("読む場所")),
     scope = node("select");
-  scope.setAttribute("aria-label", "掲示板の地区");
+  scope.setAttribute("aria-label", worldText("掲示板の地区"));
   scopeLabel.append(scope);
   const status = node("p", "", "agent-board-status");
   status.setAttribute("role", "status");
   const entries = node("div", undefined, "agent-board-entries");
-  const refresh = button("新着を確認", () => load());
+  const refresh = button(worldBinding("新着を確認"), () => load());
   dialog.append(
     header,
     node(
       "p",
-      "発見や引継ぎを、担当同士で共有しています。投稿元の会話で詳しく確認できます。",
+      worldBinding("発見や引継ぎを、担当同士で共有しています。投稿元の会話で詳しく確認できます。"),
     ),
     scopeLabel,
     refresh,
@@ -51,7 +52,7 @@ export function createAgentBoard({
     filterSignature = "",
     pending = false;
   function filters(selected) {
-    const next = JSON.stringify(getProjects().map((p) => [p.id, p.name]));
+    const next = JSON.stringify([getLocale(),getProjects().map((p) => [p.id, p.name])]);
     if (next === filterSignature) {
       scope.value = selected;
       return;
@@ -59,8 +60,8 @@ export function createAgentBoard({
     filterSignature = next;
     scope.replaceChildren();
     for (const [id, name] of [
-      ["all", "すべての便り"],
-      ["shared", "全地区への共有"],
+      ["all", worldText("すべての便り")],
+      ["shared", worldText("全地区への共有")],
       ...getProjects().map((p) => [p.id, p.name]),
     ]) {
       const option = node("option", name);
@@ -80,7 +81,7 @@ export function createAgentBoard({
           .slice(0, 2)
           .map((chat) => ({
             id: "demo-village",
-            name: "冒険者の村",
+            get name(){return worldText("冒険者の村");},
             jobs: [{ conversationId: chat.id }],
           }));
     return sources.slice(0, 2).map((p, i) => ({
@@ -88,14 +89,14 @@ export function createAgentBoard({
       sequence: i + 1,
       scope: i ? "shared" : "project",
       kind: i ? "finding" : "handoff",
-      title: i ? "地区をまたぐ発見" : "次の担当への引継ぎ",
+      title: i ? worldText("地区をまたぐ発見") : worldText("次の担当への引継ぎ"),
       summary: i
-        ? "検索画面でも、前の会話に戻れる導線が役立ちそうです。実装前に対象の画面を確認してください。"
-        : "一覧から履歴を開く導線を確認しました。次は小さな画面でも操作できるか、検証担当に見てほしいです。",
+        ? worldText("検索画面でも、前の会話に戻れる導線が役立ちそうです。実装前に対象の画面を確認してください。")
+        : worldText("一覧から履歴を開く導線を確認しました。次は小さな画面でも操作できるか、検証担当に見てほしいです。"),
       author: {
         projectId: p.id,
         projectName: p.name,
-        jobTitle: "担当からの便り",
+        get jobTitle(){return worldText("担当からの便り");},
         conversationId: p.jobs.find((j) => j.conversationId)?.conversationId,
       },
     }));
@@ -105,7 +106,7 @@ export function createAgentBoard({
       selected = scope.value,
       revision = getState().agentBoard?.revision || 0;
     pending = true;
-    status.textContent = "便りを読み込んでいます…";
+    status.textContent = worldText("便りを読み込んでいます…");
     try {
       const result = demo
         ? {
@@ -125,12 +126,12 @@ export function createAgentBoard({
       if (ticket !== generation || !dialog.open) return;
       renderedRevision = revision;
       const rows = result.entries.slice().reverse(),
-        next = JSON.stringify([selected, rows]);
+        next = JSON.stringify([getLocale(),selected,rows]);
       status.textContent = demo
-        ? `${rows.length}件の便り`
+        ? worldText("{count}件の便り", {count:rows.length})
         : rows.length
-          ? `${result.total}件の便り${result.omitted ? " · 最新100件を表示" : ""}。担当が参照した時に伝わります。`
-          : "まだ便りはありません。開発の隊が作業中に、ほかの担当へ伝える要点を投稿します。";
+          ? worldText("{count}件の便り{limit}。担当が参照した時に伝わります。", {count:result.total,limit:result.omitted?worldText(' · 最新100件を表示'):''})
+          : worldText("まだ便りはありません。開発の隊が作業中に、ほかの担当へ伝える要点を投稿します。");
       if (signature === next) return;
       signature = next;
       entries.replaceChildren();
@@ -142,7 +143,7 @@ export function createAgentBoard({
           node("span", kinds[entry.kind] || entry.kind, "agent-board-kind"),
           node(
             "span",
-            entry.scope === "shared" ? "全地区へ" : entry.author.projectName,
+            entry.scope === "shared" ? worldText("全地区へ") : entry.author.projectName,
           ),
         );
         card.append(
@@ -158,7 +159,7 @@ export function createAgentBoard({
         }
         if (entry.author.conversationId)
           card.append(
-            button("投稿元の会話を開く", () => {
+            button(worldBinding("投稿元の会話を開く"), () => {
               dialog.close();
               onChat(entry.author.conversationId);
             }),
@@ -168,7 +169,7 @@ export function createAgentBoard({
     } catch (error) {
       if (ticket === generation) {
         renderedRevision = revision;
-        status.textContent = "読み込めませんでした: " + error.message;
+        status.textContent = worldText("読み込めませんでした: ") + error.message;
       }
     } finally {
       if (ticket === generation) pending = false;

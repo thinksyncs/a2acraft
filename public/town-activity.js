@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 import {townQuestActivity,townQuestStopReason} from './board-gathering.js';
 
 const WAGON='__town_wagon__',ROAD_Y=.51,HANDOFF_MS=550,REPORT_MS=3200,ASSEMBLE_MS=850;
@@ -10,12 +11,12 @@ const copy=value=>value===undefined?undefined:structuredClone(value);
 // All sites sit on the plaza or the approaches to existing buildings. The
 // routes below stay south of the pond and outside the rooms.
 export const TOWN_WORKSITES=Object.freeze({
-  research:Object.freeze({x:.37,y:.56,label:'書見台',icon:'book'}),
-  craft:Object.freeze({x:.25,y:.48,label:'作業台',icon:'quill'}),
-  review:Object.freeze({x:.68,y:.53,label:'相談机',icon:'scroll'}),
-  shared:Object.freeze({x:.5,y:.51,label:'まとめの机',icon:'scroll'}),
-  board:Object.freeze({x:.5,y:.73,label:'掲示板',icon:'scroll'}),
-  castle:Object.freeze({x:.8,y:.44,label:'報告',icon:'report'})
+  research:Object.freeze({x:.37,y:.56,get label(){return worldText('書見台');},icon:'book'}),
+  craft:Object.freeze({x:.25,y:.48,get label(){return worldText('作業台');},icon:'quill'}),
+  review:Object.freeze({x:.68,y:.53,get label(){return worldText('相談机');},icon:'scroll'}),
+  shared:Object.freeze({x:.5,y:.51,get label(){return worldText('まとめの机');},icon:'scroll'}),
+  board:Object.freeze({x:.5,y:.73,get label(){return worldText('掲示板');},icon:'scroll'}),
+  castle:Object.freeze({x:.8,y:.44,get label(){return worldText('報告');},icon:'report'})
 });
 
 export function roleWorkplace(role=''){
@@ -105,14 +106,14 @@ function deriveScene(state,now){
     roleTotalCount:steps.filter(step=>step.kind!=='summary').length,
     steps,report,status,disconnected,origin:activity?.origin||'party',title:todo?.title||activity?.title||'',
     gatherStartedAt:activity?.gatherStartedAt,gatherUntil:activity?.gatherUntil,
-    error:disconnected?'接続を待っています。進行状況は接続後に確認します。':townQuestStopReason(activity?.error||(matched?quest?.error:null))||(!report&&status==='completed'?'完了記録を確認してください。':''),
+    error:disconnected?worldText('接続を待っています。進行状況は接続後に確認します。'):townQuestStopReason(activity?.error||(matched?quest?.error:null))||(!report&&status==='completed'?worldText('完了記録を確認してください。'):''),
     ownsParty:phase!=='reported'};
 }
 
 function decorate(scene){
   if(!scene)return null;
   const step=scene.steps.find(step=>step.conversationId===scene.activeId);
-  scene.label=scene.disconnected?'接続待ち · 進行を確認中':({gathering:'仲間が掲示板へ集合中',working:step?.status==='running'?(step.role||'担当')+'が作業中':'次の担当を準備中',handoff:'成果を次の仲間へ引き継ぎ中',summary:'リーダーが成果をまとめ中',reporting:'成果完成 · お城へ報告中',reported:'成果を確認できます',paused:'処理が中断しています',stopping:'処理の停止を待っています',blocked:'開始を停止しました'})[scene.phase];
+  scene.label=scene.disconnected?worldText('接続待ち · 進行を確認中'):({gathering:worldText('仲間が掲示板へ集合中'),working:step?.status==='running'?worldText("{role}が作業中", {role:step.role||worldText('担当')}):worldText('次の担当を準備中'),handoff:worldText('成果を次の仲間へ引き継ぎ中'),summary:worldText('リーダーが成果をまとめ中'),reporting:worldText('成果完成 · お城へ報告中'),reported:worldText('成果を確認できます'),paused:worldText('処理が中断しています'),stopping:worldText('処理の停止を待っています'),blocked:worldText('開始を停止しました')})[scene.phase];
   scene.formation=activityFormation(scene.party,scene.activeId,scene.handoffFromId);
   scene.ownsParty=scene.phase!=='reported';return scene;
 }

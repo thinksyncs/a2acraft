@@ -1,3 +1,6 @@
+import {getLocale} from './i18n.js';
+import {chatText} from './i18n-chat.js';
+
 const reasons = {
   workspace_unavailable: '作業場所を開けません。下の「作業フォルダ」で利用できる場所を選び、アプリを開き直してください。',
   sandbox_initialization_denied: 'Macに実行準備を拒否されました。A2ACraftを終了し、Finderから開き直して再確認してください。',
@@ -9,12 +12,12 @@ const reasons = {
 export function readinessSummary(result) {
   if (!result || result.modelTurnStarted !== false ||
       !['chat', 'work'].every(key => ['ready', 'blocked'].includes(result[key]?.status))) {
-    throw Error('接続確認の結果を受け取れませんでした。もう一度確認してください。');
+    throw Error(chatText('接続確認の結果を受け取れませんでした。もう一度確認してください。'));
   }
   return ['chat', 'work'].map(key => ({
-    label: key === 'chat' ? '会話' : 'ファイル作業',
+    label: key === 'chat' ? chatText('会話') : chatText('ファイル作業'),
     ready: result[key].status === 'ready',
-    text: result[key].status === 'ready' ? '接続準備OK' : reasons[result[key].code] || reasons.thread_start_failed,
+    text: result[key].status === 'ready' ? chatText('接続準備OK') : chatText(reasons[result[key].code] || reasons.thread_start_failed),
     diagnostics: result[key].code === 'permission_mismatch' ? safeDiagnostics(result[key].diagnostics) : null
   }));
 }
@@ -42,40 +45,43 @@ export function initConnectionReadiness({root = document, api, getState, isBlock
   const check = root.getElementById('codex-readiness-btn');
   const status = root.getElementById('codex-readiness-status');
   const results = root.getElementById('codex-readiness-results');
-  let busy = false, summary = null, message = '', rendered = '';
+  let busy = false, result = null, message = '', rendered = '';
   function render() {
+    const summary=result && readinessSummary(result);
     const state = getState(), authenticated = state.connected && state.account?.type === 'chatgpt';
     const blocked = isBlocked();
     connect.disabled = demo || busy || blocked;
-    connect.textContent = authenticated ? '接続状態を更新' : 'Codexに接続';
+    connect.textContent = authenticated ? chatText('接続状態を更新') : chatText('Codexに接続');
     check.disabled = demo || busy || blocked || !authenticated;
-    check.textContent = busy ? '接続を確認中…' : '会話・作業の接続を確認';
+    check.textContent = busy ? chatText('接続を確認中…') : chatText('会話・作業の接続を確認');
     status.setAttribute('aria-busy', String(busy));
-    status.textContent = busy ? '会話とファイル作業の準備を確認しています。AIへの送信は行いません。' :
-      demo ? '実接続モードで確認できます。' : message || (!authenticated ? '「Codexに接続」してから確認できます。' : 'AIへの送信をせずに、会話とファイル作業の準備を確認できます。');
-    const signature = JSON.stringify([summary, busy, authenticated]);
+    status.textContent = busy ? chatText('会話とファイル作業の準備を確認しています。AIへの送信は行いません。') :
+      demo ? chatText('実接続モードで確認できます。') : chatText(message) || (!authenticated ? chatText('「Codexに接続」してから確認できます。') : chatText('AIへの送信をせずに、会話とファイル作業の準備を確認できます。'));
+    const signature = JSON.stringify([getLocale(), summary, busy, authenticated]);
     if (signature === rendered) return;
     rendered = signature;
     results.replaceChildren();
     if (summary && !busy && authenticated) for (const row of summary) {
       const item = root.createElement('p');
-      item.textContent = `${row.label}：${row.text}`;
+      item.textContent = chatText('{label}：{text}', row);
       results.append(item);
       if (row.diagnostics) {
         const details = root.createElement('details'), label = root.createElement('summary'), value = root.createElement('pre');
-        label.textContent = `${row.label}の確認詳細`; value.textContent = JSON.stringify(row.diagnostics, null, 2);
+        label.textContent = chatText('{label}の確認詳細', row); value.textContent = JSON.stringify(row.diagnostics, null, 2);
         details.append(label); details.append(value); results.append(details);
       }
     }
     results.hidden = !summary || busy || !authenticated;
   }
-  function reset() { summary = null; message = ''; render(); }
+  function reset() { result = null; message = ''; render(); }
   async function run() {
     const state = getState();
     if (demo || busy || isBlocked() || !state.connected || state.account?.type !== 'chatgpt') return;
-    busy = true; summary = null; message = ''; render(); onBusyChange(true);
+    busy = true; result = null; message = ''; render(); onBusyChange(true);
     try {
-      summary = readinessSummary(await api('codex/readiness'));
+      const checked = await api('codex/readiness');
+      const summary = readinessSummary(checked);
+      result=checked;
       message = summary.every(row => row.ready) ? '接続準備を確認しました。AIの返信・ファイル作成はまだ実行していません。' : '確認できなかった項目があります。下の案内を確認してください。';
     } catch {
       message = '接続確認を完了できませんでした。Codexへの接続を確認して、もう一度お試しください。';

@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 import {islandRouteWalkable} from './world-island-travel.js';
 
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -53,16 +54,16 @@ export function buildResidentPatrols({homes=new Map(),residents=[],island,obstac
 
 /** `elapsedMs` is the visible animation clock minus that resident's held time. */
 export function residentPatrolPosition(patrol,elapsedMs,{motion=true}={}) {
-  if(!patrol?.legs.length||!patrol.duration)return {...(patrol?.home||{x:490,y:430}),walking:false,direction:'down',motionLabel:'ひと休み'};
+  if(!patrol?.legs.length||!patrol.duration)return {...(patrol?.home||{x:490,y:430}),walking:false,direction:'down',motionLabel:worldText('ひと休み')};
   const seconds=Math.max(0,Number(elapsedMs)||0)/1000;
   let time=(seconds+patrol.phase)%patrol.duration;
   for(const leg of patrol.legs){
     if(time<leg.seconds){
       const ratio=leg.walking?time/leg.seconds:0,walking=leg.walking&&motion;
       return {x:leg.from.x+(leg.to.x-leg.from.x)*ratio,y:leg.from.y+(leg.to.y-leg.from.y)*ratio,
-        direction:leg.direction,walking,motionLabel:walking?'近所を散策中':'ひと休み'};
+        direction:leg.direction,walking,motionLabel:walking?worldText('近所を散策中'):worldText('ひと休み')};
     }
     time-=leg.seconds;
   }
-  return {...patrol.home,walking:false,direction:'down',motionLabel:'ひと休み'};
+  return {...patrol.home,walking:false,direction:'down',motionLabel:worldText('ひと休み')};
 }
