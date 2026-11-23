@@ -59,14 +59,42 @@ try {
     await wait(()=>evaluate("document.readyState==='complete'&&document.documentElement.lang==='en'&&Number(document.querySelector('#village-population')?.textContent)>0&&!!document.querySelector('#village-canvas')?.getClientRects().length"),'visible English sample');
     await evaluate('document.fonts.ready.then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true)))))');
     result[width]=await evaluate(`(()=>{
-      const bounds=s=>{const r=document.querySelector(s).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
+      const bounds=s=>{
+        const el=document.querySelector(s);
+        if(!el)throw Error('Missing HUD element '+s);
+        if(!el.checkVisibility({opacityProperty:true,visibilityProperty:true}))return null;
+        const r=el.getBoundingClientRect();
+        if(!r.width||!r.height||r.right<=0||r.bottom<=0||r.left>=innerWidth||r.top>=innerHeight)return null;
+        return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};
+      };
+      const above=(a,b)=>!a||!b||a.bottom<=b.top+1;
+      const leftOf=(a,b)=>!a||!b||a.right<=b.left+1;
       const card=bounds('.village-heading > div:first-child'), stats=bounds('.village-statistics'), legend=bounds('.village-legend'), sample=bounds('.village-preview-note'), actions=bounds('.village-header-actions');
-      return {card,stats,legend,sample,actions,statsFit:stats.left>=card.left-1&&stats.right<=card.right+1,legendClear:sample.bottom<=legend.top+1,actionsClear:card.right<=actions.left+1||card.bottom<=actions.top+1};
+      const checks={
+        statsFit:!stats||!!card&&stats.left>=card.left-1&&stats.right<=card.right+1,
+        legendClear:above(sample,legend),
+        actionsClear:leftOf(card,actions)||above(card,actions)
+      };
+      const mobile={};
+      if(innerWidth===390){
+        mobile.mapButton=bounds('.project-world-access');
+        mobile.leader=bounds('#village-leader-toggle');
+        Object.assign(checks,{
+          legendAboveMap:above(legend,mobile.mapButton),
+          sampleLeftOfActions:leftOf(sample,actions),
+          actionsAboveLeader:above(actions,mobile.leader),
+          mapLeftOfLeader:leftOf(mobile.mapButton,mobile.leader)
+        });
+      }
+      return {card,stats,legend,sample,actions,...mobile,...checks};
     })()`);
     const image=await call('Page.captureScreenshot',{format:'jpeg',quality:92});
     await writeFile(path.join(output,'en-village-'+width+'.jpg'),Buffer.from(image.data,'base64'));
   }
   await writeFile(path.join(output,'hud.json'),JSON.stringify(result,null,2));
   console.log(JSON.stringify(result));
-  if(Object.values(result).some(v=>!v.statsFit||!v.legendClear||!v.actionsClear))throw Error('Village HUD overlaps');
+  for(const [width,layout] of Object.entries(result)){
+    const failed=Object.entries(layout).filter(([,value])=>value===false).map(([key])=>key);
+    if(failed.length)throw Error('Village HUD overlaps at '+width+'px: '+failed.join(', '));
+  }
 } finally {socket?.close();chrome.kill();server.close();}

@@ -1,6 +1,7 @@
 import {applyTranslations, getLocale, onLocaleChange, registerMessages, t} from './i18n.js';
 
 const english = {
+  "村": "Village",
   "構想": "Planned",
   "建設": "Building",
   "検証": "Testing",
