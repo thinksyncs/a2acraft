@@ -15,6 +15,8 @@ use tauri_plugin_opener::OpenerExt;
 
 mod backend;
 mod desktop_menu;
+mod language;
+use language::label;
 #[cfg(target_os = "macos")]
 mod sample_recorder;
 mod window_diagnostics;
@@ -78,6 +80,7 @@ impl Desktop {
     fn public_settings(&self, saved: &Value) -> Value {
         json!({
             "codexPath": saved["codexPath"].as_str().unwrap_or(""),
+            "uiLanguage": saved["uiLanguage"].as_str().filter(|s| matches!(*s, "en" | "ja")),
             "workDirectory": saved["workDirectory"].as_str().unwrap_or(""),
             "restartRequired": (["codexPath", "workDirectory"].iter().any(|key| saved[*key] != self.initial_settings[*key]))
         })
@@ -127,7 +130,7 @@ async fn desktop_request(
         if !sample_recorder::is_sample_url(&url, &state.origin) { return Err("Not the sample village".into()); }
         match action.as_str() {
             "sampleFrame" | "sampleDone" => return sample_recorder::request(window,action,value).await,
-            "windowState" | "settingsRead" | "uiRead" | "uiSave" | "mapRead" | "mapSave" | "flushRegistered" | "flushComplete" | "close" => {}
+            "windowState" | "useLanguage" | "settingsRead" | "uiRead" | "uiSave" | "mapRead" | "mapSave" | "flushRegistered" | "flushComplete" | "close" => {}
             _ => return Err("Unavailable in a fictional recording".into()),
         }
     }
@@ -171,11 +174,20 @@ async fn desktop_request(
                 .map_err(|e| e.to_string())?;
         }
         "uiRead" | "uiSave" | "mapRead" | "mapSave" => return state.request(&action, value),
+        "settingsSetLanguage" | "useLanguage" => {
+            let lang = value.as_str().filter(|s| matches!(*s, "en" | "ja")).ok_or("Unsupported language")?;
+            if action == "settingsSetLanguage" {
+                state.set_setting("uiLanguage", Some(lang.to_owned()))?;
+            }
+            language::select(lang);
+            desktop_menu::translate(&app).map_err(|e| e.to_string())?;
+            return Ok(Value::Null);
+        }
         "settingsChooseCodex" => {
             if let Some(file) = app
                 .dialog()
                 .file()
-                .set_title("Codex 実行ファイルを選択")
+                .set_title(label("Codex 実行ファイルを選択", "Choose the Codex executable"))
                 .blocking_pick_file()
             {
                 let path = file.into_path().map_err(|e| e.to_string())?;
@@ -193,7 +205,7 @@ async fn desktop_request(
             } else {
                 app.dialog()
                     .file()
-                    .set_title("専用作業フォルダを選択")
+                    .set_title(label("専用作業フォルダを選択", "Choose a dedicated workspace"))
                     .blocking_pick_folder()
                     .map(|p| p.into_path())
                     .transpose()
@@ -261,7 +273,7 @@ fn install_session(window: &WebviewWindow, token: String) -> Result<(), &'static
     });
     match receiver.recv_timeout(Duration::from_secs(12)) {
         Ok(true) => Ok(()),
-        _ => Err("アプリ専用の接続を確認できませんでした。A2ACraftをもう一度開いてください。"),
+        _ => Err(label("アプリ専用の接続を確認できませんでした。A2ACraftをもう一度開いてください。", "Could not establish a private connection. Reopen A2ACraft to try again.")),
     }
 }
 
@@ -309,6 +321,10 @@ fn setup_desktop(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     if !settings.is_object() {
         return Err("Invalid desktop settings file".into());
     }
+    if let Some(lang) = settings["uiLanguage"].as_str() {
+        language::select(lang);
+        desktop_menu::translate(app)?;
+    }
     #[cfg(debug_assertions)]
     let smoke = !demo
         && std::env::args().any(|arg| arg == "--smoke-test")
@@ -350,7 +366,7 @@ fn setup_desktop(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
             .title(if demo {
                 "A2ACraft · Demo"
             } else if practice {
-                "A2ACraft · 練習用の街"
+                label("A2ACraft · 練習用の街", "A2ACraft · Practice Village")
             } else {
                 "A2ACraft"
             })
@@ -414,7 +430,7 @@ fn setup_desktop(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     };
     window.navigate(Url::parse(&format!("{origin}/{query}"))?)?;
     wait_loaded.recv_timeout(Duration::from_secs(30))
-        .map_err(|_| "画面を30秒以内に読み込めませんでした。A2ACraftを開き直してください。")?;
+        .map_err(|_| label("画面を30秒以内に読み込めませんでした。A2ACraftを開き直してください。", "The window did not load within 30 seconds. Reopen A2ACraft."))?;
     #[cfg(target_os = "macos")]
     if recording { sample_recorder::start(&window)?; }
     std::thread::spawn(move || {
@@ -496,7 +512,7 @@ fn main() {
                     handle
                         .dialog()
                         .message(message)
-                        .title("A2ACraft を起動できませんでした")
+                        .title(label("A2ACraft を起動できませんでした", "A2ACraft could not start"))
                         .kind(tauri_plugin_dialog::MessageDialogKind::Error)
                         .show(move |_| handle_on_dismiss.exit(1));
                 }

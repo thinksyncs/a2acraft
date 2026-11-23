@@ -1,3 +1,4 @@
+use crate::language::label;
 use serde_json::{json, Value};
 use std::{
     collections::VecDeque,
@@ -201,23 +202,24 @@ pub(crate) fn show(window: WebviewWindow) {
             Ok(file)
         })();
         let saved = saved
-            .map(|file| format!("保存先　{}", file.display()))
-            .unwrap_or_else(|_| "診断結果を保存できませんでした。".into());
+            .map(|file| format!("{}  {}", label("保存先", "Saved to"), file.display()))
+            .unwrap_or_else(|_| label("診断結果を保存できませんでした。", "Could not save the diagnostic report.").into());
         let yes_no = |v: Option<bool>| match v {
-            Some(true) => "はい",
-            Some(false) => "いいえ",
-            None => "不明",
+            Some(true) => label("はい", "Yes"),
+            Some(false) => label("いいえ", "No"),
+            None => label("不明", "Unknown"),
         };
         let rendering = match responding {
-            "complete" => "読込完了・応答あり",
-            "interactive" | "loading" => "読込中・応答あり",
-            "no-response" => "2秒以内に応答なし",
-            _ => "不明",
+            "complete" => label("読込完了・応答あり", "Loaded and responsive"),
+            "interactive" | "loading" => label("読込中・応答あり", "Loading and responsive"),
+            "no-response" => label("2秒以内に応答なし", "No response within two seconds"),
+            _ => label("不明", "Unknown"),
         };
-        let text = format!("A2ACraft {version}\n表示　{}　最小化　{}　フォーカス　{}\n画面の状態　{rendering}\n{saved}",
-            yes_no(visible),yes_no(minimized),yes_no(focused));
+        let text = format!("A2ACraft {version}\n{}  {}    {}  {}    {}  {}\n{}  {rendering}\n{saved}",
+            label("表示", "Visible"), yes_no(visible), label("最小化", "Minimized"), yes_no(minimized),
+            label("フォーカス", "Focused"), yes_no(focused), label("画面の状態", "Window status"));
         let _ = reveal(&window);
-        let dialog = app.dialog().message(text).title("表示の診断");
+        let dialog = app.dialog().message(text).title(label("表示の診断", "Window Diagnostics"));
         dialog.show(move |_| {
             app.state::<History>()
                 .showing

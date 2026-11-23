@@ -258,3 +258,32 @@ test('planning inherits a verified read-only policy and rejects managed write ac
  assert.equal(denied.status,400);assert.match(denied.body.error,/読み取り専用/);
  calls=await f.log();assert.equal(calls.filter(call=>call.method==='turn/start').length,1);
 });
+
+test('new English workspaces use English default titles, and chosen titles survive exactly',async t=>{
+ const f=await fixture(t);
+ const group=await f.post('chat-groups',{locale:'en'});
+ assert.equal(group.status,200);
+ assert.equal(group.body.group.title,'Chat 1');
+ assert.deepEqual(group.body.conversations.map(chat=>chat.title),['Chat 1','Chat 2','Chat 3','Chat 4']);
+ for(const chat of group.body.conversations)assert.match(chat.characterName,/^[A-Za-z ]+$/);
+ const named=await f.post('conversations',{title:'会話',locale:'en'});
+ assert.equal(named.status,200);
+ assert.equal(named.body.title,'会話');
+ assert.equal(named.body.chatGroup.title,'Chat 2');
+ const another=await f.post('chat-groups',{locale:'ja',title:'A custom name'});
+ assert.equal(another.status,200);
+ assert.equal(another.body.group.title,'A custom name');
+ assert.match(another.body.conversations[0].title,/^会話 /);
+ assert.match(another.body.conversations[0].characterName,/[ァ-ヿ]/u);
+ const rollout=text=>[{type:'session_meta',payload:{id:'locale-proof',name:'原文の会話名'}},{type:'event_msg',payload:{type:'user_message',message:text}}].map(JSON.stringify).join('\n');
+ const imported=await f.post('history/codex/file',{name:'rollout-fixture.jsonl',text:rollout('最初の本文'),locale:'en'});
+ assert.equal(imported.status,200);
+ const first=imported.body.conversations[0];
+ assert.match(first.chatGroup.title,/^Imported from Codex \d{4}-\d{2}-\d{2}$/);
+ assert.match(first.characterName,/^[A-Za-z ]+$/);
+ assert.equal(first.title,'原文の会話名');assert.equal(first.messages[0].text,'最初の本文');
+ const updated=await f.post('history/codex/file',{name:'rollout-fixture.jsonl',text:rollout('原文の続き'),locale:'ja'});
+ assert.equal(updated.status,200);const second=updated.body.conversations[0];
+ assert.equal(second.id,first.id);assert.equal(second.characterName,first.characterName);
+ assert.equal(second.chatGroup.title,first.chatGroup.title);assert.equal(second.messages[0].text,'原文の続き');
+});

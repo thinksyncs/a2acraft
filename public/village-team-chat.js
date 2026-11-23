@@ -1,3 +1,4 @@
+import {worldText, setWorldLabel} from './i18n-world.js';
 import {conversationMessageText} from './world-dialogue.js';
 
 // A team flag never supplies an address. Resolve the current worker (or leader)
@@ -20,17 +21,17 @@ export function createTeamChat({target, messaging}) {
   form.id = 'village-team-chat';
   input.id = 'village-team-message';
   input.rows = 1;
-  input.placeholder = 'メッセージを入力…';
+  setWorldLabel(input,'メッセージを入力…','placeholder');
   label.htmlFor = input.id;
   send.type = 'submit';
-  send.textContent = '送信';
+  setWorldLabel(send,'送信');
   hint.id = 'village-team-message-status';
   hint.setAttribute('role', 'status');
   input.setAttribute('aria-describedby', hint.id);
   controls.append(input, send);
   refresh.id = 'village-team-quota-refresh';
   refresh.type = 'button';
-  refresh.textContent = '残量を更新';
+  refresh.textContent = worldText('残量を更新');
   refresh.hidden = true;
   form.append(label, history, controls, hint, refresh);
   form.hidden = true;
@@ -42,13 +43,13 @@ export function createTeamChat({target, messaging}) {
     if (!shown) return;
     const {chat, permitted} = shown;
     const name = chat.characterName || chat.title;
-    label.textContent = name + 'と会話';
+    label.textContent = worldText("{name}と会話", {name});
     const messages = [];
     for (let i = (chat.messages?.length || 0) - 1; i >= 0 && messages.length < 2; i--) {
       const message = chat.messages[i];
       if (!['user', 'assistant'].includes(message?.role)) continue;
       const text = conversationMessageText(message).trim();
-      if (text) messages.unshift([message.role === 'user' ? 'あなた' : name, text.length > 320 ? text.slice(0, 319) + '…' : text]);
+      if (text) messages.unshift([message.role === 'user' ? worldText('あなた') : name, text.length > 320 ? text.slice(0, 319) + '…' : text]);
     }
     const key = JSON.stringify([chat.id, messages]);
     if (key !== historyKey) {
@@ -64,13 +65,13 @@ export function createTeamChat({target, messaging}) {
     history.hidden = !messages.length;
     const {draft, reason, refreshQuota} = messaging.read(chat.id);
     if (input.value !== draft) input.value = draft;
-    const unavailable = permitted ? reason : 'この隊は現在、閲覧のみです。';
+    const unavailable = permitted ? reason : worldText('この隊は現在、閲覧のみです。');
     input.readOnly = !permitted || Boolean(chat.project);
     hint.textContent = unavailable || '';
     hint.hidden = !unavailable;
     refresh.hidden = !permitted || !refreshQuota || !messaging.refreshQuota;
     refresh.disabled = refreshing;
-    refresh.textContent = refreshing ? '更新中…' : '残量を更新';
+    refresh.textContent = refreshing ? worldText('更新中…') : worldText('残量を更新');
     send.disabled = Boolean(unavailable) || refreshing || !input.value.trim();
   }
   refresh.onclick = async () => {

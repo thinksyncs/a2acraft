@@ -1,3 +1,6 @@
+import {getLocale} from './i18n.js';
+import {chatText} from './i18n-chat.js';
+
 const MAX_FILES = 6;
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_PIXELS = 40_000_000;
@@ -52,7 +55,7 @@ function headerDimensions(bytes) {
 }
 
 function checkDimensions(width, height) {
-  if (!width || !height || width * height > MAX_PIXELS) throw new Error('画像が大きすぎます。4,000万画素以内の画像にしてください。');
+  if (!width || !height || width * height > MAX_PIXELS) throw new Error(chatText('画像が大きすぎます。4,000万画素以内の画像にしてください。'));
 }
 
 async function prepareImage(file) {
@@ -62,7 +65,7 @@ async function prepareImage(file) {
   try {
     const image = new Image();
     image.src = url;
-    await image.decode().catch(() => { throw new Error('画像を読み込めません。PNG・JPEG・WebP・GIFのファイルを確認してください。'); });
+    await image.decode().catch(() => { throw new Error(chatText('画像を読み込めません。PNG・JPEG・WebP・GIFのファイルを確認してください。')); });
     checkDimensions(image.naturalWidth, image.naturalHeight);
     const edge = Math.max(image.naturalWidth, image.naturalHeight);
     if (edge <= MAX_EDGE) return file;
@@ -70,12 +73,12 @@ async function prepareImage(file) {
     canvas.width = Math.max(1, Math.round(image.naturalWidth * MAX_EDGE / edge));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * MAX_EDGE / edge));
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('画像を縮小できませんでした。');
+    if (!context) throw new Error(chatText('画像を縮小できませんでした。'));
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const type = file.type === 'image/jpeg' || ['jpg', 'jpeg'].includes(extension(file.name)) ? 'image/jpeg' : 'image/png';
     const blob = await new Promise(resolve => canvas.toBlob(resolve, type, 0.88));
     canvas.width = canvas.height = 1;
-    if (!blob || blob.size > MAX_BYTES) throw new Error('縮小後の画像が10 MBを超えています。小さい画像を選んでください。');
+    if (!blob || blob.size > MAX_BYTES) throw new Error(chatText('縮小後の画像が10 MBを超えています。小さい画像を選んでください。'));
     const suffix = type === 'image/jpeg' ? 'jpg' : 'png';
     return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'image'}.${suffix}`, {type});
   } finally {
@@ -85,7 +88,7 @@ async function prepareImage(file) {
 
 async function responseJSON(response) {
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || `添付処理に失敗しました (${response.status})。`);
+  if (!response.ok) throw new Error(result.error || chatText('添付処理に失敗しました ({status})。', {status:response.status}));
   return result;
 }
 
@@ -110,7 +113,7 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
   previewDialog.classList.add('attachment-preview');
   previewDialog.setAttribute('aria-labelledby', 'attachment-preview-title');
   list.setAttribute('role', 'list');
-  list.setAttribute('aria-label', '送信する添付ファイル');
+
   input.accept = '.png,.jpg,.jpeg,.webp,.gif,.pdf,.ppt,.pptx,.xls,.xlsx,.doc,.docx,.odt,.ods,.odp,.csv,.tsv,.txt,.md';
 
   const entries = id => drafts.get(id) || [];
@@ -128,9 +131,9 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
   };
 
   function preview(item, localURL = null) {
-    const title = element('h2', '', item.name || '添付ファイル');
+    const title = element('h2', '', item.name || chatText('添付ファイル'));
     title.id = 'attachment-preview-title';
-    const close = element('button', 'outline attachment-preview-close', '閉じる');
+    const close = element('button', 'outline attachment-preview-close', chatText('閉じる'));
     close.type = 'button';
     close.addEventListener('click', () => previewDialog.close());
     const header = element('div', 'attachment-preview-header');
@@ -139,11 +142,11 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     if (item.kind === 'image' && (localURL || imageURL(item))) {
       const image = element('img');
       image.src = localURL || imageURL(item);
-      image.alt = item.name || '添付画像';
+      image.alt = item.name || chatText('添付画像');
       content.append(image);
     } else {
-      content.append(element('p', 'attachment-preview-caption', '抽出テキスト冒頭のプレビュー'));
-      content.append(element('pre', '', item.preview || 'プレビューはありません。'));
+      content.append(element('p', 'attachment-preview-caption', chatText('抽出テキスト冒頭のプレビュー')));
+      content.append(element('pre', '', item.preview || chatText('プレビューはありません。')));
     }
     for (const warning of attachmentWarnings(item)) content.append(element('p', 'attachment-warning', warning));
     previewDialog.replaceChildren(header, content);
@@ -152,7 +155,7 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
 
   function attachmentWarnings(item) {
     const warnings = Array.isArray(item.warnings) ? item.warnings.filter(value => typeof value === 'string') : [];
-    if (item.truncated) warnings.unshift('長い文書のため、抽出テキストの一部を省略しています。');
+    if (item.truncated) warnings.unshift(chatText('長い文書のため、抽出テキストの一部を省略しています。'));
     return [...new Set(warnings)];
   }
 
@@ -163,12 +166,12 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     if (item.id) node.dataset.attachmentId = item.id;
     const open = element('button', 'attachment-open');
     open.type = 'button';
-    open.setAttribute('aria-label', `${item.name || '添付ファイル'} を表示`);
+    open.setAttribute('aria-label', chatText('{name} を表示', {name:item.name || chatText('添付ファイル')}));
     const src = entry.localURL || (item.kind === 'image' ? imageURL(item) : null);
     if (src) {
       const image = element('img', 'attachment-thumbnail');
       image.src = src;
-      image.alt = item.name || '添付画像';
+      image.alt = item.name || chatText('添付画像');
       image.loading = 'lazy';
       open.append(image);
     } else {
@@ -177,24 +180,24 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
       open.append(icon);
     }
     const info = element('span', 'attachment-info');
-    const name = element('span', 'attachment-name', item.name || '添付ファイル');
+    const name = element('span', 'attachment-name', item.name || chatText('添付ファイル'));
     name.title = item.name || '';
     info.append(name);
     const extracted = Number(item.extractedCharacters || 0);
     const sent = Number.isFinite(item.sentCharacters) ? item.sentCharacters : extracted;
     const characters = item.truncated || sent !== extracted
-      ? `送信 ${sent.toLocaleString()}文字 / 抽出 ${extracted.toLocaleString()}文字`
-      : `${extracted.toLocaleString()}文字`;
-    let detail = item.kind === 'image' ? `画像 · ${sizeLabel(item.size || 0)}` : `${extension(item.name).toUpperCase()} · ${characters}`;
-    if (entry.state === 'loading') detail = item.kind === 'image' ? '画像を準備中…' : 'テキストを抽出中…';
-    if (entry.state === 'removing') detail = '取り外し中…';
-    if (entry.state === 'error') detail = entry.error || '添付できませんでした。';
+      ? chatText('送信 {sent}文字 / 抽出 {extracted}文字', {sent:sent.toLocaleString(getLocale()),extracted:extracted.toLocaleString(getLocale())})
+      : chatText('{count}文字', {count:extracted.toLocaleString(getLocale())});
+    let detail = item.kind === 'image' ? chatText('画像 · {size}', {size:sizeLabel(item.size || 0)}) : `${extension(item.name).toUpperCase()} · ${characters}`;
+    if (entry.state === 'loading') detail = item.kind === 'image' ? chatText('画像を準備中…') : chatText('テキストを抽出中…');
+    if (entry.state === 'removing') detail = chatText('取り外し中…');
+    if (entry.state === 'error') detail = entry.error || chatText('添付できませんでした。');
     const status = element('span', 'attachment-detail', detail);
     if (entry.state !== 'ready') status.setAttribute('role', entry.state === 'error' ? 'alert' : 'status');
     info.append(status);
     const warnings = attachmentWarnings(item);
     if (warnings.length) {
-      const warning = element('span', 'attachment-warning-badge', item.truncated ? '一部を省略' : '抽出時の注意あり');
+      const warning = element('span', 'attachment-warning-badge', item.truncated ? chatText('一部を省略') : chatText('抽出時の注意あり'));
       warning.title = warnings.join('\n');
       info.append(warning);
     }
@@ -205,14 +208,14 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     if (editable) {
       const actions = element('div', 'attachment-actions');
       if (entry.state === 'error' && entry.file) {
-        const retry = element('button', 'attachment-retry', '再試行');
+        const retry = element('button', 'attachment-retry', chatText('再試行'));
         retry.type = 'button';
         retry.addEventListener('click', () => upload(entry, conversationId));
         actions.append(retry);
       }
       const remove = element('button', 'attachment-remove', '×');
       remove.type = 'button';
-      remove.setAttribute('aria-label', `${item.name || '添付ファイル'} を取り外す`);
+      remove.setAttribute('aria-label', chatText('{name} を取り外す', {name:item.name || chatText('添付ファイル')}));
       remove.disabled = entry.state === 'removing';
       remove.addEventListener('click', () => removeEntry(entry, conversationId));
       actions.append(remove);
@@ -226,14 +229,15 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     const current = entries(id);
     // Keep existing thumbnail nodes while chat streaming repeatedly updates the
     // composer; rebuilding would interrupt keyboard focus and image previews.
-    const signature = JSON.stringify([id, current.map(entry => [entry.key, entry.state, entry.error, entry.metadata?.id])]);
+    list.setAttribute('aria-label', chatText('送信する添付ファイル'));
+    const signature = JSON.stringify([getLocale(), id, current.map(entry => [entry.key, entry.state, entry.error, entry.metadata?.id])]);
     if (list.dataset.signature !== signature) {
       list.dataset.signature = signature;
       list.replaceChildren(...current.map(entry => card(entry, true, id)));
     }
     list.hidden = current.length === 0;
     attach.disabled = !id || !isAvailable() || current.length >= MAX_FILES;
-    attach.title = current.length >= MAX_FILES ? '添付できるファイルは6個までです。' : '画像・文書を添付（1ファイル10 MBまで）';
+    attach.title = current.length >= MAX_FILES ? chatText('添付できるファイルは6個までです。') : chatText('画像・文書を添付（1ファイル10 MBまで）');
   }
 
   async function removeEntry(entry, conversationId) {
@@ -265,10 +269,10 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     try {
       let file = entry.file;
       const ext = extension(file.name);
-      if (!file.size) throw new Error('空のファイルは添付できません。');
-      if (file.size > MAX_BYTES) throw new Error('1ファイル10 MBまで添付できます。');
+      if (!file.size) throw new Error(chatText('空のファイルは添付できません。'));
+      if (file.size > MAX_BYTES) throw new Error(chatText('1ファイル10 MBまで添付できます。'));
       if (!IMAGE_EXTENSIONS.has(ext) && !IMAGE_TYPES.has(file.type) && !DOCUMENT_EXTENSIONS.has(ext)) {
-        throw new Error('この形式は添付できません。画像、PDF、Office文書、CSV、テキストに対応しています。');
+        throw new Error(chatText('この形式は添付できません。画像、PDF、Office文書、CSV、テキストに対応しています。'));
       }
       if (entry.kind === 'image') {
         file = await prepareImage(file);
@@ -286,7 +290,7 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
         method: 'POST', headers: {'Content-Type': file.type || 'application/octet-stream', 'X-Chat-UI': '1'}, body: file
       });
       const metadata = await responseJSON(response);
-      if (!metadata.id || !['image', 'document'].includes(metadata.kind)) throw new Error('添付ファイルの応答を確認できませんでした。');
+      if (!metadata.id || !['image', 'document'].includes(metadata.kind)) throw new Error(chatText('添付ファイルの応答を確認できませんでした。'));
       if (entry.removed) {
         removedIds.add(metadata.id);
         drafts.set(conversationId, entries(conversationId).filter(item => item.metadata?.id !== metadata.id));
@@ -300,7 +304,7 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
           entry.state = 'ready';
           entry.file = null;
           drafts.set(conversationId, [...entries(conversationId), entry]);
-          notify(`添付の取り外しに失敗しました。もう一度取り外してください: ${error.message}`);
+          notify(chatText('添付の取り外しに失敗しました。もう一度取り外してください: {error}', {error:error.message}));
         }
         return;
       }
@@ -313,7 +317,7 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     } catch (error) {
       if (entry.removed) return;
       entry.state = 'error';
-      entry.error = error.message || '添付ファイルを準備できませんでした。';
+      entry.error = error.message || chatText('添付ファイルを準備できませんでした。');
     } finally {
       changed();
     }
@@ -321,13 +325,13 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
 
   async function ingest(files, chatId = getSelected()) {
     if (!chatId || !isAvailable()) {
-      notify('会話を開いてから添付してください。');
+      notify(chatText('会話を開いてから添付してください。'));
       return [];
     }
     const incoming = Array.from(files || []);
     const current = entries(chatId);
     const accepted = incoming.slice(0, Math.max(0, MAX_FILES - current.length));
-    if (accepted.length < incoming.length) notify('1回の送信に添付できるファイルは6個までです。');
+    if (accepted.length < incoming.length) notify(chatText('1回の送信に添付できるファイルは6個までです。'));
     const added = accepted.map(file => ({
       key: crypto.randomUUID(), file,
       kind: IMAGE_EXTENSIONS.has(extension(file.name)) || IMAGE_TYPES.has(file.type) ? 'image' : 'document',
@@ -372,12 +376,12 @@ export function initAttachments({getSelected, onChange = () => {}, notify = () =
     },
     renderMessage(container, items = []) {
       const valid = Array.isArray(items) ? items.filter(item => item && ['image', 'document'].includes(item.kind)) : [];
-      const signature = JSON.stringify(valid);
+      const signature = JSON.stringify([getLocale(),valid]);
       if (container.dataset.signature === signature) return;
       container.dataset.signature = signature;
       container.classList.add('message-attachments');
       container.setAttribute('role', 'list');
-      container.setAttribute('aria-label', '添付ファイル');
+      container.setAttribute('aria-label', chatText('添付ファイル'));
       container.replaceChildren(...valid.map(metadata => card({metadata, state: 'ready'}, false)));
       container.hidden = valid.length === 0;
     },

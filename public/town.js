@@ -1,3 +1,4 @@
+import {worldText, worldBinding, setWorldLabel, getLocale} from './i18n-world.js';
 import {equipmentIcon,equipmentPresentation} from './equipment.js';
 import {characterAppearance,characterIcon} from './character-appearance.js';
 import {createPartyTrail} from './town-walk.js';
@@ -5,9 +6,9 @@ import {boardRoleState,townQuestActivity,townQuestStopReason} from './board-gath
 import {createTownActivity,activityFormation,roleWorkplace,TOWN_WORKSITES} from './town-activity.js';
 import {teamsQuestProgress} from './teams-quest.js';
 
-const names={weapon:'武器屋',spell:'呪文屋',tool:'道具屋',tavern:'酒場',castle:'お城 · クエスト受付',town:'広場'};
+const names={get weapon(){return worldText('武器屋');},get spell(){return worldText('呪文屋');},get tool(){return worldText('道具屋');},get tavern(){return worldText('酒場');},get castle(){return worldText('お城 · クエスト受付');},get town(){return worldText('広場');}};
 const positions={weapon:['15%','39%'],spell:['38%','39%'],tool:['15%','39%'],tavern:['62%','39%'],castle:['85%','39%'],town:['50%','73%']};
-const percent=value=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1}).format(value)+'%';
+const percent=value=>new Intl.NumberFormat(getLocale(),{maximumFractionDigits:1}).format(value)+'%';
 export const TOWN_WAGON_ID='__town_wagon__';
 
 // Hydrated completions are history. Only a completion observed during this
@@ -41,33 +42,33 @@ export function townReportRecord(state,fallback=null){
 // Account quota is a percentage, not a remaining token count or a spendable credit balance.
 export function townWallet(state,now=Date.now()){
   const unknown=note=>({status:'unknown',remaining:null,windows:[],note});
-  if(!state.connected||state.account?.type!=='chatgpt')return unknown('Codexに接続すると利用枠を確認できます。');
+  if(!state.connected||state.account?.type!=='chatgpt')return unknown(worldText('Codexに接続すると利用枠を確認できます。'));
   const limits=state.limits,buckets=limits?.rateLimitsByLimitId?Object.values(limits.rateLimitsByLimitId):limits?.rateLimits?[limits.rateLimits]:[];
-  if(!buckets.length)return unknown('残量を取得できません。「利用枠を更新」で再取得してください。');
+  if(!buckets.length)return unknown(worldText('残量を取得できません。「利用枠を更新」で再取得してください。'));
   const windows=[];
   for(const bucket of buckets){
-    if(!bucket||typeof bucket!=='object')return unknown('残量を確認できません。更新してください。');
+    if(!bucket||typeof bucket!=='object')return unknown(worldText('残量を確認できません。更新してください。'));
     for(const window of [bucket.primary,bucket.secondary].filter(Boolean)){
-      if(!Number.isFinite(window.usedPercent)||window.usedPercent<0||window.usedPercent>100)return unknown('残量を確認できません。更新してください。');
-      if(!Number.isFinite(window.resetsAt)||window.resetsAt*1000<=now)return {status:'stale',remaining:null,windows:[],note:'リセット後の残量は更新待ちです。「利用枠を更新」で再取得してください。'};
+      if(!Number.isFinite(window.usedPercent)||window.usedPercent<0||window.usedPercent>100)return unknown(worldText('残量を確認できません。更新してください。'));
+      if(!Number.isFinite(window.resetsAt)||window.resetsAt*1000<=now)return {status:'stale',remaining:null,windows:[],note:worldText('リセット後の残量は更新待ちです。「利用枠を更新」で再取得してください。')};
       const minutes=window.windowDurationMins;
-      const period=Number.isFinite(minutes)&&minutes>0?(minutes%1440===0?minutes/1440+'日間':minutes%60===0?minutes/60+'時間':minutes+'分間'):'利用枠';
+      const period=Number.isFinite(minutes)&&minutes>0?(minutes%1440===0?worldText("{n}日間", {n:minutes/1440}):minutes%60===0?worldText("{n}時間", {n:minutes/60}):worldText("{n}分間", {n:minutes})):worldText('利用枠');
       windows.push({name:(bucket.limitName||bucket.limitId||'Codex')+' · '+period,remaining:100-window.usedPercent,resetsAt:window.resetsAt});
     }
   }
-  if(!windows.length)return unknown('契約の残量は未取得です。「利用枠を更新」で再取得してください。');
+  if(!windows.length)return unknown(worldText('契約の残量は未取得です。「利用枠を更新」で再取得してください。'));
   const remaining=Math.min(...windows.map(window=>window.remaining));
   const blocked=state.policy?.ok===false||limits.ordinaryUsageAllowed===false||buckets.some(bucket=>bucket.rateLimitReachedType);
-  return {status:blocked?'blocked':'ready',remaining,windows,note:blocked?(state.policy?.reason||'現在、新しい依頼を開始できません。残量を更新してください。'):'複数の利用枠のうち、最も少ない残量を表示しています。'};
+  return {status:blocked?'blocked':'ready',remaining,windows,note:blocked?(state.policy?.reason||worldText('現在、新しい依頼を開始できません。残量を更新してください。')):worldText('複数の利用枠のうち、最も少ない残量を表示しています。')};
 }
 
 export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,getSelected,onNavigate,onRefresh,onCharacterChat,onCharacterEquip,onTodo,onProgress,onTeams}){
   const $=selector=>document.querySelector(selector);
   const traveler=$('#town-traveler'),map=$('.town-map'),field=$('#town-walkfield'),rows=new Map();
-  traveler.classList.add('town-party-lineup');traveler.setAttribute('role','list');traveler.setAttribute('aria-label','酒場で編成したパーティ');
+  traveler.classList.add('town-party-lineup');traveler.setAttribute('role','list');traveler.setAttribute('aria-label',worldText('酒場で編成したパーティ'));
   map.classList.add('has-party-lineup');
   let view='chat',shop='weapon',refreshing=false,partySignature='';
-  const text=(tag,value,className)=>{const element=document.createElement(tag);element.textContent=value;if(className)element.className=className;return element;};
+  const text=(tag,value,className)=>{const element=document.createElement(tag);if(value?.worldLabel)setWorldLabel(element,value.worldLabel);else element.textContent=value;if(className)element.className=className;return element;};
   let trail=null,trailKey='',trailWidth=0,trailHeight=0,frame=0,lastFrame=0,dragPointer=null,selectedCharacter=null,navigating=false,disposed=false;
   let markerUntil=0,markerTimer=0,arrivalTimer=0,celebrationTimer=0,pendingCelebration=null;
   let boardBusy=false,boardError='',activityFrame=null,reportRecord=null,openedReport=null,reportKey='';
@@ -96,64 +97,64 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
   const dialogGear=text('div','','town-character-gear town-member-gear');dialogGear.id='town-character-gear';
   const dialogActivity=text('p','','town-activity-detail');dialogActivity.id='town-character-activity';
   const dialogResult=text('details','','town-character-result');dialogResult.id='town-character-result';
-  const dialogOutput=text('pre','');dialogOutput.id='town-character-output';dialogOutput.tabIndex=0;dialogResult.append(text('summary','この担当の成果を見る'),dialogOutput);
+  const dialogOutput=text('pre','');dialogOutput.id='town-character-output';dialogOutput.tabIndex=0;dialogResult.append(text('summary',worldBinding('この担当の成果を見る')),dialogOutput);
   const actions=text('div','','town-character-actions');
   const action=(id,label,handler)=>{const button=text('button',label,'outline');button.type='button';button.id=id;button.onclick=handler;actions.append(button);return button;};
-  const chatAction=action('town-character-open-chat','チャットを開く',()=>navigateCharacter('chat'));
-  action('town-character-weapon','武器を変更する',()=>navigateCharacter('weapon'));
-  action('town-character-spell','呪文を変更する',()=>navigateCharacter('spell'));
-  action('town-character-close','閉じる',()=>dialog.close());
+  const chatAction=action('town-character-open-chat',worldBinding('チャットを開く'),()=>navigateCharacter('chat'));
+  action('town-character-weapon',worldBinding('武器を変更する'),()=>navigateCharacter('weapon'));
+  action('town-character-spell',worldBinding('呪文を変更する'),()=>navigateCharacter('spell'));
+  action('town-character-close',worldBinding('閉じる'),()=>dialog.close());
   dialog.append(dialogName,dialogChat,dialogRole,dialogActivity,dialogResult,dialogGear,actions);document.body.append(dialog);
   const wagonDialog=text('dialog','','town-wagon-dialog');wagonDialog.id='town-wagon-dialog';wagonDialog.setAttribute('aria-labelledby','town-wagon-title');
-  const wagonTitle=text('h2','馬車の仲間');wagonTitle.id='town-wagon-title';
+  const wagonTitle=text('h2',worldBinding('馬車の仲間'));wagonTitle.id='town-wagon-title';
   const wagonMembers=text('div','','town-wagon-members');wagonMembers.id='town-wagon-members';
-  const wagonClose=text('button','閉じる','outline');wagonClose.type='button';wagonClose.id='town-wagon-close';wagonClose.onclick=()=>wagonDialog.close();
-  wagonDialog.append(wagonTitle,text('p','仲間を選ぶと、チャットを開いたり装備を変更できます。'),wagonMembers,wagonClose);document.body.append(wagonDialog);
+  const wagonClose=text('button',worldBinding('閉じる'),'outline');wagonClose.type='button';wagonClose.id='town-wagon-close';wagonClose.onclick=()=>wagonDialog.close();
+  wagonDialog.append(wagonTitle,text('p',worldBinding('仲間を選ぶと、チャットを開いたり装備を変更できます。')),wagonMembers,wagonClose);document.body.append(wagonDialog);
   const boardDialog=text('dialog','','town-board-dialog');boardDialog.id='town-board-dialog';boardDialog.setAttribute('aria-labelledby','town-board-title');
-  const boardTitle=text('h2','街のクエスト掲示板');boardTitle.id='town-board-title';boardTitle.tabIndex=-1;const boardItems=text('div','','town-board-items');boardItems.id='town-board-items';
+  const boardTitle=text('h2',worldBinding('街のクエスト掲示板'));boardTitle.id='town-board-title';boardTitle.tabIndex=-1;const boardItems=text('div','','town-board-items');boardItems.id='town-board-items';
   const boardTodos=()=>(getState().todos?.items||[]).filter(item=>['castle','teams'].includes(item.source?.provider));
   const boardEmpty=text('section','','town-board-empty');boardEmpty.id='town-board-empty';
   const boardEmptyGuidance=text('p','');boardEmptyGuidance.id='town-board-empty-guidance';
-  const boardCreate=text('button','お城でクエストを作成・TODO登録','outline');boardCreate.type='button';boardCreate.id='town-board-create-quests';
+  const boardCreate=text('button',worldBinding('お城でクエストを作成・TODO登録'),'outline');boardCreate.type='button';boardCreate.id='town-board-create-quests';
   boardCreate.onclick=()=>{navigating=true;stopAnimation();boardDialog.close();onNavigate('castle');};
-  boardEmpty.append(text('h3','まだクエストはありません'),boardEmptyGuidance,text('p','TODO登録後は、掲示板の自動巡回をONにしてください。すでにONなら、登録後に仲間の募集が始まります。'),boardCreate);
-  const boardClose=text('button','閉じる','outline');boardClose.type='button';boardClose.id='town-board-close';boardClose.onclick=()=>boardDialog.close();
+  boardEmpty.append(text('h3',worldBinding('まだクエストはありません')),boardEmptyGuidance,text('p',worldBinding('TODO登録後は、掲示板の自動巡回をONにしてください。すでにONなら、登録後に仲間の募集が始まります。')),boardCreate);
+  const boardClose=text('button',worldBinding('閉じる'),'outline');boardClose.type='button';boardClose.id='town-board-close';boardClose.onclick=()=>boardDialog.close();
   const boardControl=text('section','','town-board-controls'),autoLabel=text('label','','town-board-auto-label'),autoToggle=document.createElement('input');autoToggle.type='checkbox';autoToggle.id='town-board-auto';
-  autoLabel.append(autoToggle,text('span','掲示板を自動巡回'));
+  autoLabel.append(autoToggle,text('span',worldBinding('掲示板を自動巡回')));
   const boardStatus=text('p','');boardStatus.id='town-board-dispatch-status';boardStatus.setAttribute('role','status');
   const boardReason=text('p','','town-board-dispatch-reason');boardReason.id='town-board-dispatch-reason';boardReason.setAttribute('role','alert');
   const boardReasons=text('ul','','town-board-dispatch-reasons');boardReasons.id='town-board-dispatch-reasons';
   const boardActions=text('div','','town-board-dispatch-actions');
   const boardAction=(id,label,handler)=>{const button=text('button',label,'outline');button.type='button';button.id=id;button.onclick=handler;boardActions.append(button);return button;};
-  const activeTodo=boardAction('town-board-active-todo','このTODOを確認',()=>{const id=boardActive()?.todoId||getState().boardDispatch?.active?.todoId;if(id){navigating=true;boardDialog.close();onTodo?.(id);}});
-  const progressAction=boardAction('town-board-progress','酒場で進行を確認',()=>{navigating=true;boardDialog.close();onProgress?.();});
-  const stopAction=boardAction('town-board-stop','進行中のクエストを停止',()=>changeBoard('board/stop',{}));
-  const acknowledgeAction=boardAction('town-board-acknowledge','記録を確認して巡回を再設定',()=>changeBoard('board/acknowledge',{id:getState().boardDispatch?.active?.id}));
-  boardControl.append(autoLabel,text('p','ONにすると、お城やTeamsから登録した未着手のクエストに合う仲間が集まります。役割ごとに処理し、最後にリーダーがまとめます。Teamsへの返信は、内容を確認してから送信します。OFFは新しい募集を止めます。'),boardStatus,boardReason,boardReasons,boardActions);
-  boardDialog.append(boardTitle,text('p','お城やTeamsから届いた仕事です。元の依頼、仲間の進行、成果をここから確認できます。'),boardControl,boardItems,boardEmpty,boardClose);document.body.append(boardDialog);
+  const activeTodo=boardAction('town-board-active-todo',worldBinding('このTODOを確認'),()=>{const id=boardActive()?.todoId||getState().boardDispatch?.active?.todoId;if(id){navigating=true;boardDialog.close();onTodo?.(id);}});
+  const progressAction=boardAction('town-board-progress',worldBinding('酒場で進行を確認'),()=>{navigating=true;boardDialog.close();onProgress?.();});
+  const stopAction=boardAction('town-board-stop',worldBinding('進行中のクエストを停止'),()=>changeBoard('board/stop',{}));
+  const acknowledgeAction=boardAction('town-board-acknowledge',worldBinding('記録を確認して巡回を再設定'),()=>changeBoard('board/acknowledge',{id:getState().boardDispatch?.active?.id}));
+  boardControl.append(autoLabel,text('p',worldBinding('ONにすると、お城やTeamsから登録した未着手のクエストに合う仲間が集まります。役割ごとに処理し、最後にリーダーがまとめます。Teamsへの返信は、内容を確認してから送信します。OFFは新しい募集を止めます。')),boardStatus,boardReason,boardReasons,boardActions);
+  boardDialog.append(boardTitle,text('p',worldBinding('お城やTeamsから届いた仕事です。元の依頼、仲間の進行、成果をここから確認できます。')),boardControl,boardItems,boardEmpty,boardClose);document.body.append(boardDialog);
   const boardBanner=text('button','','town-board-run-banner');boardBanner.type='button';boardBanner.id='town-board-run-banner';boardBanner.hidden=true;boardBanner.onclick=()=>{if(activity.scene?.phase==='reported'&&reportRecord){reportOpen.click();}else if(boardActive()?.origin==='party'&&onProgress){navigating=true;stopAnimation();onProgress();}else openBoard();};map.append(boardBanner);
   const activityStatus=text('span','');activityStatus.id='town-activity-status';activityStatus.setAttribute('role','status');boardBanner.append(activityStatus);boardBanner.classList.add('town-activity-status');
   const workIcon=(id,className,viewBox='0 0 24 24')=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),use=document.createElementNS(ns,'use');svg.setAttribute('viewBox',viewBox);svg.setAttribute('class',className);svg.setAttribute('aria-hidden','true');use.setAttribute('href','/assets/town-work.svg#'+id);svg.append(use);return svg;};
   const setWorkIcon=(svg,id)=>{const href='/assets/town-work.svg#'+id;if(svg.firstChild.getAttribute('href')!==href)svg.firstChild.setAttribute('href',href);};
   const worksites=new Map();
-  for(const [id,symbol,label] of [['research','book-desk','調査の机'],['craft','workbench','作成の机'],['review','review-desk','確認の机'],['shared','summary-desk','まとめの机']]){
+  for(const [id,symbol,label] of [['research','book-desk',worldText('調査の机')],['craft','workbench',worldText('作成の机')],['review','review-desk',worldText('確認の机')],['shared','summary-desk',worldText('まとめの机')]]){
     const site=text('span','','town-worksite');site.dataset.worksite=id;site.title=label;site.setAttribute('aria-hidden','true');site.append(workIcon(symbol,'','0 0 48 32'));field.append(site);worksites.set(id,site);
   }
-  const summaryStack=text('span','','town-summary-stack');summaryStack.id='town-summary-stack';summaryStack.hidden=true;summaryStack.setAttribute('aria-label','受け取った成果');
+  const summaryStack=text('span','','town-summary-stack');summaryStack.id='town-summary-stack';summaryStack.hidden=true;summaryStack.setAttribute('aria-label',worldText('受け取った成果'));
   const summaryCount=text('span','','town-summary-count');summaryStack.append(summaryCount);field.append(summaryStack);
   const handoffScroll=workIcon('scroll','town-handoff-scroll');handoffScroll.id='town-handoff-scroll';handoffScroll.style.display='none';field.append(handoffScroll);
   const reportOpen=text('button','','town-report-open');reportOpen.id='town-report-open';reportOpen.type='button';reportOpen.hidden=true;reportOpen.style.left='88%';reportOpen.style.top='20%';
-  const reportSymbol=workIcon('report','town-report-icon'),reportLabel=text('span','成果を見る'),reportStatus=text('small','','town-report-status');reportStatus.id='town-report-status';reportOpen.append(reportSymbol,reportLabel,reportStatus);map.append(reportOpen);
+  const reportSymbol=workIcon('report','town-report-icon'),reportLabel=text('span',worldBinding('成果を見る')),reportStatus=text('small','','town-report-status');reportStatus.id='town-report-status';reportOpen.append(reportSymbol,reportLabel,reportStatus);map.append(reportOpen);
   const reportDialog=text('dialog','','town-character-dialog town-report-dialog');reportDialog.id='town-report-dialog';reportDialog.setAttribute('aria-labelledby','town-report-title');
-  const reportTitle=text('h2','お城への報告');reportTitle.id='town-report-title';
+  const reportTitle=text('h2',worldBinding('お城への報告'));reportTitle.id='town-report-title';
   const reportRequest=text('pre','');reportRequest.id='town-report-request';reportRequest.tabIndex=0;
   const reportOutput=text('pre','');reportOutput.id='town-report-output';reportOutput.tabIndex=0;
   const reportMeta=text('p','');reportMeta.id='town-report-meta';
   const reportActions=text('div','','town-character-actions');
-  const reportTodo=text('button','TODOの履歴を開く','outline');reportTodo.id='town-report-todo';reportTodo.type='button';
-  const reportTeams=text('button','Teamsの返信を確認','outline');reportTeams.id='town-report-teams';reportTeams.type='button';
-  const reportClose=text('button','閉じる','outline');reportClose.id='town-report-close';reportClose.type='button';reportClose.onclick=()=>reportDialog.close();
-  reportActions.append(reportTodo,reportTeams,reportClose);reportDialog.append(reportTitle,reportMeta,text('h3','元の依頼'),reportRequest,text('h3','リーダーのまとめ'),reportOutput,reportActions);document.body.append(reportDialog);
+  const reportTodo=text('button',worldBinding('TODOの履歴を開く'),'outline');reportTodo.id='town-report-todo';reportTodo.type='button';
+  const reportTeams=text('button',worldBinding('Teamsの返信を確認'),'outline');reportTeams.id='town-report-teams';reportTeams.type='button';
+  const reportClose=text('button',worldBinding('閉じる'),'outline');reportClose.id='town-report-close';reportClose.type='button';reportClose.onclick=()=>reportDialog.close();
+  reportActions.append(reportTodo,reportTeams,reportClose);reportDialog.append(reportTitle,reportMeta,text('h3',worldBinding('元の依頼')),reportRequest,text('h3',worldBinding('リーダーのまとめ')),reportOutput,reportActions);document.body.append(reportDialog);
   reportOpen.onclick=()=>{if(!reportRecord)return;openedReport=reportRecord;renderReport();stopAnimation();reportDialog.showModal();reportClose.focus();};
   reportTodo.onclick=()=>{const id=openedReport?.todoId;if(!id)return;navigating=true;reportDialog.close();onTodo?.(id);};
   reportTeams.onclick=()=>{const id=openedReport?.source?.draftId;if(!id)return;navigating=true;reportDialog.close();onTeams?.(id);};
@@ -165,10 +166,10 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     const todo=state.todos?.items?.find(item=>item.id===reportRecord.todoId),teams=reportRecord.source?.provider==='teams';
     const progress=teams&&todo?.runs?.at(-1)?.id===reportRecord.runId?teamsQuestProgress(todo,state):null;
     reportOpen.dataset.phase=progress?.phase||'reported';setWorkIcon(reportSymbol,teams?'envelope':'report');
-    reportLabel.textContent=teams?'Teamsの成果':'成果を見る';reportStatus.textContent=progress?.label||(activity.scene?.phase==='reporting'&&activity.scene.questId===reportRecord.questId?'お城へ報告中':'報告書が届いています');
-    reportOpen.title=(reportRecord.title||'クエストの成果')+' · '+reportStatus.textContent;
+    reportLabel.textContent=teams?worldText('Teamsの成果'):worldText('成果を見る');reportStatus.textContent=progress?.label||(activity.scene?.phase==='reporting'&&activity.scene.questId===reportRecord.questId?worldText('お城へ報告中'):worldText('報告書が届いています'));
+    reportOpen.title=(reportRecord.title||worldText('クエストの成果'))+' · '+reportStatus.textContent;
     const shown=openedReport||reportRecord,key=JSON.stringify([shown.questId,shown.runId,shown.title,shown.request,shown.output,shown.completedAt]);
-    if(reportKey!==key){reportKey=key;reportTitle.textContent=shown.title||'お城への報告';reportRequest.textContent=shown.request||'依頼の記録はありません。';reportOutput.textContent=shown.output;reportMeta.textContent='クエスト完了'+(shown.completedAt?' · '+new Date(shown.completedAt).toLocaleString('ja-JP'):'');}
+    if(reportKey!==key){reportKey=key;reportTitle.textContent=shown.title||worldText('お城への報告');reportRequest.textContent=shown.request||worldText('依頼の記録はありません。');reportOutput.textContent=shown.output;reportMeta.textContent=worldText('クエスト完了')+(shown.completedAt?' · '+new Date(shown.completedAt).toLocaleString(getLocale()):'');}
     reportTodo.hidden=!shown.todoId||!onTodo;reportTeams.hidden=shown.source?.provider!=='teams'||!shown.source.draftId||!onTeams;
     reportDialog.dataset.questId=shown.questId||'';reportDialog.dataset.runId=shown.runId||'';
   }
@@ -183,21 +184,21 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     const state=getState(),dispatch=state.boardDispatch||{},active=dispatch.active,quest=state.party?.quest;
     const activity=boardActive(),current=activity||active;
     const problem=['blocked','uncertain','cancelled'].includes(active?.status),unfinished=['running','stopping','paused'].includes(quest?.status);
-    const status=current?.status||'idle',labels={gathering:'仲間が掲示板へ集合中',starting:'クエストを開始しています',running:'パーティが処理中',stopping:'パーティの停止待ち',paused:'クエストが中断しています',completed:'クエスト完了',blocked:'開始を停止しました',uncertain:'実行結果を確認してください',cancelled:'巡回を停止しました'};
+    const status=current?.status||'idle',labels={gathering:worldText('仲間が掲示板へ集合中'),starting:worldText('クエストを開始しています'),running:worldText('パーティが処理中'),stopping:worldText('パーティの停止待ち'),paused:worldText('クエストが中断しています'),completed:worldText('クエスト完了'),blocked:worldText('開始を停止しました'),uncertain:worldText('実行結果を確認してください'),cancelled:worldText('巡回を停止しました')};
     const step=current?.questId===quest?.id&&quest?.status==='running'?quest.steps?.find(step=>step.status==='running'):null;
-    const summary=step?(step.kind==='summary'?'リーダーが最後のまとめを作成中':step.role+' · 処理中'):labels[status]||(dispatch.enabled?(boardTodos().length?'次のクエストを待っています':'自動巡回 ON · TODO登録待ち'):'自動巡回 OFF');
+    const summary=step?(step.kind==='summary'?worldText('リーダーが最後のまとめを作成中'):step.role+worldText(' · 処理中')):labels[status]||(dispatch.enabled?(boardTodos().length?worldText('次のクエストを待っています'):worldText('自動巡回 ON · TODO登録待ち')):worldText('自動巡回 OFF'));
     const title=current?.title||(state.todos?.items||[]).find(item=>item.id===current?.todoId)?.title;
     const reason=townQuestStopReason(current?.error),bannerReason=reason.length>160?reason.slice(0,160)+'…':reason;
     autoToggle.checked=Boolean(dispatch.enabled);autoToggle.disabled=boardBusy||demo||(!dispatch.enabled&&(problem||!state.connected||!getModel().model));
     boardStatus.textContent=summary+(title?' · '+title:'');boardStatus.dataset.status=status;
-    boardReason.textContent=boardError||dispatch.runtimeError||reason||(demo?'デモでは自動巡回を開始できません。Codexへ接続してください。':problem?'記録を確認し、巡回を再設定してからONにしてください。':!state.connected?'Codexに接続してから巡回をONにしてください。':!getModel().model?'自動実行に使うモデルを選択してください。':'');boardReason.hidden=!boardReason.textContent;
+    boardReason.textContent=boardError||dispatch.runtimeError||reason||(demo?worldText('デモでは自動巡回を開始できません。Codexへ接続してください。'):problem?worldText('記録を確認し、巡回を再設定してからONにしてください。'):!state.connected?worldText('Codexに接続してから巡回をONにしてください。'):!getModel().model?worldText('自動実行に使うモデルを選択してください。'):'');boardReason.hidden=!boardReason.textContent;
     const reasons=current?.id===active?.id?active?.selection?.reasons||[]:[],members=current?.selection?.party?.members||[];
-    boardReasons.replaceChildren(...reasons.map(entry=>{const member=members.find(member=>member.conversationId===entry.conversationId),row=text('li',(member?.role||'役割')+'：'+entry.reason);row.dataset.conversationId=entry.conversationId;return row;}));boardReasons.hidden=!reasons.length;
+    boardReasons.replaceChildren(...reasons.map(entry=>{const member=members.find(member=>member.conversationId===entry.conversationId),row=text('li',(member?.role||worldText('役割'))+'：'+entry.reason);row.dataset.conversationId=entry.conversationId;return row;}));boardReasons.hidden=!reasons.length;
     activeTodo.hidden=!current?.todoId;progressAction.hidden=!current?.questId||current.questId!==quest?.id;progressAction.disabled=!onProgress;
-    stopAction.hidden=!['gathering','starting','running'].includes(active?.status);stopAction.disabled=boardBusy;stopAction.textContent=active?.status==='gathering'?'仲間の集合を停止':'進行中のクエストを停止';
-    acknowledgeAction.hidden=!problem;acknowledgeAction.disabled=boardBusy||unfinished;acknowledgeAction.title=unfinished?'酒場で現在のクエストを完了または終了してから再設定できます。':'';
+    stopAction.hidden=!['gathering','starting','running'].includes(active?.status);stopAction.disabled=boardBusy;stopAction.textContent=active?.status==='gathering'?worldText('仲間の集合を停止'):worldText('進行中のクエストを停止');
+    acknowledgeAction.hidden=!problem;acknowledgeAction.disabled=boardBusy||unfinished;acknowledgeAction.title=unfinished?worldText('酒場で現在のクエストを完了または終了してから再設定できます。'):'';
     map.dataset.boardStatus=status;map.dataset.boardDispatchId=active?.id||'';$('#town-board-open').dataset.enabled=String(Boolean(dispatch.enabled));
-    boardBanner.hidden=!dispatch.enabled&&!active&&!activity;activityStatus.textContent=summary+(bannerReason?' · '+bannerReason:'')+(activity?.origin==='party'?' · 進行を確認':' · 掲示板');boardBanner.dataset.status=status;
+    boardBanner.hidden=!dispatch.enabled&&!active&&!activity;activityStatus.textContent=summary+(bannerReason?' · '+bannerReason:'')+(activity?.origin==='party'?worldText(' · 進行を確認'):worldText(' · 掲示板'));boardBanner.dataset.status=status;
   }
   let boardKey='';
   function renderBoard(){
@@ -206,20 +207,20 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     const key=JSON.stringify(items.map(item=>[item.id,item.title,item.status,item.source,progress.get(item.id),item.runs?.at(-1)?.status]));
     const hasReadyPlan=(getState().todos?.plans||[]).some(plan=>plan.status==='ready');
     boardEmpty.hidden=Boolean(items.length);boardCreate.disabled=boardBusy;
-    boardEmptyGuidance.textContent=hasReadyPlan?'クエスト案は作成済みです。お城で内容を確認し、「この内容でTODOに登録」を押してください。':'お城でクエストを作成・TODO登録するか、Teamsの依頼を掲示板に登録してください。';
+    boardEmptyGuidance.textContent=hasReadyPlan?worldText('クエスト案は作成済みです。お城で内容を確認し、「この内容でTODOに登録」を押してください。'):worldText('お城でクエストを作成・TODO登録するか、Teamsの依頼を掲示板に登録してください。');
     const pending=items.filter(item=>item.source.provider==='teams'?progress.get(item.id)?.phase!=='sent':item.status!=='done').length;
-    $('#town-board-count').textContent=String(pending);$('#town-board-count').setAttribute('aria-label','未完了の依頼 '+pending+'件（Teamsは返信送信まで）');
+    $('#town-board-count').textContent=String(pending);$('#town-board-count').setAttribute('aria-label',worldText("未完了の依頼 {n}件（Teamsは返信送信まで）", {n:pending}));
     if(key===boardKey)return;boardKey=key;const focused=boardItems.contains(document.activeElement)?{todoId:document.activeElement.dataset.todoId,draftId:document.activeElement.dataset.teamsDraft}:null;
     boardItems.replaceChildren(...items.map(item=>{const button=text('button','','town-board-item');button.type='button';button.dataset.todoId=item.id;
       const teams=item.source.provider==='teams',flow=progress.get(item.id),run=item.runs?.at(-1);
-      const label=flow?.label||(run?.status==='paused'?'中断中':({todo:'未着手',doing:'進行中',done:'完了'})[item.status]||item.status);
+      const label=flow?.label||(run?.status==='paused'?worldText('中断中'):({todo:worldText('未着手'),doing:worldText('進行中'),done:worldText('完了')})[item.status]||item.status);
       const title=teams?item.title.replace(/^Teams:\s*/,''):item.title;
-      button.append(text('strong',(teams?'Teams · ':`${item.source.order} / ${item.source.total} · `)+title),text('span',label),text('small','残す成果：'+item.source.artifact));
+      button.append(text('strong',(teams?'Teams · ':`${item.source.order} / ${item.source.total} · `)+title),text('span',label),text('small',worldText('残す成果：')+item.source.artifact));
       if(flow?.detail)button.append(text('small',flow.detail));
       if(flow?.error)button.append(text('small',townQuestStopReason(flow.error),'town-board-item-error'));
       button.onclick=()=>{navigating=true;stopAnimation();boardDialog.close();onTodo?.(item.id);};
       if(!teams)return button;
-      const entry=text('div','','town-board-entry'),reply=text('button','Teamsで確認','outline');reply.type='button';reply.dataset.teamsDraft=flow?.draftId||item.source.draftId;reply.disabled=!onTeams;
+      const entry=text('div','','town-board-entry'),reply=text('button',worldText('Teamsで確認'),'outline');reply.type='button';reply.dataset.teamsDraft=flow?.draftId||item.source.draftId;reply.disabled=!onTeams;
       reply.onclick=()=>{navigating=true;stopAnimation();boardDialog.close();onTeams?.(reply.dataset.teamsDraft);};entry.append(button,reply);return entry;
     }));
     if(focused&&boardDialog.open)([...boardItems.querySelectorAll('button')].find(button=>focused.todoId?button.dataset.todoId===focused.todoId:button.dataset.teamsDraft===focused.draftId)||boardClose).focus({preventScroll:true});
@@ -233,19 +234,19 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
   function updateDialog(){
     const party=displayedParty(),chat=character(),member=party?.members?.find(member=>member.conversationId===selectedCharacter);
     if(!chat||!member){if(dialog.open)dialog.close();return;}
-    dialogName.textContent=characterAppearance(member.role).label+(chat.id===party?.leaderId?' · リーダー':'');dialogChat.textContent=chat.title;
-    dialogRole.textContent=(member.role||'役割未設定')+' · '+characterAppearance(member.role).label+(chat.id===party?.leaderId?' · リーダー':'');
+    dialogName.textContent=characterAppearance(member.role).label+(chat.id===party?.leaderId?worldText(' · リーダー'):'');dialogChat.textContent=chat.title;
+    dialogRole.textContent=(member.role||worldText('役割未設定'))+' · '+characterAppearance(member.role).label+(chat.id===party?.leaderId?worldText(' · リーダー'):'');
     const scene=activity.scene,quest=getState().party?.quest,step=(scene?.steps||quest?.steps||[]).find(item=>item.conversationId===selectedCharacter);
-    let status=step?({pending:'順番待ち',running:step.kind==='summary'?'仲間の成果をまとめています':'担当の作業を進めています',completed:'担当の作業が完了しました',blocked:'開始できません',failed:'処理に失敗しました',interrupted:'結果の確認が必要です'})[step.status]||'待機中':'待機中';
-    if(step?.status!=='completed'&&scene?.activeId===selectedCharacter){if(scene.disconnected)status='接続後に進行状況を確認します';else if(scene.phase==='stopping')status='停止を要求しました。結果を確認しています';else if(scene.phase==='paused')status='処理が中断しています';}
+    let status=step?({pending:worldText('順番待ち'),running:step.kind==='summary'?worldText('仲間の成果をまとめています'):worldText('担当の作業を進めています'),completed:worldText('担当の作業が完了しました'),blocked:worldText('開始できません'),failed:worldText('処理に失敗しました'),interrupted:worldText('結果の確認が必要です')})[step.status]||worldText('待機中'):worldText('待機中');
+    if(step?.status!=='completed'&&scene?.activeId===selectedCharacter){if(scene.disconnected)status=worldText('接続後に進行状況を確認します');else if(scene.phase==='stopping')status=worldText('停止を要求しました。結果を確認しています');else if(scene.phase==='paused')status=worldText('処理が中断しています');}
     const detailReason=step?.error||(scene?.activeId===selectedCharacter?scene?.error:'');
     dialogActivity.hidden=!step;dialogActivity.dataset.phase=scene?.phase||'';dialogActivity.textContent=status+(detailReason?'\n'+townQuestStopReason(detailReason):'');
     dialogResult.hidden=step?.status!=='completed'||!step.output;dialogOutput.textContent=step?.status==='completed'?step.output:'';
     dialogOutput.dataset.stepId=step?.id||'';
     dialogGear.replaceChildren(...['weapon','spell','tool'].map(slot=>{
       const skill=chat.equipment?.[slot],row=text('div','','town-character-item town-member-item');row.dataset.slot=slot;
-      const label={weapon:'武器',spell:'呪文',tool:'道具'}[slot];
-      if(skill)row.append(equipmentIcon(skill));row.append(text('span',label+'：'+(skill?equipmentPresentation(skill).itemName:'なし')));return row;
+      const label={weapon:worldText('武器'),spell:worldText('呪文'),tool:worldText('道具')}[slot];
+      if(skill)row.append(equipmentIcon(skill));row.append(text('span',label+'：'+(skill?equipmentPresentation(skill).itemName:worldText('なし'))));return row;
     }));
   }
   function openCharacter(id){
@@ -268,7 +269,7 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     const reserve=formationFor(party).reserve,chats=getChats(),focused=wagonDialog.open&&wagonMembers.contains(document.activeElement)?document.activeElement.dataset.conversationId:null;
     wagonMembers.replaceChildren(...reserve.map(member=>{
       const chat=chats.find(chat=>chat.id===member.conversationId),button=text('button','','town-wagon-member');button.type='button';button.dataset.conversationId=member.conversationId;button.disabled=!chat;
-      const copy=text('span','','town-wagon-member-copy');copy.append(text('strong',chat?.title||'会話不明'),text('small',(member.role||'役割未設定')+' · '+characterAppearance(member.role).label));
+      const copy=text('span','','town-wagon-member-copy');copy.append(text('strong',chat?.title||worldText('会話不明')),text('small',(member.role||worldText('役割未設定'))+' · '+characterAppearance(member.role).label));
       button.append(characterIcon(member.role,'town-wagon-member-icon'),copy);button.onclick=()=>openCharacter(member.conversationId);return button;
     }));
     if(!reserve.length&&wagonDialog.open)wagonDialog.close();
@@ -300,11 +301,11 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     const phase=value?.phase||'idle';activityStatus.dataset.phase=phase;boardBanner.dataset.phase=phase;field.dataset.activityPhase=phase;
     if(value?.ownsParty){
       const reason=value.error?townQuestStopReason(value.error):'',shortReason=reason.length>160?reason.slice(0,160)+'…':reason;
-      const label=value.label+(value.totalCount?' · '+value.completedCount+'/'+value.totalCount+' 完了':'')+(shortReason?' · '+shortReason:'');
+      const label=value.label+(value.totalCount?worldText(" · {done}/{total} 完了", {done:value.completedCount,total:value.totalCount}):'')+(shortReason?' · '+shortReason:'');
       if(activityStatus.textContent!==label)activityStatus.textContent=label;
       boardBanner.hidden=false;boardBanner.title=value.label+(reason?' · '+reason:'');
     }else if(phase==='reported'&&!['blocked','uncertain','cancelled'].includes(getState().boardDispatch?.active?.status)){
-      activityStatus.textContent='クエスト完了 · お城で成果を確認';boardBanner.hidden=false;boardBanner.title='元の依頼と成果を開く';
+      activityStatus.textContent=worldText('クエスト完了 · お城で成果を確認');boardBanner.hidden=false;boardBanner.title=worldText('元の依頼と成果を開く');
     }
     for(const [id,site] of worksites){
       const at=TOWN_WORKSITES[id];site.style.left=at.x*100+'%';site.style.top='calc('+at.y*100+'% + 20px)';
@@ -335,7 +336,7 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     const walking=Boolean(positions.some(position=>position.moving)&&visible()&&!menuOpen()&&!navigating&&!motionOff());
     field.dataset.walking=String(walking);traveler.dataset.walking=String(walking);
     if(active)traveler.dataset.boardStatus=active.status;else delete traveler.dataset.boardStatus;
-    const actionLabels={reading:'調査中',writing:'作成中',reviewing:'確認中',summarizing:'まとめ中',carrying:value?.phase==='handoff'?'受け渡し':'報告中',paused:'停止',waiting:'待機',complete:'完了'};
+    const actionLabels={reading:worldText('調査中'),writing:worldText('作成中'),reviewing:worldText('確認中'),summarizing:worldText('まとめ中'),carrying:value?.phase==='handoff'?worldText('受け渡し'):worldText('報告中'),paused:worldText('停止'),waiting:worldText('待機'),complete:worldText('完了')};
     for(const position of positions){
       const ui=rows.get(position.id);if(!ui)continue;
       ui.row.style.left=position.x+'px';ui.row.style.top=position.y+'px';
@@ -348,9 +349,9 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
       const action=value?position.action:'waiting';ui.row.dataset.workAction=action;ui.row.dataset.questId=value?.questId||'';
       if(ui.prop){ui.prop.style.display=value&&position.icon?'':'none';if(position.icon)setWorkIcon(ui.prop,position.icon);}
       const badge=ui.actor.querySelector('.town-board-role-badge'),hint=ui.actor.querySelector('.town-actor-hint');
-      const status=value?.phase==='gathering'?(position.progress===1?'集合済':'集合中'):value?.activeId===position.id&&value.disconnected?'接続待ち':value?.activeId===position.id&&value.phase==='stopping'?'停止待ち':['blocked','failed','interrupted'].includes(roleState)?({blocked:'停止',failed:'失敗',interrupted:'確認待ち'})[roleState]:actionLabels[action]||'待機';
+      const status=value?.phase==='gathering'?(position.progress===1?worldText('集合済'):worldText('集合中')):value?.activeId===position.id&&value.disconnected?worldText('接続待ち'):value?.activeId===position.id&&value.phase==='stopping'?worldText('停止待ち'):['blocked','failed','interrupted'].includes(roleState)?({blocked:worldText('停止'),failed:worldText('失敗'),interrupted:worldText('確認待ち')})[roleState]:actionLabels[action]||worldText('待機');
       if(badge){badge.hidden=!value&&!active;badge.textContent=status;}
-      if(hint)hint.textContent=value?status+' · 会話・成果':position.id===TOWN_WAGON_ID?'仲間を選ぶ':'会話・装備';
+      if(hint)hint.textContent=value?status+worldText(' · 会話・成果'):position.id===TOWN_WAGON_ID?worldText('仲間を選ぶ'):worldText('会話・装備');
     }
     renderActivityPresentation(activityFrame);
     if(activityFrame?.phase==='reported')renderQuestFeedback(quest);
@@ -421,8 +422,8 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
       if(wagonDialog.open)wagonDialog.close();
       const empty=text('div','','town-party-empty');empty.setAttribute('role','listitem');
       const hero=characterIcon('','town-empty-character');
-      const label=text('span','酒場で仲間とリーダーを選び、編成を保存するとここに並びます。');label.id='town-traveler-name';
-      const button=text('button','酒場でパーティを組む →','outline');button.type='button';button.onclick=()=>{locate('tavern');onNavigate('tavern');};
+      const label=text('span',worldText('酒場で仲間とリーダーを選び、編成を保存するとここに並びます。'));label.id='town-traveler-name';
+      const button=text('button',worldText('酒場でパーティを組む →'),'outline');button.type='button';button.onclick=()=>{locate('tavern');onNavigate('tavern');};
       empty.append(hero,label,button);traveler.append(empty);return;
     }
     for(const member of formation.visible){
@@ -430,26 +431,26 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
       const row=text('div','','town-member');row.setAttribute('role','listitem');row.dataset.conversationId=member.conversationId;row.dataset.appearance=appearance.id;
       if(leader)row.classList.add('is-leader');
       const actor=text('button','','town-actor');actor.type='button';actor.dataset.conversationId=member.conversationId;
-      actor.setAttribute('aria-label',(chat?.title||'冒険者')+' · '+(member.role||appearance.label)+'のチャットと装備');actor.setAttribute('aria-haspopup','dialog');actor.disabled=!chat;
+      actor.setAttribute('aria-label',worldText("{title} · {role}のチャットと装備", {title:chat?.title||worldText('冒険者'),role:member.role||appearance.label}));actor.setAttribute('aria-haspopup','dialog');actor.disabled=!chat;
       actor.addEventListener('pointerdown',event=>event.stopPropagation());actor.onclick=event=>{event.stopPropagation();openCharacter(member.conversationId);};
       const stage=text('span','','town-member-stage');stage.append(characterIcon(member.role,'town-character'));
       const prop=workIcon('scroll','town-work-prop');prop.style.display='none';stage.append(prop);
       if(leader)stage.append(equipmentIcon('crown','town-member-crown'));
       if(chat?.equipment?.weapon)stage.append(equipmentIcon(chat.equipment.weapon,'town-held-weapon'));
       if(chat?.equipment?.spell)stage.append(equipmentIcon(chat.equipment.spell,'town-held-spell'));
-      const conversation=text('span',chat?.title||'会話不明','town-member-chat');conversation.title=conversation.textContent;
-      const role=text('span',(member.role||'役割未設定')+' · '+appearance.label,'town-member-role');
+      const conversation=text('span',chat?.title||worldText('会話不明'),'town-member-chat');conversation.title=conversation.textContent;
+      const role=text('span',(member.role||worldText('役割未設定'))+' · '+appearance.label,'town-member-role');
       role.title=role.textContent;
-      if(leader){const badge=text('span','リーダー','town-leader-label');row.append(badge);}
-      const hint=text('span','会話・装備','town-actor-hint');hint.setAttribute('aria-hidden','true');
+      if(leader){const badge=text('span',worldText('リーダー'),'town-leader-label');row.append(badge);}
+      const hint=text('span',worldText('会話・装備'),'town-actor-hint');hint.setAttribute('aria-hidden','true');
       const roleBadge=text('span','','town-board-role-badge');roleBadge.hidden=true;actor.append(stage,hint,roleBadge);row.append(actor,conversation,role);
       const gear=text('div','','town-member-gear');
-      for(const [slot,label] of [['weapon','武器'],['spell','呪文'],['tool','道具']]){
+      for(const [slot,label] of [['weapon',worldText('武器')],['spell',worldText('呪文')],['tool',worldText('道具')]]){
         const skill=chat?.equipment?.[slot];if(slot==='tool'&&!skill)continue;
         const item=text('span','','town-member-item');item.dataset.slot=slot;
         if(skill)item.append(equipmentIcon(skill));
-        const name=skill?equipmentPresentation(skill).itemName:'なし';
-        const status=slot==='weapon'&&skill?.singleUse?(chat.armedSkillId===skill.id?'（矢を装填）':'（矢は未装填）'):'';
+        const name=skill?equipmentPresentation(skill).itemName:worldText('なし');
+        const status=slot==='weapon'&&skill?.singleUse?(chat.armedSkillId===skill.id?worldText('（矢を装填）'):worldText('（矢は未装填）')):'';
         item.title=label+'：'+name+status;item.append(text('span',item.title));gear.append(item);
       }
       actor.title=[conversation.textContent,role.textContent,...[...gear.children].map(item=>item.title)].join('\n');
@@ -457,11 +458,11 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     }
     if(formation.reserve.length){
       const row=text('div','','town-wagon');row.setAttribute('role','listitem');row.dataset.wagonCount=String(formation.reserve.length);
-      const actor=text('button','','town-wagon-actor');actor.type='button';actor.id='town-wagon-open';actor.setAttribute('aria-label','馬車の仲間 '+formation.reserve.length+'人のチャットと装備');actor.setAttribute('aria-haspopup','dialog');
+      const actor=text('button','','town-wagon-actor');actor.type='button';actor.id='town-wagon-open';actor.setAttribute('aria-label',worldText("馬車の仲間 {n}人のチャットと装備", {n:formation.reserve.length}));actor.setAttribute('aria-haspopup','dialog');
       actor.addEventListener('pointerdown',event=>event.stopPropagation());actor.onclick=event=>{event.stopPropagation();openWagon();};
       const stage=text('span','','town-wagon-stage'),ns='http://www.w3.org/2000/svg',icon=document.createElementNS(ns,'svg'),use=document.createElementNS(ns,'use');
       icon.setAttribute('class','town-wagon-icon');icon.setAttribute('viewBox','0 0 96 80');icon.setAttribute('aria-hidden','true');use.setAttribute('href','/assets/town.svg#wagon');icon.append(use);stage.append(icon,text('span','+'+formation.reserve.length,'town-wagon-count'));
-      const hint=text('span','仲間を選ぶ','town-actor-hint');hint.setAttribute('aria-hidden','true');
+      const hint=text('span',worldText('仲間を選ぶ'),'town-actor-hint');hint.setAttribute('aria-hidden','true');
       const roleBadge=text('span','','town-board-role-badge');roleBadge.hidden=true;actor.append(stage,hint,roleBadge);row.append(actor);traveler.append(row);rows.set(TOWN_WAGON_ID,{row,actor});
     }
     updateWagonDialog(party);
@@ -486,7 +487,7 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     if(!pendingCelebration||!visible()||menuOpen()||activity.scene?.phase==='reporting')return;
     clearTimeout(celebrationTimer);map.classList.remove('is-celebrating');void map.offsetWidth;map.classList.add('is-celebrating');
     map.dataset.celebrationQuest=pendingCelebration;map.dataset.celebrationCount=String(Number(map.dataset.celebrationCount||0)+1);map.dataset.celebrating='true';
-    celebration.textContent='✦ クエスト完了 · お城で成果を確認できます';celebration.hidden=false;pendingCelebration=null;
+    celebration.textContent=worldText('✦ クエスト完了 · お城で成果を確認できます');celebration.hidden=false;pendingCelebration=null;
     celebrationTimer=setTimeout(()=>{map.classList.remove('is-celebrating');map.dataset.celebrating='false';celebration.hidden=true;},2400);
   }
   function render(){
@@ -499,7 +500,7 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     $('#town-wallet-note').textContent=wallet.note;
     $('#town-wallet-windows').replaceChildren(...wallet.windows.map(window=>{
       const row=document.createElement('li');
-      row.textContent=window.name+'：残り '+percent(window.remaining)+' · '+new Date(window.resetsAt*1000).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' リセット';
+      row.textContent=worldText("{name}：残り {n} · {time} リセット", {name:window.name,n:percent(window.remaining),time:new Date(window.resetsAt*1000).toLocaleString(getLocale(),{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})});
       return row;
     }));
     $('#town-refresh').disabled=refreshing||!state.connected;
@@ -511,7 +512,7 @@ export function initTown({api,demo=false,getModel=()=>({}),getState,getChats,get
     renderQuestFeedback(state.party?.quest);
     if(dialog.open)updateDialog();
     if(!visible()){stopAnimation();if(dialog.open)dialog.close();if(wagonDialog.open)wagonDialog.close();if(boardDialog.open)boardDialog.close();if(reportDialog.open)reportDialog.close();target.hidden=true;}
-    const shown=displayedParty(),boardActivity=boardActive();$('#town-party-caption').textContent=shown?.members?.length?(boardActivity?(boardActivity.origin==='board'?'掲示板の依頼 · ':'クエスト · '):shown.name+' · ')+shown.members.length+'人のパーティ':'酒場で仲間とリーダーを選びましょう。';
+    const shown=displayedParty(),boardActivity=boardActive();$('#town-party-caption').textContent=shown?.members?.length?(boardActivity?(boardActivity.origin==='board'?worldText('掲示板の依頼 · '):worldText('クエスト · ')):shown.name+' · ')+worldText("{n}人のパーティ", {n:shown.members.length}):worldText('酒場で仲間とリーダーを選びましょう。');
   }
   document.querySelectorAll('[data-town-destination]').forEach(button=>{
     button.onclick=()=>{const place=button.dataset.townDestination;locate(place);welcome(place);onNavigate(place);};

@@ -1,3 +1,4 @@
+import {questTextFor} from './i18n-quests.js';
 // The same route definitions govern the map, admission checks and actual roles.
 export const adventureRegions = [
   {
@@ -33,6 +34,18 @@ export const adventureRegions = [
     prompt:'新しい勉強会の開催案を作りたいです。対象者と目的を整理し、案内文と60分の進行表を作り、矛盾や不足を確認して最終案にまとめてください。'
   }
 ];
+
+// Saved progress uses region IDs. Localize only the built-in route descriptions.
+export function adventureRegionsFor(locale) {
+  if(locale!=='en')return adventureRegions;
+  return adventureRegions.map(region => ({
+    ...region,
+    ...Object.fromEntries(['name','title','description','ability','reward','nextHint','prompt'].map(
+      key => [key,questTextFor(region[key],locale)]
+    )),
+    roles:region.roles.map(role=>questTextFor(role,locale))
+  }));
+}
 
 export function adventureProgress(saved={}) {
   const ids=new Set(Array.isArray(saved.completed)?saved.completed:[]);

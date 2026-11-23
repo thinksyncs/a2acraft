@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 import {finite, clamp, perspective, lookAt, multiply, transform, cameraPose, initialCamera,
   sanitizeCamera, screenRay, rayGround, rayBox, movementTarget, worldBounds} from './world-3d-math.js';
 import {staticMesh, naturalTiles, naturalTileMesh, peopleMesh, visiblePeople, buildingShape} from './world-3d-mesh.js';
@@ -60,7 +61,7 @@ function compile(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source); gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    gl.deleteShader(shader); throw new Error('3D描画用プログラムを準備できませんでした。');
+    gl.deleteShader(shader); throw new Error(worldText('3D描画用プログラムを準備できませんでした。'));
   }
   return shader;
 }
@@ -70,7 +71,7 @@ function resources(gl) {
   gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program);
   gl.deleteShader(vertex); gl.deleteShader(fragment);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    gl.deleteProgram(program); throw new Error('この環境では3D描画を開始できません。');
+    gl.deleteProgram(program); throw new Error(worldText('この環境では3D描画を開始できません。'));
   }
   return {program, groundBuffer: gl.createBuffer(), peopleBuffer: gl.createBuffer(),
     attributes: ['aPosition', 'aNormal', 'aColor'].map(name => gl.getAttribLocation(program, name)),
@@ -271,7 +272,7 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
       canvas.dataset.renderer = 'webgl';
     } catch {
       supported = false;
-      fail('3D描画を続けられませんでした。2D表示を利用できます。');
+      fail(worldText('3D描画を続けられませんでした。2D表示を利用できます。'));
     }
   }
   function update(value) {
@@ -435,7 +436,7 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     get supported() {return supported;}};
   try {
     gl = canvas.getContext('webgl', {alpha: false, antialias: true, depth: true, powerPreference: 'low-power'});
-    if (!gl) throw new Error('この環境ではWebGLを利用できません。2D表示を利用できます。');
+    if (!gl) throw new Error(worldText('この環境ではWebGLを利用できません。2D表示を利用できます。'));
     gpu = resources(gl); supported = true;
     if (canvas.tabIndex < 0) canvas.tabIndex = 0;
     resize(width, height, globalThis.devicePixelRatio || 1);
@@ -454,7 +455,7 @@ export function createWorld3D({canvas, onGround = () => {}, onSelect = () => {},
     });
     listen('webglcontextrestored', () => {
       try {gpu = resources(gl);supported=true;signature='';update(scene);onContextChange(true);}
-      catch {supported=false;fail('3D描画を復旧できませんでした。2D表示を利用できます。');}
+      catch {supported=false;fail(worldText('3D描画を復旧できませんでした。2D表示を利用できます。'));}
     });
   } catch (error) {supported = false; fail(error.message);}
   return api;

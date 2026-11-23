@@ -102,8 +102,8 @@ fn run_action(window: &WebviewWindow, action: Action) {
                 window
                     .app_handle()
                     .dialog()
-                    .message("保存は完了しましたが、画面を再読み込みできませんでした。")
-                    .title("画面の再読み込み")
+                    .message(crate::language::label("保存は完了しましたが、画面を再読み込みできませんでした。", "Your changes were saved, but the window could not reload."))
+                    .title(crate::language::label("画面の再読み込み", "Reload Window"))
                     .show(|_| {});
             }
         }
@@ -113,30 +113,30 @@ fn run_action(window: &WebviewWindow, action: Action) {
 fn confirm_failure(window: &WebviewWindow, id: u64, action: Action) {
     reveal(window);
     if action == Action::Reload {
-        window.app_handle().dialog().message("下書きと地図を保存できませんでした。保存先を確認し、画面の再読み込みを再試行してください。")
-            .title("画面の再読み込み").kind(MessageDialogKind::Warning).parent(window)
+        window.app_handle().dialog().message(crate::language::label("下書きと地図を保存できませんでした。保存先を確認し、画面の再読み込みを再試行してください。", "Your drafts and map could not be saved. Check the storage location, then try reloading."))
+            .title(crate::language::label("画面の再読み込み", "Reload Window")).kind(MessageDialogKind::Warning).parent(window)
             .show({ let window = window.clone(); move |_| choose(&window, id, action, Choice::Cancel) });
         return;
     }
     let discard = if action == Action::Restart {
-        "保存せずに再起動"
+        crate::language::label("保存せずに再起動", "Restart Without Saving")
     } else {
-        "保存せずに終了"
+        crate::language::label("保存せずに終了", "Quit Without Saving")
     };
-    let retry = "保存を再試行";
+    let retry = crate::language::label("保存を再試行", "Retry Save");
     window
         .app_handle()
         .dialog()
         .message(
-            "下書きと地図を保存できませんでした。保存せずに続行すると未保存の変更が失われます。",
+            crate::language::label("下書きと地図を保存できませんでした。保存せずに続行すると未保存の変更が失われます。", "Your drafts and map could not be saved. Continuing without saving will discard your latest changes."),
         )
-        .title("終了前の保存")
+        .title(crate::language::label("終了前の保存", "Save Before Quitting"))
         .kind(MessageDialogKind::Warning)
         .parent(window)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
             retry.into(),
             discard.into(),
-            "戻る".into(),
+            crate::language::label("戻る", "Go Back").into(),
         ))
         .show_with_result({
             let window = window.clone();
@@ -291,16 +291,16 @@ fn present_pending_recovery(window: &WebviewWindow) {
     close.recovery = Recovery::Notified;
     drop(close);
     reveal(window);
-    window.app_handle().dialog().message("アプリの接続が終了しました。再起動すると保存済みの会話を開けます。中断した作業は自動送信されません。")
-        .title("A2ACraft の再接続").kind(MessageDialogKind::Error).parent(window)
-        .buttons(MessageDialogButtons::OkCancelCustom("再起動".into(), "終了".into()))
+    window.app_handle().dialog().message(crate::language::label("アプリの接続が終了しました。再起動すると保存済みの会話を開けます。中断した作業は自動送信されません。", "The app lost its connection. Restart to reopen your saved chats. Interrupted work will stay paused."))
+        .title(crate::language::label("A2ACraft の再接続", "Reconnect A2ACraft")).kind(MessageDialogKind::Error).parent(window)
+        .buttons(MessageDialogButtons::OkCancelCustom(crate::language::label("再起動", "Restart").into(), crate::language::label("終了", "Quit").into()))
         .show_with_result({ let window = window.clone(); move |response| {
             let state = window.state::<Desktop>();
             let mut close = state.close.lock().unwrap_or_else(|e| e.into_inner());
             if close.phase != Phase::Recovering { return; }
             close.phase = Phase::Idle;
             drop(close);
-            let restart = matches!(response, MessageDialogResult::Custom(s) if s == "再起動");
+            let restart = matches!(response, MessageDialogResult::Custom(s) if s == crate::language::label("再起動", "Restart"));
             request(&window, if restart { Action::Restart } else { Action::Quit });
         }});
 }

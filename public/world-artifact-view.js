@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 import { projectLink } from "./project-link.js";
 import { node, button } from "./world-room.js";
 
@@ -33,9 +34,9 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
     const visit = ++generation;
     dialog.replaceChildren(
       node("h2", artifact.title),
-      button("建物へ戻る", () => dialog.close()),
+      button(worldText("建物へ戻る"), () => dialog.close()),
     );
-    const status = node("p", "成果を確認しています…"),
+    const status = node("p", worldText("成果を確認しています…")),
       output = node("pre", undefined, "world-artifact-output");
     dialog.append(status);
     if (!dialog.open) dialog.showModal();
@@ -43,11 +44,11 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
       status.textContent = artifact.evidence || "URLの応答は未確認です。";
       if (artifact.startInstructions)
         dialog.append(
-          node("h3", "起動が必要な場合"),
+          node("h3", worldText("起動が必要な場合")),
           node("pre", artifact.startInstructions),
         );
       const link = projectLink(
-        "使ってみる ↗",
+        worldText("使ってみる ↗"),
         artifact.target,
         "world-artifact-link",
         (message) => (status.textContent = message),
@@ -82,20 +83,20 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
           new URL(artifact.target).hostname,
         )
       )
-        dialog.append(button("起動状態を調べる", () => check()));
+        dialog.append(button(worldText("起動状態を調べる"), () => check()));
       dialog.append(
-        button("別画面で使えた", () => check("opened")),
-        button("まだ使えない", () => check("unavailable")),
+        button(worldText("別画面で使えた"), () => check("opened")),
+        button(worldText("まだ使えない"), () => check("unavailable")),
       );
       return;
     }
     const query = node("input");
-    query.placeholder = "この成果から探す";
-    query.setAttribute("aria-label", "成果を検索");
+    query.placeholder = worldText("この成果から探す");
+    query.setAttribute("aria-label", worldText("成果を検索"));
     const search = node("form");
     search.append(
       query,
-      button("検索", () => load()),
+      button(worldText("検索"), () => load()),
     );
     search.onsubmit = (e) => {
       e.preventDefault();
@@ -109,7 +110,7 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
           ? {
               text:
                 artifact.text ||
-                "成果の記録",
+                worldText("成果の記録"),
             }
           : await api("world/artifact/use", {
               id: artifact.id,
@@ -126,34 +127,34 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
       }
     }
     dialog.append(
-      button("再確認", () => load()),
-      button("更新版を確認して開く", () => load(true)),
+      button(worldText("再確認"), () => load()),
+      button(worldText("更新版を確認して開く"), () => load(true)),
     );
     await load();
   }
   function register(container, project, building) {
     const details = node("details");
-    details.append(node("summary", "成果を登録・追加する"));
+    details.append(node("summary", worldText("成果を登録・追加する")));
     const form = node("form");
     const title = node("input");
-    title.placeholder = "成果の名前";
+    title.placeholder = worldText("成果の名前");
     title.required = true;
     title.maxLength = 120;
-    title.setAttribute("aria-label", "成果の名前");
+    title.setAttribute("aria-label", worldText("成果の名前"));
     const kind = node("select");
-    kind.setAttribute("aria-label", "成果の種類");
+    kind.setAttribute("aria-label", worldText("成果の種類"));
     for (const [value, label] of [
-      ["document", "文書"],
-      ["search", "文書内検索"],
-      ["preview", "プレビュー"],
-      ["tool", "ツール"],
+      ["document", worldText("文書")],
+      ["search", worldText("文書内検索")],
+      ["preview", worldText("プレビュー")],
+      ["tool", worldText("ツール")],
     ]) {
       const option = node("option", label);
       option.value = value;
       kind.append(option);
     }
     const job = node("select");
-    job.setAttribute("aria-label", "成果の工程");
+    job.setAttribute("aria-label", worldText("成果の工程"));
     for (const item of project.jobs.filter(
       (j) => j.status === "done" && j.commit && j.repoId === building.repoId,
     )) {
@@ -164,11 +165,11 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
     const target = node("input");
     target.required = true;
     target.placeholder = "文書の相対パス、または公開・localhostのURL";
-    target.setAttribute("aria-label", "成果の場所");
+    target.setAttribute("aria-label", worldText("成果の場所"));
     const instructions = node("textarea");
     instructions.placeholder = "起動が必要なら、その手順";
-    instructions.setAttribute("aria-label", "起動手順");
-    const submit = node("button", "この建物に登録");
+    instructions.setAttribute("aria-label", worldText("起動手順"));
+    const submit = node("button", worldText("この建物に登録"));
     submit.type = "submit";
     const status = node("p");
     status.setAttribute("role", "status");
@@ -200,7 +201,7 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
             "primary",
           ),
         );
-        status.textContent = "成果を登録しました。";
+        status.textContent = worldText("成果を登録しました。");
         form.reset();
       } catch (error) {
         status.textContent = error.message;
@@ -233,12 +234,12 @@ export function createArtifactView({ api, demo, getWorld, onWorld, notify }) {
             ? "保存された成果を確認済み"
             : artifact.evidence,
         ),
-        button("使ってみる", () => open(artifact), "primary"),
+        button(worldText("使ってみる"), () => open(artifact), "primary"),
       );
       container.append(row);
     }
     for (const pr of buildingPullRequests(project, building)) {
-      const link = projectLink("作業のPRを見る", pr.url, undefined, notify);
+      const link = projectLink(worldText("作業のPRを見る"), pr.url, undefined, notify);
       link.href = pr.url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";

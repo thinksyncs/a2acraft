@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 // Native child threads stay attached to their owning chat. They are not chats,
 // village residents, party members, buildings, or evidence of project completion.
 const states = new Set(['pendingInit', 'running', 'waiting', 'completed', 'interrupted',
@@ -8,16 +9,16 @@ const statusColors = {pendingInit:'#b5b0a0',running:'#75c8e0',waiting:'#e3c273',
 
 export function agentRoleLabel(role) {
   const value = text(role, 160);
-  for (const [pattern, label] of [[/調査|調べ|research|explor/i,'調査'],
-    [/検証|テスト|確認|review|test|validat/i,'検証'],[/実装|修正|implement|cod(e|ing)|fix/i,'実装'],
-    [/設計|design|architect/i,'設計'],[/計画|plan/i,'計画']]) if (pattern.test(value)) return label;
+  for (const [pattern, label] of [[/調査|調べ|research|explor/i,worldText('調査')],
+    [/検証|テスト|確認|review|test|validat/i,worldText('検証')],[/実装|修正|implement|cod(e|ing)|fix/i,worldText('実装')],
+    [/設計|design|architect/i,worldText('設計')],[/計画|plan/i,worldText('計画')]]) if (pattern.test(value)) return label;
   return value ? Array.from(value.replace(/（.*?）|\(.*?\)/g,'').trim()).slice(0,6).join('') : '';
 }
 
 export function mainAgentLabel(person, count = 0) {
   const name = text(person.name || person.characterName, 12);
-  return '主' + (name ? ' ' + name : 'エージェント') +
-    (count ? ` · 補助 ${count}${person.truncated ? '+' : ''}` : '');
+  return worldText('主') + (name ? ' ' + name : worldText('エージェント')) +
+    (count ? worldText(" · 補助 {count}{more}", {count,more:person.truncated?'+':''}) : '');
 }
 
 export function delegationCacheKey(value) {
@@ -47,8 +48,8 @@ export function villageDelegation(chat) {
 
 export function delegationSummary(value) {
   if (!value?.total) return '';
-  return `補助 ${value.total}${value.truncated?'+':''} · 完了 ${value.completed}` +
-    (value.unknown ? ` · 未確認 ${value.unknown}` : '');
+  return worldText("補助 {count}{more} · 完了 {done}", {count:value.total,more:value.truncated?'+':'',done:value.completed}) +
+    (value.unknown ? worldText(" · 未確認 {count}", {count:value.unknown}) : '');
 }
 
 // Parent coordinates already include encounter holds and actual party poses.
@@ -80,7 +81,7 @@ export function villageDelegateActors(parents, {limit = 3, totalLimit = 120} = {
         x:parent.x+Math.cos(heading)*side-Math.sin(heading)*behind,
         y:parent.y+Math.sin(heading)*side+Math.cos(heading)*behind,
         heading,direction:parent.direction,walking:false,statusColor:statusColors[agent.status],
-        label:'補' + (name ? ' ' + name : '助') + (roleLabel ? ' · ' + roleLabel : '') +
+        label:(name ? worldText('補')+' '+name : worldText('補助')) + (roleLabel ? ' · ' + roleLabel : '') +
           (agent.status==='unknown'?' ?':agent.status==='completed'?' ✓':'')});
     }
   }

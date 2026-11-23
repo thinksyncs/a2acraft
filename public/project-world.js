@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 import {
   drawVillageWorld,
   drawDevelopmentLandscape,
@@ -114,7 +115,7 @@ export function projectLeaderPose(owner, position, heading) {
 export function projectConversationEncounter(scene, conversationId, name) {
   const person = scene.people.find(item => item.id === "resident:" + conversationId);
   if (!person || !scene.leader) return null;
-  return {source:"projects",conversationId,name:name || person.name || "住民",
+  return {source:"projects",conversationId,name:name || person.name || worldText("住民"),
     person,leader:scene.leader,phase:"talking",status:"talking",
     scene:projectEncounterSightline(scene,conversationId)};
 }
@@ -194,13 +195,13 @@ export function createProjectWorld({
   insetHeader.className = "world-3d-inset-header";
   const insetTitle = document.createElement("strong");
   insetTitle.id = "project-leader-title";
-  insetTitle.textContent = "リーダー目線";
-  insetTitle.title = "操作中のパーティ先頭の目線";
+  insetTitle.textContent = worldText("リーダー目線");
+  insetTitle.title = worldText("操作中のパーティ先頭の目線");
   const insetClose = document.createElement("button");
   insetClose.type = "button";
   insetClose.className = "world-3d-inset-close";
   insetClose.textContent = "×";
-  insetClose.setAttribute("aria-label", "目線ウィンドウを閉じる");
+  insetClose.setAttribute("aria-label", worldText("目線ウィンドウを閉じる"));
   insetClose.onclick = () => { setInset(false); insetToggle.focus(); };
   insetHeader.append(insetTitle, insetClose);
   const insetToggle = document.createElement("button");
@@ -225,7 +226,7 @@ export function createProjectWorld({
   canvas3D.id = "project-map-3d";
   canvas3D.className = "world-3d-inset-canvas";
   canvas3D.tabIndex = 0;
-  canvas3D.setAttribute("aria-label", "操作中のパーティ先頭の目線。WASDで歩き、ドラッグか矢印キーで見回します。地面・建物・住民も選べます。");
+  canvas3D.setAttribute("aria-label", worldText("操作中のパーティ先頭の目線。WASDで歩き、ドラッグか矢印キーで見回します。地面・建物・住民も選べます。"));
   canvas3D.setAttribute("aria-describedby", viewHelp.id);
   inset.append(insetHeader, canvas3D);
   frameElement.append(inset);
@@ -329,7 +330,7 @@ export function createProjectWorld({
     renderer3D?.setVisible(false);
     insetToggle.disabled = true;
     updateInsetControls();
-    viewError.textContent = "目線ウィンドウを表示できません。俯瞰マップはそのまま操作できます。" +
+    viewError.textContent = worldText("目線ウィンドウを表示できません。俯瞰マップはそのまま操作できます。") +
       (typeof message === "string" ? " " + message : "");
     viewError.hidden = false;
   }
@@ -344,7 +345,7 @@ export function createProjectWorld({
         onFailure: fail3D,
         onContextChange: restored => {
           viewError.hidden = restored || !insetEnabled;
-          if (!restored) viewError.textContent = "目線の描画を復旧しています。";
+          if (!restored) viewError.textContent = worldText("目線の描画を復旧しています。");
           else syncInset();
         },
       });
@@ -362,7 +363,7 @@ export function createProjectWorld({
   }
   function updateInsetControls() {
     const shown = insetEnabled && !threeDFailed;
-    insetToggle.textContent = shown ? "目線を隠す" : "目線を表示";
+    insetToggle.textContent = shown ? worldText("目線を隠す") : worldText("目線を表示");
     insetToggle.setAttribute("aria-expanded", String(shown));
     insetToggle.setAttribute("aria-pressed", String(shown));
     frameElement.dataset.leaderInset = String(shown);
@@ -386,7 +387,7 @@ export function createProjectWorld({
     persist();
     draw();
   }
-  viewHelp.textContent = "俯瞰マップを操作すると、右上にパーティ先頭の目線が映ります。目線ウィンドウ内はWASDで歩く・ドラッグ／矢印キーで見回す・Escで移動を取り消す。";
+  viewHelp.textContent = worldText("俯瞰マップを操作すると、右上にパーティ先頭の目線が映ります。目線ウィンドウ内はWASDで歩く・ドラッグ／矢印キーで見回す・Escで移動を取り消す。");
   function screen(x, y) {
     return {
       x: (x - camera.x) * camera.zoom + size.w / 2,
@@ -527,17 +528,17 @@ export function createProjectWorld({
     if (!islandRouteWalkable([target,target],geometry.island,{water:geometry.water,bridges:geometry.bridges})) return false;
     const route = plannedRoute || routeTo(target, alongRoad);
     if (!route.length) {
-      notify("そこへ通じる道が見つかりません。道か建物の入口を選んでください。");
+      notify(worldText("そこへ通じる道が見つかりません。道か建物の入口を選んでください。"));
       return false;
     }
     onDismissSpeech();
     release();
     onStart?.();
-    destination = label || "移動先";
+    destination = label || worldText("移動先");
     follow = true;
     if (!fromInset) renderer3D?.setMode("leader");
     if (distance(route.at(-1), target) > 4)
-      notify("建物や水辺の手前にある、通れる場所へ向かいます。");
+      notify(worldText("建物や水辺の手前にある、通れる場所へ向かいます。"));
     canvas.dataset.destination = destination;
     canvas.dataset.travel = "walking";
     travel.go(
@@ -577,7 +578,7 @@ export function createProjectWorld({
           {
             id: "building",
             name: building.name,
-            host: "建物の管理人",
+            host: worldText("建物の管理人"),
             project: getProjects().find((p) => p.id === project.id) || project,
             building,
           },
@@ -588,7 +589,7 @@ export function createProjectWorld({
   }
   function talk(person) {
     if (person.conversationId === controlledChat()?.id) {
-      notify("いま操作しているエージェントです。会話は地区の記録から開けます。");
+      notify(worldText("いま操作しているエージェントです。会話は地区の記録から開けます。"));
       return false;
     }
     const geometry = sceneGeometry(places(), getProjects(), getResidents());
@@ -596,7 +597,7 @@ export function createProjectWorld({
     // reachable dry side before cancelling the current trip or holding them.
     const approach = projectConversationApproach(person,travel.position,geometry,routeTo);
     if (!approach) {
-      notify("この住民の近くに立てる道が見つかりません。別の場所から話しかけてください。");
+      notify(worldText("この住民の近くに立てる道が見つかりません。別の場所から話しかけてください。"));
       return false;
     }
     return walk(
@@ -615,7 +616,7 @@ export function createProjectWorld({
           person.name || getChats().find(chat => chat.id === person.conversationId)?.characterName);
         if (!encounter) {
           cancel();
-          notify("この住民は現在の地区にいません。住民の一覧から選び直してください。");
+          notify(worldText("この住民は現在の地区にいません。住民の一覧から選び直してください。"));
           return;
         }
         canvas.dataset.encounterPhase = "talking";
@@ -627,7 +628,7 @@ export function createProjectWorld({
         draw();
         onResident(person.conversationId, person.journey, getEncounter());
       },
-      "住民と話す",
+      worldText("住民と話す"),
       false,
       () => {
         speechId = person.conversationId;
@@ -655,14 +656,14 @@ export function createProjectWorld({
     const p = getProjects().find((p) => p.id === projectId),
       job = p?.jobs.find((j) => j.id === jobId);
     if (job && !job.conversationId) {
-      notify("この工程には操作するエージェントがいません。");
+      notify(worldText("この工程には操作するエージェントがいません。"));
       return false;
     }
     if (
       job &&
       ["running", "preparing", "queued", "blocked"].includes(job.status)
     ) {
-      notify("この隊は仕事を担当しています。会話から進み具合を確認できます。");
+      notify(worldText("この隊は仕事を担当しています。会話から進み具合を確認できます。"));
       return false;
     }
     const previousOwner = controlledChat();
@@ -909,14 +910,14 @@ export function createProjectWorld({
       )
       .find((j) => j.id === selected);
     const journeyLabel =
-      (selectedJob?.title || "主人公") +
+      (selectedJob?.title || worldText("主人公")) +
       (encounter?.phase === "talking"
-        ? " · " + encounter.name + "と向き合って話しています"
+        ? worldText(" · {name}と向き合って話しています", {name:encounter.name})
         : destination
-        ? " · " + destination + "へ歩いています"
+        ? worldText(" · {name}へ歩いています", {name:destination})
         : canvas.dataset.travel === "arrived"
-          ? " · 全員が到着しました"
-          : " · 地面か行き先を選ぶ");
+          ? worldText(" · 全員が到着しました")
+          : worldText(" · 地面か行き先を選ぶ"));
     if (journeyStatus.textContent !== journeyLabel)
       journeyStatus.textContent = journeyLabel;
     canvas.dataset.party = selected;
@@ -959,7 +960,7 @@ export function createProjectWorld({
         );
       for (const group of mapGroups.filter(group=>group.ids.length>1)) {
         const title = label(
-          "仕事の街 · " + group.ids.length + "地区",
+          worldText("仕事の街 · {count}地区", {count:group.ids.length}),
           "project-district-label project-cluster-label",
           {cluster:JSON.stringify(group.ids),clusterX:String(group.x),clusterY:String(group.y)},
           () => {
@@ -974,9 +975,9 @@ export function createProjectWorld({
         const waiting = group.projects.filter(project=>project.jobs.some(job=>job.status==="blocked") ||
           project.events.some(event=>event.status==="open"&&event.kind!=="progress")).length;
         const progress = group.projects.filter(project=>project.events.some(event=>event.status==="open"&&event.kind==="progress"&&!event.seen)).length;
-        const attention = waiting ? "相談 " + waiting + "地区" : progress ? "進展 " + progress + "地区" : "";
+        const attention = waiting ? worldText("相談 {count}地区", {count:waiting}) : progress ? worldText("進展 {count}地区", {count:progress}) : "";
         if (attention) title.append(Object.assign(document.createElement("small"),{textContent:"! " + attention}));
-        title.setAttribute("aria-label",group.ids.length + "地区の仕事の街を拡大" + (attention?" · " + attention:""));
+        title.setAttribute("aria-label",worldText("{count}地区の仕事の街を拡大", {count:group.ids.length}) + (attention?" · " + attention:""));
       }
       for (const p of projects) {
         if (grouped.has(p.id)) continue;
@@ -991,11 +992,11 @@ export function createProjectWorld({
         );
         const stage = document.createElement("small");
         stage.textContent = p.paused
-          ? "休止中"
+          ? worldText("休止中")
           : p.jobs.some((j) => j.status === "blocked")
-            ? "相談待ち"
+            ? worldText("相談待ち")
             : p.jobs.every((j) => j.status === "done")
-              ? p.pullRequests?.length ? "PR到着" : "工程完了"
+              ? p.pullRequests?.length ? worldText("PR到着") : worldText("工程完了")
               : jobLabel(
                   p.jobs.find((j) =>
                     ["running", "preparing"].includes(j.status),
@@ -1018,10 +1019,10 @@ export function createProjectWorld({
         ).entries()) {
           const kind =
             event.kind === "progress"
-              ? "進展"
+              ? worldText("進展")
               : event.kind === "question"
-                ? "相談"
-                : "問題";
+                ? worldText("相談")
+                : worldText("問題");
           const b = label(
             "!",
             "project-attention",
@@ -1219,7 +1220,7 @@ export function createProjectWorld({
         alongRoad = onRoad;
       }
     }
-    return walk(target, null, "選んだ場所", fromInset, undefined, alongRoad);
+    return walk(target, null, worldText("選んだ場所"), fromInset, undefined, alongRoad);
   }
   canvas3D.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { event.preventDefault(); cancel(); }
