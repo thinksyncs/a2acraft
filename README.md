@@ -35,13 +35,13 @@ Agents take on different roles, share what they find, and bring their results to
 - **Repositories become homes.** A project takes shape as a building, making the work visible in the town.
 - **Themes shape the world.** Zoom out to find related towns nearby and different ideas farther away. New collaborations create new places to explore.
 
-The film follows a party in the playable village. Walk to a resident, read a companion’s proposal and accept it from the map. Zoom out to see the settlements, then visit the king for a report on the parties’ progress. The footage uses the game’s fictional sample conversations and quests.
+The English film shows a resident’s conversation and a companion’s quest in the village. Follow the party across the map and visit the king for a progress report. The footage uses the game’s fictional sample conversations and quests.
 
 ## Current prototype
 
 A2ACraft is an MVP in development. The prototype lets you explore a town, talk to residents while keeping the map visible, and choose companions and equipment. We are working toward a short playable experience where your choices during a shared task change the town.
 
-![The party meets Celia beside the river, with the leader’s view in the upper right](media/prototype-village.png)
+![A resident greets the party in the English village interface](media/village-greeting-en.jpg)
 
 This screenshot shows the frontend with fictional sample data. The repository also contains the A2ACraft Mac application source.
 

@@ -1,4 +1,4 @@
-import {worldText, setWorldLabel, getLocale} from './i18n-world.js';
+import {worldText, worldBinding, setWorldLabel, getLocale} from './i18n-world.js';
 import {writeProjectLabel} from './i18n-projects.js';
 import { partyStatusLabels } from "./party-runner.js";
 import { roomScenery } from "./world-room-art.js";
@@ -105,9 +105,8 @@ export function createWorldRoom({ onExit, getProgress, onProgress, id = "world-r
     animation?.cancel();
     animation = null;
     dialog.replaceChildren();
-    const placeTitle = {castle: "Throne Room", weapon: "Forge", tavern: "Tavern"}[facility.id];
-    const title = node("h2", placeTitle || facility.name);
-    if (placeTitle) title.lang = "en";
+    const placeTitle = {castle: "玉座の間", weapon: "鍛冶場", tavern: "酒場"}[facility.id];
+    const title = node("h2", placeTitle ? worldBinding(placeTitle) : facility.name);
     title.id = id + "-title";
     dialog.setAttribute("aria-labelledby", title.id);
     const exit = button(worldText("街へ戻る"), close, "world-room-exit");

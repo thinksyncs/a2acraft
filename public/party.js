@@ -155,14 +155,14 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
         }}).load();onState(demoRunner.public());
     })();return demoLoading;
   }
-  async function request(action,{configuration,questText}={}){
+  async function request(action,{configuration,questDraft}={}){
     if(busy)return false;busy=true;error='';notice='';render();
     try{
       await ensureDemo();
       if(action==='save'||action==='start'){
         const value=demo?await demoRunner.configure(configuration||draft):await api('party/configure',{party:configuration||draft});onState(value);notice=questText('編成を保存しました。');
       }
-      if(action==='start'){const params={text:questText??$('#party-quest').value,...getModel()};onState(demo?await demoRunner.start(params):await api('party/start',params));notice=questText('パーティにクエストを渡しました。');}
+      if(action==='start'){const params={text:questDraft??$('#party-quest').value,...getModel(),locale:getLocale()};onState(demo?await demoRunner.start(params):await api('party/start',params));notice=questText('パーティにクエストを渡しました。');}
       if(action==='pause')onState(demo?await demoRunner.pause():await api('party/pause'));
       if(action==='cancel')onState(demo?await demoRunner.cancel():await api('party/cancel'));
       if(action==='resume'){const params={retry:Boolean(current().quest?.steps.find(step=>step.status!=='completed')?.needsRetry)};onState(demo?await demoRunner.resume(params):await api('party/resume',params));}
@@ -203,9 +203,9 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     if(active(current().quest)||current().quest?.status==='paused')throw Error(questText('現在のクエストを再開または終了してから出発してください。'));
     if(!canConnect())throw Error(questText('Codexに接続してから出発してください。'));
     if(!getModel().model)throw Error(questText('クエストに使うモデルを選択してください。'));
-    const questText=String(value??'');if(!questText.trim()||questText.length>8000)throw Error(questText('クエストを1〜8,000文字で入力してください。'));
-    const configuration=structuredClone(current().party);saveQuestDraft(questText);
-    if(!await request('start',{configuration,questText}))throw Error(error||questText('出発できませんでした。'));
+    const questDraft=String(value??'');if(!questDraft.trim()||questDraft.length>8000)throw Error(questText('クエストを1〜8,000文字で入力してください。'));
+    const configuration=structuredClone(current().party);saveQuestDraft(questDraft);
+    if(!await request('start',{configuration,questDraft}))throw Error(error||questText('出発できませんでした。'));
     return current();
   },open:async()=>{try{await ensureDemo();render();}catch(e){error=e.message;render();}},startTodo:async params=>{await ensureDemo();const value=await demoRunner.start(params);onState(value);return value;},todoAction:async(action,retry)=>{await ensureDemo();const value=action==='pause'?await demoRunner.pause():action==='cancel'?await demoRunner.cancel():await demoRunner.resume({retry});onState(value);return value;},active:()=>active(current().quest)};
 }

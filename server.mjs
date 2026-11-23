@@ -558,7 +558,7 @@ await world.observe({migration:true});
 startupStage('activity-sync');
 activityReady=true;await queueActivitySync();
 const activityTimer=setInterval(()=>{queueActivitySync();queueScheduledExecution();queueBoardExecution();projects?.kick();},1000);activityTimer.unref();
-async function startTodo(id,model,effort,invitation){
+async function startTodo(id,model,effort,invitation,locale){
  assertBoardAvailable();
  let reviewedParty=null;
  const verifyInvitation=item=>{
@@ -571,7 +571,7 @@ async function startTodo(id,model,effort,invitation){
  if(item.assignee.type==='manual')return todos.manual(id,'doing');
  if(startingTodo||parties.unfinished)throw Error('現在のクエストを完了または終了してから開始してください。');
  startingTodo=true;emit();let run;
- try{await readyForQuest(model);run=await todos.begin(id,invitation===undefined?undefined:verifyInvitation);await parties.start({text:todos.prompt(run.item),model,effort,soloId:run.item.assignee.type==='chat'?run.item.assignee.conversationId:null,partyOverride:reviewedParty,link:{todoId:id,runId:run.runId}});return todos.item(id);}
+ try{await readyForQuest(model);run=await todos.begin(id,invitation===undefined?undefined:verifyInvitation);await parties.start({text:todos.prompt(run.item,locale),model,effort,locale,soloId:run.item.assignee.type==='chat'?run.item.assignee.conversationId:null,partyOverride:reviewedParty,link:{todoId:id,runId:run.runId}});return todos.item(id);}
  catch(error){if(run)await todos.rejectStart(id,run.runId,error.message);throw error;}
  finally{startingTodo=false;emit();}
 }
@@ -613,7 +613,7 @@ async function startAdventure(input){
   if(parties.unfinished)throw Error('現在のクエストを完了または終了してから出発してください。');
   const active=await adventure.prepare({regionId:request.region.id,text:input.text});
   try{
-   await parties.start({text:request.text,model:input.model,effort:input.effort||'medium',...request.party,adventure:{id:active.id,regionId:active.regionId}});
+   await parties.start({text:request.text,model:input.model,effort:input.effort||'medium',...request.party,locale:requestedLocale(input.locale),adventure:{id:active.id,regionId:active.regionId}});
   }catch(error){
    // A checkpoint can fail after PartyRunner created its snapshot. Preserve
    // that link for explicit resume; never automatically replay the request.
@@ -1119,7 +1119,7 @@ const server=http.createServer(async(req,res)=>{
    if(p==='/api/todos/save')return json(res,200,await todos.save(b,conversations,media.public().items));
    if(p==='/api/todos/manual')return json(res,200,await todos.manual(b.id,b.status));
    if(p==='/api/todos/reopen')return json(res,200,await todos.reopen(b.id));
-   if(p==='/api/todos/start')return json(res,200,await startTodo(b.id,b.model,b.effort||'medium',b.invitation));
+   if(p==='/api/todos/start')return json(res,200,await startTodo(b.id,b.model,b.effort||'medium',b.invitation,requestedLocale(b.locale)));
    if(p==='/api/todos/action'){
     if(parties.state.quest?.link?.todoId!==b.id)throw Error('このTODOのクエストは現在選択されていません。');
     if(b.action==='pause')await parties.pause();else if(b.action==='cancel')await parties.cancel();else if(b.action==='resume'){await readyForQuest(parties.state.quest.model);boardStops.delete(parties.state.quest?.board?.attemptId);await parties.resume({retry:b.retry===true});}else throw Error('TODOの操作を確認してください。');
@@ -1127,7 +1127,7 @@ const server=http.createServer(async(req,res)=>{
    }
    if(p==='/api/media/remove'){if(todos.value.items.some(item=>item.mediaIds.includes(b.id)||item.runs.some(run=>run.snapshot?.mediaIds?.includes(b.id))))throw Error('TODOに関連付いた画像です。関連付けを確認してください。');await media.remove(b.id);return json(res,200,media.public());}
    if(p==='/api/party/configure'){if(scheduledStarting)throw Error('予約の開始を確認しています。編成の変更は少し待ってください。');return json(res,200,await parties.configure(b.party));}
-   if(p==='/api/party/start'){if(startingTodo)throw Error('TODOの開始を処理しています。');await readyForQuest(b.model);return json(res,200,await parties.start({text:b.text,model:b.model,effort:b.effort||'medium'}));}
+   if(p==='/api/party/start'){if(startingTodo)throw Error('TODOの開始を処理しています。');await readyForQuest(b.model);return json(res,200,await parties.start({text:b.text,model:b.model,effort:b.effort||'medium',locale:requestedLocale(b.locale)}));}
    if(p==='/api/party/resume'){await readyForQuest(parties.state.quest?.model);boardStops.delete(parties.state.quest?.board?.attemptId);return json(res,200,await parties.resume({retry:b.retry===true}));}
    if(p==='/api/party/pause')return json(res,200,await parties.pause());
    if(p==='/api/party/cancel')return json(res,200,await parties.cancel());

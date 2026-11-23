@@ -1,6 +1,7 @@
 /* The settlement is the room: controls float at its edges. */
 body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-view{position:relative;gap:0;padding:0;overflow:hidden}
 .history-village{--village-hud-left:12px;--village-legend-top:111px;--village-map-access-top:calc(var(--village-legend-top) + 30px);--village-context-top:calc(var(--village-map-access-top) + 50px);--village-context-bottom:112px;position:relative;flex:1;min-width:0;min-height:360px;height:calc(100dvh - var(--app-toolbar,56px) - var(--app-bottom,0px) - 32px);padding:0;color:#edf2e7;font:16px/1.6 var(--font-ui);isolation:isolate;border-radius:12px;overflow:hidden;background:#536f43}
+.history-village:has(#village-walk-sample){--village-legend-top:137px}
 body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) - var(--app-bottom,0px) - 68px)}
 .history-village [hidden],.village-detail [hidden]{display:none!important}
 .history-village button,.history-village button.outline,.village-detail button{min-height:44px;font:500 16px/1.5 var(--font-ui);padding:9px 14px;border:1px solid #79947a66;border-radius:8px;background:#142c28ed;color:#f0eedc;white-space:normal;box-shadow:0 3px 12px #14251625}
@@ -14,7 +15,7 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 #village-canvas{display:block;width:100%;height:100%;image-rendering:auto;touch-action:none;cursor:grab}
 #village-canvas:active{cursor:grabbing}
 .village-heading{position:absolute;z-index:5;inset:12px 12px auto;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;pointer-events:none}
-.village-heading>div:first-child{min-width:180px;min-height:66px;padding:7px 12px 30px;border:1px solid #e3e2b921;border-radius:9px;background:#142a26df;backdrop-filter:blur(6px)}
+.village-heading>div:first-child{min-width:180px;min-height:66px;padding:7px 12px;border:1px solid #e3e2b921;border-radius:9px;background:#142a26df;backdrop-filter:blur(6px)}
 .village-heading h2{font-size:18px;line-height:1.5;font-weight:600;color:#fff0c6;margin:0;letter-spacing:.02em}
 .village-heading h2:focus{outline:none}
 .village-intro{display:none}
@@ -30,11 +31,12 @@ body.desktop-app .history-village{height:calc(100dvh - var(--app-toolbar,56px) -
 @media(max-height:620px),(max-width:600px){.village-context{width:min(250px,calc(100% - 24px))}.village-context-row:nth-child(n+2){display:none}.village-context>p{display:none}}
 .village-header-actions{display:flex;gap:5px;pointer-events:auto}
 .history-village .village-header-actions button{display:grid;place-items:center;width:44px;height:44px;padding:0}
-.village-statistics{position:absolute;z-index:6;top:47px;left:25px;display:flex;gap:15px;color:#d8dfc4;pointer-events:none}
+.village-statistics{display:flex;gap:15px;color:#d8dfc4;pointer-events:none}
 .village-statistics>div{display:flex;align-items:baseline;gap:4px}
 .village-statistics strong{font-size:17px;line-height:1.5;color:#f3dda6;font-weight:600;font-variant-numeric:tabular-nums}
 .village-statistics span{font-size:12px;white-space:nowrap}
 .village-preview-note{position:absolute;z-index:5;top:82px;left:12px;max-width:calc(100% - 24px);margin:0;padding:2px 7px;border-radius:4px;background:#152d25d9;color:#e1cd9e;font-size:12px;display:flex;gap:8px;flex-wrap:wrap}
+.village-preview-note:has(#village-walk-sample){align-items:center}
 .village-preview-note a{color:#ffe4aa;text-underline-offset:3px}
 .village-sites,.village-quest-sites{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .history-village button.village-building{position:absolute;pointer-events:auto;display:flex;align-items:flex-end;justify-content:center;min-height:44px;min-width:44px;padding:0 0 2px;border:1px solid transparent;border-radius:8px;background:transparent;box-shadow:none}
@@ -158,11 +160,12 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 
 @media(max-width:700px){
  .history-village{--village-hud-left:8px;--village-legend-top:101px;--village-context-bottom:132px;height:calc(100dvh - var(--app-toolbar,48px) - var(--app-bottom,72px) - 16px);min-height:360px;border-radius:9px}
+ .history-village:has(#village-walk-sample){--village-legend-top:129px}
  .village-heading{inset:8px 8px auto;gap:8px}
- .village-heading>div:first-child{min-width:174px;min-height:62px;padding:5px 9px 29px}
+ .village-heading>div:first-child{min-width:174px;min-height:62px;padding:5px 9px}
  .village-heading h2{font-size:16px}
  .village-header-actions{gap:3px}
- .village-statistics{top:39px;left:18px;gap:13px}
+ .village-statistics{gap:10px}
  .village-statistics strong{font-size:16px}
  .village-preview-note{top:75px;left:8px;font-size:11px}
  .village-legend{font-size:10px;gap:7px}
@@ -308,4 +311,19 @@ body[data-view="town"]:has(#adventure-town-nav[aria-current="page"]) #town-facil
 .village-idea-offer button {margin-inline-end:6px}
 @media(max-width:600px) {
  .village-resident-idea:not(:focus-visible):not(:hover) small {display:none}
+}
+
+@media (max-width:440px){
+  html:lang(en) .village-header-actions{flex-direction:column}
+  html:lang(en) .village-statistics{gap:7px}
+  html:lang(en) .history-village,
+  html:lang(en) .history-village:has(#village-walk-sample){
+    --village-legend-top:156px;
+    --village-map-access-top:calc(var(--village-legend-top) + 44px);
+  }
+  html:lang(en) .village-preview-note{right:60px;max-width:none}
+  html:lang(en) .history-village .world-3d-inset,
+  html:lang(en) .village-leader-toggle{top:var(--village-map-access-top)}
+  html:lang(en) .history-village .village-leader-toggle{font-size:14px;padding-inline:8px}
+  html:lang(en) .village-camera-controls #village-fit{width:auto;font-size:12px}
 }
