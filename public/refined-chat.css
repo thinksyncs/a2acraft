@@ -371,3 +371,124 @@ body[data-view="chat"] #workspace-tabs .workspace-add-chat{width:28px;height:28p
     background: rgb(24 41 41 / 83%);
   }
 }
+
+/* Keep workspace navigation distinct from the active transcript. */
+#chat-view .workspace-toolbar,
+#chat-view.resident-chat-active > .workspace-toolbar {
+  --toolbar-ink: #171d20;
+  --toolbar-line: #ffffff16;
+  --toolbar-accent: #dec899;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: var(--toolbar-ink);
+  color: #e9e8e1;
+  align-items: center;
+  border-bottom: 1px solid var(--toolbar-line);
+  padding-inline: clamp(4px, 0.7vw, 12px);
+  column-gap: 6px;
+}
+body[data-view="chat"] #workspace-tabs .workspace-tab {
+  max-width: clamp(110px, 15vw, 194px);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  box-shadow: none;
+  color: #afb6b7;
+  font: 500 12px/1.35 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  letter-spacing: normal;
+}
+body[data-view="chat"] #workspace-tabs .workspace-tab:hover,
+body[data-view="chat"] #workspace-tabs .workspace-add-chat:not(:disabled):hover {
+  background: #ffffff0d;
+  color: #f1eee6;
+}
+body[data-view="chat"] #workspace-tabs .workspace-tab[aria-selected="true"] {
+  border-color: #ffffff1f;
+  background: #303638;
+  color: #fff4d8;
+  box-shadow: inset 0 -2px var(--toolbar-accent);
+}
+body[data-view="chat"] #workspace-tabs .workspace-add-chat {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #bcc0bd;
+}
+#chat-view #chat-layout {
+  padding: 2px;
+  border: 1px solid var(--toolbar-line);
+  border-radius: 7px;
+  background: #101618;
+  gap: 1px;
+}
+#chat-view #chat-layout button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 34px;
+  min-height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #aeb6b8;
+  box-shadow: none;
+  font: 500 11px/1.25 -apple-system, BlinkMacSystemFont, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+#chat-view #chat-layout button:hover { background: #ffffff0c; color: #fffffa; }
+#chat-view #chat-layout button.selected {
+  background: #39403f;
+  color: #fff0d0;
+  box-shadow: inset 0 0 0 1px #ffffff1c;
+}
+@media (min-width: 920px) {
+  #chat-view #chat-layout button::before {
+    content: "";
+    box-sizing: border-box;
+    width: 12px;
+    height: 10px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+  }
+  #chat-view #chat-layout button[data-layout="2"]::before,
+  #chat-view #chat-layout button[data-layout="4"]::before {
+    background: linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat;
+  }
+  #chat-view #chat-layout button[data-layout="4"]::before {
+    background: linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat,
+                linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat;
+  }
+}
+#chat-view #chat-connect {
+  border: 0;
+  background: transparent;
+  color: var(--toolbar-accent);
+  font-family: inherit;
+}
+#chat-view #chat-connect:not([hidden])::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+#chat-view .workspace-toolbar :is(button,summary):focus-visible {
+  outline: 2px solid var(--toolbar-accent);
+  outline-offset: -2px;
+}
+@media (max-width: 700px) {
+  #chat-view #chat-layout button { min-height: 32px; }
+}
+@media (max-width: 600px) {
+  #chat-view #chat-layout button { min-height: 36px; }
+}
+@media (forced-colors: active) {
+  #chat-view #chat-layout button.selected,
+  body[data-view="chat"] #workspace-tabs .workspace-tab[aria-selected="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
