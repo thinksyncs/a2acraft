@@ -43,7 +43,7 @@ export function createVillageContext({onTalk}) {
       row.setAttribute('aria-label',person.name+ui('に話しかける · ', " · talk · ")+person.title);
       const title = document.createElement('strong'); title.textContent = person.title;
       const name = document.createElement('small'); name.textContent = person.name;
-      const text = document.createElement('span'); text.textContent = context.label+'：'+context.text;
+      const text = document.createElement('span'); text.textContent = context.label+ui('：', ': ')+context.text;
       row.append(title,name,text); row.onclick = () => onTalk(person.conversationId); list.append(row);
     }
   }};

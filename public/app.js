@@ -1,4 +1,4 @@
-import {ui, interfaceLanguage} from './interface-language.js';
+import {ui, interfaceLanguage, interfaceLink, sampleChanges, restoreSampleChanges} from './interface-language.js';
 import {initContextSharing} from './context-sharing.js';
 import {initAttachments} from './attachments.js';
 import {renderMessageMarkdown} from './message-markdown.js';
@@ -48,6 +48,7 @@ let chats = [], selected = null, layout = 1, drafts = {}, sendRequests = {}, vie
 const groupSelections=new Map();
 const pendingSends=new Set();
 const conversationModeRequests=new Map();
+const initialDemoMessages = new Map();
 let demoCharacterNames={};
 try{const saved=JSON.parse(localStorage.getItem(storeKey+'-character-names')||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))demoCharacterNames=saved;}catch{}
 function nameDemoChats(rows){
@@ -316,7 +317,7 @@ async function addChatGroup(){
   let result;
   if(demo){
     const groups=chatGroupsFor(state.chatGroups,chats),id=crypto.randomUUID();
-    const conversations=nameDemoChats(Array.from({length:4},(_,index)=>({id:crypto.randomUUID(),title:`チャット ${groups.length+1} · ${index+1}`,status:'idle',messages:[]})));
+    const conversations=nameDemoChats(Array.from({length:4},(_,index)=>({id:crypto.randomUUID(),title:ui(`チャット ${groups.length+1} · ${index+1}`, `Chat ${groups.length+1} · ${index+1}`),status:'idle',messages:[]})));
     const group={id,title:ui('チャット ', "Chat ")+(groups.length+1),conversationIds:conversations.map(chat=>chat.id)};
     result={group,conversations,chatGroups:{version:1,revision:(state.chatGroups?.revision||0)+1,items:[...groups,group]}};
   }else result=await api('chat-groups');
@@ -591,19 +592,19 @@ function buckets() {
 function windowLabel(window, fallback) {
   const minutes = window.windowDurationMins;
   if (!Number.isFinite(minutes)) return fallback;
-  if (minutes >= 1440 && minutes % 1440 === 0) return `${minutes / 1440}日間の枠`;
-  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60}時間の枠`;
-  return `${minutes}分間の枠`;
+  if (minutes >= 1440 && minutes % 1440 === 0) return ui(`${minutes / 1440}日間の枠`, `${minutes / 1440}-day window`);
+  if (minutes >= 60 && minutes % 60 === 0) return ui(`${minutes / 60}時間の枠`, `${minutes / 60}-hour window`);
+  return ui(`${minutes}分間の枠`, `${minutes}-minute window`);
 }
 function quotaHtml() {
   let output = '';
   for (const bucket of buckets()) for (const [index, window] of [bucket.primary, bucket.secondary].entries()) if (window) {
     const valid = Number.isFinite(window.usedPercent) && window.usedPercent >= 0 && window.usedPercent <= 100;
     const left = valid ? Math.round(100 - window.usedPercent) : null;
-    const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ui('未取得', "Unavailable");
-    output += `<div class="quota-window"><div class="quota-label"><span>${esc(windowLabel(window,index ? ui('追加枠', "Additional quota") : ui('利用枠', "Quota")))}</span><strong>${left === null ? '—' : left + '%'} <small>残り</small></strong></div><div class="bar"><div class="fill ${left !== null && left <= 20 ? 'warn' : ''}" style="width:${left || 0}%"></div></div><div class="quota-reset">${esc(bucket.limitName || bucket.limitId || 'Codex')} · ${esc(reset)} リセット</div></div>`;
+    const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString(ui('ja-JP','en-US'), {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ui('未取得', "Unavailable");
+    output += `<div class="quota-window"><div class="quota-label"><span>${esc(windowLabel(window,index ? ui('追加枠', "Additional quota") : ui('利用枠', "Quota")))}</span><strong>${left === null ? '—' : left + '%'} <small>${ui('残り','remaining')}</small></strong></div><div class="bar"><div class="fill ${left !== null && left <= 20 ? 'warn' : ''}" style="width:${left || 0}%"></div></div><div class="quota-reset">${esc(bucket.limitName || bucket.limitId || 'Codex')} · ${esc(reset)} ${ui("リセット","reset")}</div></div>`;
   }
-  return output || '<div class="quota-window"><div class="quota-label"><span>利用枠</span><strong>— <small>未取得</small></strong></div><div class="bar"></div><div class="quota-reset">接続後に実際の残量を表示します</div></div>';
+  return output || `<div class="quota-window"><div class="quota-label"><span>${ui('利用枠','Quota')}</span><strong>— <small>${ui('未取得','Unavailable')}</small></strong></div><div class="bar"></div><div class="quota-reset">${ui('接続後に実際の残量を表示します','Connect to see your remaining quota.')}</div></div>`;
 }
 function updateState() {
   projects.render();
@@ -618,7 +619,7 @@ function updateState() {
   setText('#plan-caption', state.account?.type === 'chatgpt' ? (state.account.planType || 'ChatGPT').toUpperCase() + ' · ' + (demo ? 'SAMPLE' : 'CONNECTED') : ui('ChatGPTログイン待ち', "Waiting for ChatGPT sign-in"));
   $('#connection-dot').classList.toggle('mint', state.connected);
   setText('#connection-text', demo ? 'DEMO MODE' : state.connected ? 'APP SERVER ONLINE' : 'DISCONNECTED');
-  setText('#quota-updated', state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + ui(' 更新', " updated") : ui('未取得', "Unavailable"));
+  setText('#quota-updated', state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString(ui('ja-JP','en-US'),{hour:'2-digit',minute:'2-digit'}) + ui(' 更新', " updated") : ui('未取得', "Unavailable"));
   const offline=offlineBrowsing&&!demo&&(!state.connected||state.account?.type!=='chatgpt');
   const policyReason=!state.policy?.ok?state.policy?.reason||'':'';
   // Only routine sign-in guidance becomes a chip. Unknown policy failures,
@@ -657,7 +658,7 @@ function createPanel(chat) {
   element.className = 'chat-panel';
   element.tabIndex = 0;
   element.dataset.select = chat.id;
-  element.innerHTML = '<div class="panel-head" title="別のペインへドラッグしてコンテキストを共有"><div class="panel-name"><span class="panel-index"></span><span class="panel-title"></span></div><div class="panel-state"><span class="pane-spinner" aria-hidden="true" hidden></span><span class="status"></span><button class="context-share text-btn" aria-label="この会話のコンテキストを共有" title="共有先を選択">↗</button></div></div><div class="messages"></div><div class="panel-error" hidden></div><details class="panel-notice" hidden><summary class="panel-notice-title"></summary><p class="panel-notice-body"></p></details><div class="panel-foot"><span class="panel-model"></span><span class="context-count" hidden></span><span class="panel-count"></span></div>';
+  element.innerHTML = '<div class="panel-head" title="' + ui('別のペインへドラッグしてコンテキストを共有', 'Drag to another pane to share context') + '"><div class="panel-name"><span class="panel-index"></span><span class="panel-title"></span></div><div class="panel-state"><span class="pane-spinner" aria-hidden="true" hidden></span><span class="status"></span><button class="context-share text-btn" aria-label="' + ui('この会話のコンテキストを共有', 'Share this conversation’s context') + '" title="' + ui('共有先を選択', 'Select a recipient') + '">↗</button></div></div><div class="messages"></div><div class="panel-error" hidden></div><details class="panel-notice" hidden><summary class="panel-notice-title"></summary><p class="panel-notice-body"></p></details><div class="panel-foot"><span class="panel-model"></span><span class="context-count" hidden></span><span class="panel-count"></span></div>';
   element.querySelector('.messages').dataset.chat = chat.id;
   const result = {element, messages:new Map()};
   panels.set(chat.id, result);
@@ -736,7 +737,7 @@ function updatePanel(chat, index) {
   if (visibleCount) list.querySelector('.empty')?.remove();
   else if (!list.querySelector('.empty')) {
     const empty = document.createElement('div'); empty.className = 'empty';
-    empty.innerHTML = '<div class="empty-icon" aria-hidden="true">＋</div><p>この会話へ入力できます</p><small>下の入力欄から相談を始めましょう</small>';
+    empty.innerHTML = `<div class="empty-icon" aria-hidden="true">＋</div><p>${ui('この会話へ入力できます','Ready for your message')}</p><small>${ui('下の入力欄から相談を始めましょう','Start the conversation below.')}</small>`;
     list.prepend(empty);
   }
   let progress = list.querySelector('.run-progress');
@@ -777,7 +778,7 @@ function renderChats() {
     const focusedChat = document.activeElement?.matches('.conversation-link,.chat-tab') ? {id:document.activeElement.dataset.select,tab:document.activeElement.matches('.chat-tab')} : null;
     $('#mobile-chat').innerHTML = groupChats.map(chat => `<option value="${esc(chat.id)}">${esc(chat.title)}</option>`).join('');
     $('#mobile-chat').value = selected;
-    $('#conversation-list').innerHTML = chats.map((chat,index) => `<button class="conversation-link ${chat.id === selected ? 'selected' : ''}" data-select="${esc(chat.id)}"><small>${String(index + 1).padStart(2,'0')}</small>${esc(chat.title)}${active(chat) ? '<span class="conversation-running" aria-label="実行中"></span>' : ''}</button>`).join('');
+    $('#conversation-list').innerHTML = chats.map((chat,index) => `<button class="conversation-link ${chat.id === selected ? 'selected' : ''}" data-select="${esc(chat.id)}"><small>${String(index + 1).padStart(2,'0')}</small>${esc(chat.title)}${active(chat) ? `<span class="conversation-running" aria-label="${ui('実行中','Running')}"></span>` : ''}</button>`).join('');
     if ($('#chat-tabs')) $('#chat-tabs').innerHTML = groupChats.map((chat,index) => `<button class="chat-tab ${chat.id === selected ? 'selected' : ''} ${active(chat) ? 'running' : ''}" data-select="${esc(chat.id)}" aria-pressed="${chat.id === selected}"><strong class="tab-name">${esc(chat.title)}</strong><span class="tab-index">${ui('会話','Chat')} ${index + 1}</span><small class="tab-state">${chat.id === selected ? 'Active' : active(chat) ? 'Running' : 'Waiting'}</small></button>`).join('');
     renderedNavigation = navigation;
     if (focusedChat) $((focusedChat.tab ? '.chat-tab' : '.conversation-link') + '[data-select="' + CSS.escape(focusedChat.id) + '"]')?.focus({preventScroll:true});
@@ -830,7 +831,7 @@ function teamSendStatus(id){
     const remaining=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1}).format(100-window.usedPercent);
     const reset=new Date(window.resetsAt*1000);
     const next=Number.isFinite(window.resetsAt)&&reset.getTime()>Date.now()
-      ? '（'+reset.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+ui(' リセット予定）', " reset)"):'';
+      ? '（'+reset.toLocaleString(ui('ja-JP','en-US'),{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+ui(' リセット予定）', " reset)"):'';
     return {reason:reason+' '+(bucket.limitName||bucket.limitId||'Codex')+' · '+name+ui(' 残り', " remaining")+remaining+'%'+next,refreshQuota:true};
   }
   if(normalSendUnavailable(chat,false)||connectionReadiness?.busy||state.projects?.activeCount)return {reason:ui('現在は送信できません。', "Sending is unavailable now.")};
@@ -979,7 +980,7 @@ $('#chat-navigation').onclick=()=>{workspaceMenu.showModal();$('#chat-navigation
 $('#chat-connect').onclick=()=>switchView('settings');
 $('#workspace-menu-close').onclick=()=>workspaceMenu.close();
 $('#workspace-menu-party-map').onclick=()=>{workspaceMenu.close();openPartyMap();};
-$('#workspace-menu-village-preview').onclick=()=>location.assign('/?demo=1&village=sample');
+$('#workspace-menu-village-preview').onclick=()=>location.assign(interfaceLink('/?demo=1&village=sample'));
 workspaceMenu.addEventListener('close',()=>{for(const id of ['town-tools-toggle','chat-navigation'])$('#'+id).setAttribute('aria-expanded','false');});
 $('#workspace-menu-open-history').addEventListener('click',()=>workspaceMenu.close(),{capture:true});
 $('#workbench-toggle').onclick=()=>{
@@ -1211,6 +1212,7 @@ async function boot() {
   historyLoaded=true;historyLoadError='';
   if(projectSample){const sample=projectDemo();state.projects=sample.projects;chats.push(...nameDemoChats(sample.chats));}
   if(subagentSample)chats=withAgentDelegationSample(chats,{enabled:true});
+  if (demo) for (const chat of chats) initialDemoMessages.set(chat.id, chat.messages.length);
   if (!chats.some(chat => chat.id === selected)) selected = chats[0]?.id;
   $('#prompt').value = drafts[selected] || ''; updateState(); renderChats();
   if(demo&&new URLSearchParams(location.search).get('village')==='sample')switchView('town',()=>{townSection('town');village.focus();});
@@ -1249,6 +1251,9 @@ const readyForInterfaceChange = boot().catch(error => { connectionError = error.
 
 export async function prepareInterfaceReload() {
   await readyForInterfaceChange;
+  if (pendingSends.size || (demo && (partyActive() || chats.some(chat => chat.turnId && active(chat))))) {
+    throw Error(ui('処理が完了してから表示言語を切り替えてください。', 'Wait for the current action to finish before switching languages.'));
+  }
   persist();
   village.saveView();
   projects.saveView();
@@ -1258,4 +1263,31 @@ export async function prepareInterfaceReload() {
   } finally {
     mapStorage.resume();
   }
+  return {
+    view: activeEncounter ? 'chat' : view, section: currentTownSection, selected,
+    workspace: !$('#workspace').hidden, connected: connectionRequested,
+    changes: demo ? sampleChanges(chats, initialDemoMessages) : [],
+  };
+}
+
+export async function resumeInterfaceView(previous) {
+  await readyForInterfaceChange;
+  if (!previous?.workspace) return;
+  if (demo) restoreSampleChanges(chats, previous.changes);
+  if (chats.some(chat => chat.id === previous.selected)) {
+    selected = previous.selected;
+    $('#prompt').value = drafts[selected] || '';
+  }
+  if (!demo) {
+    if (previous.connected) connectionRequested = true;
+    else offlineBrowsing = true;
+  }
+  updateState();
+  if ($('#workspace').hidden) return;
+  const viewNames = ['town','chat','tavern','castle','equipment','image','settings','usage','inbox','reports','schedules','todos','backlog','teams'];
+  const target = viewNames.includes(previous.view) ? previous.view : 'town';
+  switchView(target, () => {
+    if (target === 'town' && ['town','projects','adventure'].includes(previous.section)) townSection(previous.section);
+    if (target === 'chat') renderChats();
+  });
 }

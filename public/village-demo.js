@@ -30,7 +30,7 @@ export function villageDemoChats(){
    {id:id+'-assignment-request',role:'user',text:assignment.request},
    {id:id+'-assignment',role:'assistant',text:assignment.text}
   ]:[
-   {id:id+'-user',role:'user',text:software?title+ui('というソフトウェアを開発したい。設計から一緒に進めてください。', " is the software I want to build. Please help me design and develop the app."):topic[1]},
+   {id:id+'-user',role:'user',text:software?title+ui('というソフトウェアを開発したい。設計から一緒に進めてください。', " is my software project. Please help me design and build the app."):topic[1]},
    {id:id+'-answer',role:'assistant',text:software?ui('【村のサンプル会話】\n', "[Village sample conversation]\n")+stages[index%stages.length]:topic[2]}
   ];
   return {id,title,status:'completed',model:'CODEX · DEMO MODEL',createdAt:Date.UTC(2026,9,1)+index*3600000,updatedAt:Date.UTC(2026,9,2)+index*3600000,messages};

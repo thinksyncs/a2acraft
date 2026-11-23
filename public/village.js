@@ -1,4 +1,4 @@
-import {ui} from './interface-language.js';
+import {ui, interfaceLink} from './interface-language.js';
 import {mapBuildingBounds} from './world-map-models.js';
 import {projectModel} from './world-model-descriptors.js';
 import {mapStorage} from './map-storage.js';
@@ -55,7 +55,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  const stat=(id,label)=>{const row=make('div'),value=make('strong','0');value.id=id;row.append(value,make('span',label));statistics.append(row);return value;};
  const population=stat('village-population',ui('人', "residents")),projectCount=stat('village-project-count',ui('棟', "buildings")),finished=stat('village-completed-count',ui('完成', "Complete"));
  const previewNote=make('p',undefined,'village-preview-note');previewNote.id='village-preview-note';previewNote.hidden=!demo;
- if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',sample?ui('サンプル', "Sample"):ui('自分の村', "My village")));if(!sample){const link=make('a',ui('サンプルの村へ →', "Visit the sample village →"));link.href='/?demo=1&village=sample';previewNote.append(link);}const back=make('a',ui('自分の村に戻る', "Return to my village"));back.id='village-preview-return';back.href='/';previewNote.append(back);}
+ if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',sample?ui('サンプル', "Sample"):ui('自分の村', "My village")));if(!sample){const link=make('a',ui('サンプルの村へ →', "Visit the sample village →"));link.href=interfaceLink('/?demo=1&village=sample');previewNote.append(link);}const back=make('a',ui('自分の村に戻る', "Return to my village"));back.id='village-preview-return';back.href=interfaceLink('/');previewNote.append(back);}
  const mapSection=make('section',undefined,'village-map-section');mapSection.setAttribute('aria-label',ui('村の風景', "Village landscape"));
  const frame=make('div',undefined,'village-map-frame'),canvas=make('canvas');canvas.id='village-canvas';canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',ui('冒険者の村。村人に話しかけ、建物やパーティを確認できます。Enterで名簿、矢印キーで見回す、WASDキーで仲間と歩きます。', "Adventurers' village. Meet villagers and inspect buildings and parties. Press Enter for the directory, use the arrow keys to look around, and WASD to walk."));canvas.setAttribute('aria-describedby','village-map-help');
  const sites=make('div',undefined,'village-sites');sites.setAttribute('aria-label',ui('この地区の建物', "Buildings in this district"));
@@ -343,7 +343,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const nextAssignments=JSON.stringify([...assignments]);if(nextAssignments!==previousAssignments)try{mapStorage.setItem(layoutKey,nextAssignments);}catch{}
   population.textContent=String(projection.stats.population);projectCount.textContent=String(projection.stats.projects);finished.textContent=String(projection.stats.stages.complete||0);
   root.dataset.population=String(projection.stats.population);root.dataset.projectCount=String(projection.stats.projects);
-  directorySummary.textContent=ui('村の名簿 · ', "Village directory · ")+projection.residents.length+ui('人', "residents");updateEmptyNotice();
+  directorySummary.textContent=ui(`村の名簿 · ${projection.residents.length}人`, `Village directory · ${projection.residents.length} residents`);updateEmptyNotice();
   district=clamp(district,0,districtCount()-1);syncDistrict();renderDirectory();renderActivities();if(detail.open)refreshDetail();const heldId=encounter?.conversationId||speechId;if(heldId&&!projection.residents.some(item=>item.conversationId===heldId))closeSpeech(false);
  }
  function updateEmptyNotice(){
@@ -632,7 +632,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(travel!==trip){follow.hidden=true;root.dataset.cameraFollowing='false';delete root.dataset.travelRemainingSeconds;return;}
   if(trip.follow)camera=travelCamera(heroPoint);
   const remaining=Math.max(0,Math.ceil((trip.engine.length+(trip.engine.count-1)*18-trip.engine.progress)/90));root.dataset.travelRemainingSeconds=String(remaining);
-  if(trip.label){journey.textContent=trip.label+' · '+(locallyPaused?ui('一時停止中', "Paused"):ui('残り約', "About ")+remaining+ui('秒', " seconds left"));journey.hidden=false;}
+  if(trip.label){journey.textContent=trip.label+' · '+(locallyPaused?ui('一時停止中', "Paused"):ui(`残り約${remaining}秒`, `About ${remaining} ${remaining===1?'second':'seconds'} left`));journey.hidden=false;}
  }
  function movementObstacles(){
   return [...sceneBuildingObstacles(village3DScene({projects:projectSlots,population:projection.residents.length})),...(semanticLayout?.mountains||[])];

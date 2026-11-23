@@ -47,7 +47,7 @@ function observeMapLabels() {
     const original=CanvasRenderingContext2D.prototype[fn];
     CanvasRenderingContext2D.prototype[fn]=function(text,x,y,...rest) {
       const result=original.call(this,text,x,y,...rest);
-      if(this.canvas.id==='village-canvas' && this.canvas.clientWidth && this.canvas.clientHeight) {
+      if(document.documentElement.lang==='en' && /[\u3040-\u30ff\u3400-\u9fff]/u.test(text) && this.canvas.id==='village-canvas' && this.canvas.clientWidth && this.canvas.clientHeight) {
         const point=new DOMPoint(x,y).matrixTransform(this.getTransform());
         const rect=this.canvas.getBoundingClientRect();
         const left=rect.left+point.x*rect.width/this.canvas.width, top=rect.top+point.y*rect.height/this.canvas.height;
@@ -91,13 +91,7 @@ async function click(s, ms=20000) {
 async function capture(name, seconds) {
   await present(name);
   if(language==='ja')return;
-  const dir=path.join(scratch,name);await mkdir(dir);
-  const count=seconds*8, start=Date.now();
-  for(let i=0;i<count;i++){
-    await delay(Math.max(0,start+i*125-Date.now()));
-    await writeFile(path.join(dir,String(i).padStart(4,'0')+'.jpg'),await screenshot());
-  }
-  shots.push({name,dir,count});
+  shots.push({name,seconds});
 }
 async function setup(lang, call) {
   language=lang;
@@ -109,9 +103,11 @@ async function setup(lang, call) {
 }
 async function tour(call) {
   await setup('en',call);
-  await click('#village-walk-sample');
+  await click('#village-zoom-in');
   await capture('walk',3);
-  await poll(()=>isVisible('#village-speech-chat'),'resident arrival',120000);
+  if(!await evaluate("document.querySelector('#village-context').open"))await click('#village-context > summary');
+  await click('.village-context-row');
+  await poll(()=>isVisible('#village-speech-chat'),'nearby resident arrival',15000);
   await capture('greeting',2);
   await click('#village-speech-chat');
   await poll(()=>isVisible('#prompt'),'resident chat');
@@ -130,7 +126,7 @@ async function tour(call) {
   await poll(()=>evaluate("!document.querySelector('#village-idea-start')?.getClientRects().length||document.querySelector('#village-idea-feedback')?.textContent"),'accepted');
   await capture('accepted',4);
   await click('#village-quest-peek-close');
-  await click('#village-walk-sample');
+  await click('#village-zoom-in');
   await capture('village',3);
   await click('#village-fit');
   await capture('world',3);
@@ -140,8 +136,8 @@ async function tour(call) {
   await click('#village-zoom-in');
   await capture('details',3);
   if(await isVisible('#village-speech-close'))await click('#village-speech-close');
-  if(!await isVisible('#village-enter-castle'))await click('#village-castle');
-  await click('#village-enter-castle',150000);
+  if(await isVisible('#village-enter-castle'))await click('#village-enter-castle');
+  else await click('#village-castle');
   await poll(()=>isVisible('#village-room[open] .world-room-host'),'throne room');
   await click('#village-room .world-room-host');
   await capture('castle',6);
@@ -173,7 +169,7 @@ function encode() {
   const master=path.resolve('media/a2acraft-en-45s.mp4'), clips=[];
   for(const shot of shots){
     const dest=path.join(scratch,shot.name+'.mp4');
-    ff('-framerate','8','-i',path.join(shot.dir,'%04d.jpg'),'-vf','fps=24,format=yuv420p','-c:v','libx264','-preset','fast','-crf','20','-an',dest); clips.push(dest);
+    ff('-loop','1','-framerate','24','-i',path.join(out,'en-'+shot.name+'.jpg'),'-t',String(shot.seconds),'-vf','format=yuv420p','-c:v','libx264','-preset','fast','-crf','20','-an',dest); clips.push(dest);
   }
   const credits=path.join(scratch,'credits.mp4');
   ff('-loop','1','-framerate','24','-i',path.join(out,'en-end-card.jpg'),'-t','5','-an','-vf','format=yuv420p','-c:v','libx264','-preset','fast','-crf','20',credits);clips.push(credits);
@@ -200,10 +196,17 @@ try {
     if(!msg.id)return;
     const next=pending.get(msg.id);if(next){pending.delete(msg.id);if(msg.error)next.reject(Error(msg.error.message));else next.resolve(msg.result);}
   };
-  const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
+  const call=(method,params={})=>new Promise((resolve,reject)=>{
+    const id=++serial;
+    const timer=setTimeout(()=>{pending.delete(id);reject(Error('Renderer timeout: '+method));},25000);
+    pending.set(id,{resolve:value=>{clearTimeout(timer);resolve(value);},reject:error=>{clearTimeout(timer);reject(error);}});
+    socket.send(JSON.stringify({id,method,params}));
+  });
   evaluate=async(expression)=>{const r=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
   screenshot=async()=>Buffer.from((await call('Page.captureScreenshot',{format:'jpeg',quality:91,fromSurface:true})).data,'base64');
   await call('Page.enable');await call('Runtime.enable');await call('Log.enable');await call('Page.addScriptToEvaluateOnNewDocument',{source:'('+observeMapLabels.toString()+')()'});await call('Emulation.setDeviceMetricsOverride',{width:1280,height:720,deviceScaleFactor:1,mobile:false});
+  // The product completes trips immediately for its reduced-motion interface.
+  await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
   await tour(call);
   const mixed=Object.entries(notes).filter(([key,screen])=>key.startsWith('en-')&&(screen.lang!=='en'||screen.text.some(t=>/[\u3040-\u30ff\u3400-\u9fff]/u.test(t)))).map(([key])=>key);
   if(mixed.length)throw Error('Visible English sample needs translation in: '+mixed.join(', '));

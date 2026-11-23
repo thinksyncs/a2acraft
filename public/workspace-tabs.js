@@ -14,7 +14,7 @@ export function chatGroupsFor(groups,chats){
     }
     if(!conversationIds.length)continue;
     ids.add(item.id);
-    result.push({id:item.id,title:typeof item.title==='string'&&item.title.trim()?item.title.trim():`チャット ${result.length+1}`,conversationIds});
+    result.push({id:item.id,title:typeof item.title==='string'&&item.title.trim()?item.title.trim():ui(`チャット ${result.length+1}`, `Chat ${result.length+1}`),conversationIds});
   }
   const remaining=[...available].filter(id=>!assigned.has(id));
   for(let start=0;start<remaining.length;start+=4){
@@ -22,7 +22,7 @@ export function chatGroupsFor(groups,chats){
     let id=`legacy:${conversationIds[0]}`;
     while(ids.has(id))id+=':legacy';
     ids.add(id);
-    result.push({id,title:`チャット ${result.length+1}`,conversationIds});
+    result.push({id,title:ui(`チャット ${result.length+1}`, `Chat ${result.length+1}`),conversationIds});
   }
   return result;
 }
@@ -95,7 +95,7 @@ export function initWorkspaceTabs({getGroups,getChats,getSelected,getView,onMap,
         button.setAttribute('role','tab');button.setAttribute('aria-controls','chat-view');button.dataset.chatGroup=group.id;
         buttons.set(group.id,button);
       }
-      button.textContent=group.title;button.title=`${group.title} · ${group.conversationIds.length}チャット`;
+      button.textContent=group.title;button.title=ui(`${group.title} · ${group.conversationIds.length}チャット`, `${group.title} · ${group.conversationIds.length} chats`);
       button.setAttribute('aria-selected',String(active?.id===group.id));button.tabIndex=active?.id===group.id?0:-1;
       button.onclick=()=>onGroup(group);
       // Leave nodes in place during ordinary state updates, including while a
