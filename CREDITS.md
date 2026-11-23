@@ -20,7 +20,7 @@ The film uses a 45-second excerpt with sample-rate conversion, volume adjustment
 
 ## Visuals / 映像
 
-The films use screen captures from the running A2ACraft 0.4.23 frontend. A party walks across the village with its leader’s view open, speaks with a resident and receives a companion’s quest proposal. The posters combine the island map with artwork of the throne room and king from the game. All recorded conversations and quests are from the built-in fictional sample.
+The Japanese film shows the village in A2ACraft 0.4.23. Its poster combines the island map with artwork of the throne room and king. The English film follows the English interface introduced in 0.4.25, from the village and a companion’s quest proposal to the king’s report. Its poster shows the quest as it appears in the game. Both films use the built-in fictional sample.
 
 `media/prototype-village.png` shows the running village frontend with fictional sample data. The Japanese and English films retain the original narration and music mix.
 
