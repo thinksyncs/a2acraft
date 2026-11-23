@@ -12,13 +12,11 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 
 [日本語字幕](subtitles/ja.srt) · [English subtitles](subtitles/en.srt)
 
-## 表示言語
-
-接続画面または村のナビゲーションで **English** と **日本語** を切り替えられます。選んだ言語は次回の起動時にも使われます。自分で書いた会話のタイトルと本文は元の言語で表示されます。言語を切り替えられるのは、日英対応のプレビュー版と `main` から起動したアプリです。
-
 ## Macで試す
 
-[Apple Silicon用のTauri版0.4.24をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.24-tauri/A2ACraft-0.4.24-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)
+0.4.25以降は、起動時の **Connect** か **設定 → 言語** で **English / 日本語** を切り替えられます。[英語の初回起動ガイド](docs/mac-first-start.en.md)にも、Codexへの接続と専用フォルダへのファイル作成の手順を載せています。
+
+[Apple Silicon用のTauri版0.4.25をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.25-tauri/A2ACraft-0.4.25-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.25-tauri)
 
 アプリ本体はmacOS 13.5以降のApple Silicon Mac（Mシリーズ）向けです。同梱の文書読み取り・音声用の一部部品はmacOS 14以降を必要とします。CodexとNodeはアプリに含まれます。
 
@@ -27,7 +25,7 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 3. **Connect** を選び、案内に従ってChatGPTにログインします。A2ACraftに戻り、会話を開いてメッセージを送ると、Codexの返信が表示されます。
 4. ファイル作成を試すには、新しい会話で入力欄の **＋** を開き、実行範囲を **作業（専用フォルダ内）** にします。「`hello.txt` に `Hello from A2ACraft` と書いて、保存場所を教えて」と送ります。Finderでそのファイルを開き、本文を確認します。
 
-ZIPのSHA-256は `94362e5fd0894448b291d8543ee7ca88e2e10f7c464a9c7753393a44ba8ff63b` です。
+ZIPのSHA-256は `fc5b4a27a7baf7810caf534fc8aca0c7ce23e0f1e703b7c13be8f1e1cd4ea2f4` です。
 
 ## 目指す体験
 

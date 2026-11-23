@@ -1,5 +1,5 @@
-import {ui} from './interface-language.js';
-
+import {questText} from './i18n-quests.js';
+import {getLocale} from './i18n.js';
 const kinds={
  message:'会話', 'todo-created':'TODO登録', 'todo-completed':'TODO完了',
  'todo-run-started':'TODOの処理開始', 'todo-run-completed':'TODOの処理完了', 'todo-run-failed':'TODOの処理失敗・中断',
@@ -26,9 +26,9 @@ function timestamp(value){
  return Number.isFinite(result)&&Math.abs(result)<=8640000000000000?result:null;
 }
 function dateFormatter(date,timeZone){
- if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||date.startsWith('0000')||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('日付をYYYY-MM-DD形式で指定してください。');
- if(typeof timeZone!=='string'||!timeZone.trim())throw Error('タイムゾーンを確認してください。');
- try{return new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'});}catch{throw Error('タイムゾーンを確認してください。');}
+ if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||date.startsWith('0000')||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error(questText('日付をYYYY-MM-DD形式で指定してください。'));
+ if(typeof timeZone!=='string'||!timeZone.trim())throw Error(questText('タイムゾーンを確認してください。'));
+ try{return new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'});}catch{throw Error(questText('タイムゾーンを確認してください。'));}
 }
 export function validateDailyReportDate(date,timeZone='Asia/Tokyo'){dateFormatter(date,timeZone);return {date,timeZone};}
 function localDate(formatter,value){
@@ -73,12 +73,12 @@ export function buildDailyReport({date,timeZone='Asia/Tokyo',conversations=[],to
  }
  const quest=party?.quest;
  if(quest){
-  const questId=text(quest.id)||'current',target={type:'party',id:questId},title=preview(quest.text)||'クエスト';
+  const questId=text(quest.id)||'current',target={type:'party',id:questId},title=preview(quest.text)||questText('クエスト');
   add({id:'quest-started:'+questId,kind:'quest-started',title,detail:'',status:'started',target},quest.createdAt);
   if(quest.status==='completed')add({id:'quest-completed:'+questId,kind:'quest-completed',title,detail:preview(rows(quest.steps).at(-1)?.output),status:'completed',target},quest.completedAt);
   for(const [index,step] of rows(quest.steps).entries()){
    if(!step||typeof step!=='object')continue;
-   const stepId=text(step?.id)||String(index),base={title:text(step?.role)||'役割',detail:text(step?.title),target:step?.conversationId?{type:'chat',id:step.conversationId}:target,questId};
+   const stepId=text(step?.id)||String(index),base={title:text(step?.role)||questText('役割'),detail:text(step?.title),target:step?.conversationId?{type:'chat',id:step.conversationId}:target,questId};
    if(step?.status!=='pending'||step?.startedAt!==undefined)add({...base,id:'quest-step-started:'+questId+':'+stepId,kind:'quest-step-started',status:'started'},step?.startedAt);
    if(step?.status==='completed')add({...base,id:'quest-step-completed:'+questId+':'+stepId,kind:'quest-step-completed',status:'completed',detail:preview(step.output)},step.completedAt);
    else if(['failed','blocked','interrupted'].includes(step?.status))add({...base,id:'quest-step-failed:'+questId+':'+stepId,kind:'quest-step-failed',status:step.status,detail:preview(step.error)},step.failedAt??step.finishedAt);
@@ -92,22 +92,22 @@ export function buildDailyReport({date,timeZone='Asia/Tokyo',conversations=[],to
   if(entry?.status==='attached')add({id:'context-attached:'+id,kind:'context-attached',title,detail:'',status:'attached',target},entry.attachedAt);
  }
  activities.sort((a,b)=>a.timestamp-b.timestamp||(a.id<b.id?-1:a.id>b.id?1:0));
- const limitations=['保存されている記録を集計しています。通常のクエストは直近1件、TODOの実行履歴は保存済みの範囲が対象です。','会話はメッセージの記録時刻で集計します。返信の存在だけで作業完了とは扱いません。','日時不明の記録と現在の状態は、選択日の実績に含めません。'];
+ const limitations=[questText('保存されている記録を集計しています。通常のクエストは直近1件、TODOの実行履歴は保存済みの範囲が対象です。'),questText('会話はメッセージの記録時刻で集計します。返信の存在だけで作業完了とは扱いません。'),questText('日時不明の記録と現在の状態は、選択日の実績に含めません。')];
  return {date,timeZone,counts,activities,undated,current,limitations};
 }
 
 const markdownText=value=>text(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\\`*_{}\[\]()#+.!|~-]/g,'\\$&').replace(/\r?\n/g,' ');
 export function dailyReportMarkdown(report){
- const clock=new Intl.DateTimeFormat('ja-JP',{timeZone:report.timeZone,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
- const lines=[ui('# 日報 ','# Daily report ')+report.date,'','タイムゾーン: '+report.timeZone,'',ui('## 記録された活動','## Recorded activity'),'',
-  '会話 '+report.counts.messages+'件（送信 '+report.counts.userMessages+' / 応答 '+report.counts.assistantMessages+'）、TODO完了 '+report.counts.todosCompleted+'件、クエスト完了 '+report.counts.questsCompleted+'件。',''];
- if(!report.activities.length)lines.push('この日の日時付き記録はありません。');
- for(const event of report.activities){lines.push('- '+clock.format(event.timestamp)+' '+markdownText(kinds[event.kind]||event.kind)+': '+markdownText(event.title)+(event.role?'（'+(event.role==='user'?'送信':'応答')+'）':'')+' ['+markdownText(event.status)+']');if(event.detail)lines.push('  '+markdownText(event.detail));}
- lines.push('',ui('## 現在の状態（選択日の実績とは別）','## Current status (outside the selected day’s totals)'),'');
- if(!report.current.length)lines.push('進行中・要確認の記録はありません。');
+ const clock=new Intl.DateTimeFormat(getLocale(),{timeZone:report.timeZone,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+ const lines=[questText('# 日報 ')+report.date,'',questText('タイムゾーン: ')+report.timeZone,'',questText('## 記録された活動'),'',
+  questText('会話 ')+report.counts.messages+questText('件（送信 ')+report.counts.userMessages+questText(' / 応答 ')+report.counts.assistantMessages+questText('）、TODO完了 ')+report.counts.todosCompleted+questText('件、クエスト完了 ')+report.counts.questsCompleted+questText('件。'),''];
+ if(!report.activities.length)lines.push(questText('この日の日時付き記録はありません。'));
+ for(const event of report.activities){lines.push('- '+clock.format(event.timestamp)+' '+markdownText(questText(kinds[event.kind]||event.kind))+': '+markdownText(event.title)+(event.role?'（'+(event.role==='user'?questText('送信'):questText('応答'))+'）':'')+' ['+markdownText(event.status)+']');if(event.detail)lines.push('  '+markdownText(event.detail));}
+ lines.push('',questText('## 現在の状態（選択日の実績とは別）'),'');
+ if(!report.current.length)lines.push(questText('進行中・要確認の記録はありません。'));
  for(const item of report.current)lines.push('- '+markdownText(item.title)+' ['+markdownText(item.status)+']'+(item.detail?' '+markdownText(item.detail):''));
- lines.push('',ui('## 日時不明の記録','## Undated records'),'',String(report.undated.length)+'件。選択日の活動件数には含めていません。');
- for(const item of report.undated)lines.push('- '+markdownText(kinds[item.kind]||item.kind)+': '+markdownText(item.title)+' ['+markdownText(item.status)+']');
- lines.push('',ui('## 集計範囲','## Report coverage'),'',...report.limitations.map(value=>'- '+value));
+ lines.push('',questText('## 日時不明の記録'),'',String(report.undated.length)+questText('件。選択日の活動件数には含めていません。'));
+ for(const item of report.undated)lines.push('- '+markdownText(questText(kinds[item.kind]||item.kind))+': '+markdownText(item.title)+' ['+markdownText(item.status)+']');
+ lines.push('',questText('## 集計範囲'),'',...report.limitations.map(value=>'- '+questText(value)));
  return lines.join('\n')+'\n';
 }

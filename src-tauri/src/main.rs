@@ -15,8 +15,8 @@ use tauri_plugin_opener::OpenerExt;
 
 mod backend;
 mod desktop_menu;
-mod desktop_language;
-use desktop_language::Language;
+mod language;
+use language::label;
 #[cfg(target_os = "macos")]
 mod sample_recorder;
 mod window_diagnostics;
@@ -76,23 +76,14 @@ fn write_private_json(target: &Path, value: &Value) -> Result<(), String> {
     Ok(())
 }
 
-fn interface_language(value: &Value) -> Option<&str> {
-    value.as_str().filter(|language| matches!(*language, "en" | "ja"))
-}
-
 impl Desktop {
     fn public_settings(&self, saved: &Value) -> Value {
         json!({
             "codexPath": saved["codexPath"].as_str().unwrap_or(""),
+            "uiLanguage": saved["uiLanguage"].as_str().filter(|s| matches!(*s, "en" | "ja")),
             "workDirectory": saved["workDirectory"].as_str().unwrap_or(""),
-            "interfaceLanguage": interface_language(&saved["interfaceLanguage"]),
             "restartRequired": (["codexPath", "workDirectory"].iter().any(|key| saved[*key] != self.initial_settings[*key]))
         })
-    }
-
-    fn set_interface_language(&self, value: &Value) -> Result<Value, String> {
-        let language = interface_language(value).ok_or("Unsupported interface language")?;
-        self.set_setting("interfaceLanguage", Some(language.to_owned()))
     }
 
     fn set_setting(&self, key: &str, value: Option<String>) -> Result<Value, String> {
@@ -139,7 +130,7 @@ async fn desktop_request(
         if !sample_recorder::is_sample_url(&url, &state.origin) { return Err("Not the sample village".into()); }
         match action.as_str() {
             "sampleFrame" | "sampleDone" => return sample_recorder::request(window,action,value).await,
-            "windowState" | "settingsRead" | "uiRead" | "uiSave" | "mapRead" | "mapSave" | "flushRegistered" | "flushComplete" | "close" => {}
+            "windowState" | "useLanguage" | "settingsRead" | "uiRead" | "uiSave" | "mapRead" | "mapSave" | "flushRegistered" | "flushComplete" | "close" => {}
             _ => return Err("Unavailable in a fictional recording".into()),
         }
     }
@@ -183,16 +174,20 @@ async fn desktop_request(
                 .map_err(|e| e.to_string())?;
         }
         "uiRead" | "uiSave" | "mapRead" | "mapSave" => return state.request(&action, value),
-        "settingsSetInterfaceLanguage" => {
-            let saved = state.set_interface_language(&value)?;
-            desktop_menu::apply_language(&app).map_err(|error| error.to_string())?;
-            return Ok(saved);
+        "settingsSetLanguage" | "useLanguage" => {
+            let lang = value.as_str().filter(|s| matches!(*s, "en" | "ja")).ok_or("Unsupported language")?;
+            if action == "settingsSetLanguage" {
+                state.set_setting("uiLanguage", Some(lang.to_owned()))?;
+            }
+            language::select(lang);
+            desktop_menu::translate(&app).map_err(|e| e.to_string())?;
+            return Ok(Value::Null);
         }
         "settingsChooseCodex" => {
             if let Some(file) = app
                 .dialog()
                 .file()
-                .set_title(Language::current(&app).text("Codex 実行ファイルを選択", "Choose the Codex executable"))
+                .set_title(label("Codex 実行ファイルを選択", "Choose the Codex executable"))
                 .blocking_pick_file()
             {
                 let path = file.into_path().map_err(|e| e.to_string())?;
@@ -210,7 +205,7 @@ async fn desktop_request(
             } else {
                 app.dialog()
                     .file()
-                    .set_title(Language::current(&app).text("専用作業フォルダを選択", "Choose a workspace folder"))
+                    .set_title(label("専用作業フォルダを選択", "Choose a dedicated workspace"))
                     .blocking_pick_folder()
                     .map(|p| p.into_path())
                     .transpose()
@@ -246,7 +241,6 @@ async fn desktop_request(
 // runtime-wry acknowledges the SetCookie message even when WebKit rejects
 // the write. Verify the session before sending the first authenticated GET.
 fn install_session(window: &WebviewWindow, token: String) -> Result<(), &'static str> {
-    let language = Language::current(window.app_handle());
     let window = window.clone();
     let (sender, receiver) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
@@ -279,7 +273,7 @@ fn install_session(window: &WebviewWindow, token: String) -> Result<(), &'static
     });
     match receiver.recv_timeout(Duration::from_secs(12)) {
         Ok(true) => Ok(()),
-        _ => Err(language.text("アプリ専用の接続を確認できませんでした。A2ACraftをもう一度開いてください。", "The app connection could not be verified. Reopen A2ACraft.")),
+        _ => Err(label("アプリ専用の接続を確認できませんでした。A2ACraftをもう一度開いてください。", "Could not establish a private connection. Reopen A2ACraft to try again.")),
     }
 }
 
@@ -324,9 +318,12 @@ fn setup_desktop(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
         settings = read_json(&base_dir.join("desktop-settings.json"))?;
     }
     let settings = settings.unwrap_or(json!({}));
-    let language = Language::from_saved(settings["interfaceLanguage"].as_str());
     if !settings.is_object() {
         return Err("Invalid desktop settings file".into());
+    }
+    if let Some(lang) = settings["uiLanguage"].as_str() {
+        language::select(lang);
+        desktop_menu::translate(app)?;
     }
     #[cfg(debug_assertions)]
     let smoke = !demo
@@ -369,7 +366,7 @@ fn setup_desktop(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
             .title(if demo {
                 "A2ACraft · Demo"
             } else if practice {
-                language.text("A2ACraft · 練習用の街", "A2ACraft · Practice Village")
+                label("A2ACraft · 練習用の街", "A2ACraft · Practice Village")
             } else {
                 "A2ACraft"
             })
@@ -433,7 +430,7 @@ fn setup_desktop(app: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     };
     window.navigate(Url::parse(&format!("{origin}/{query}"))?)?;
     wait_loaded.recv_timeout(Duration::from_secs(30))
-        .map_err(|_| language.text("画面を30秒以内に読み込めませんでした。A2ACraftを開き直してください。", "The window did not load within 30 seconds. Reopen A2ACraft."))?;
+        .map_err(|_| label("画面を30秒以内に読み込めませんでした。A2ACraftを開き直してください。", "The window did not load within 30 seconds. Reopen A2ACraft."))?;
     #[cfg(target_os = "macos")]
     if recording { sample_recorder::start(&window)?; }
     std::thread::spawn(move || {
@@ -469,46 +466,10 @@ fn desktop_context() -> tauri::Context<tauri::Wry> {
 
 #[cfg(test)]
 #[test]
-fn interface_language_survives_a_new_origin_without_restarting() {
-    let mut random = [0u8; 8];
-    getrandom::fill(&mut random).unwrap();
-    let dir = std::env::temp_dir().canonicalize().unwrap()
-        .join(format!("a2acraft-language-{:016x}", u64::from_be_bytes(random)));
-    fs::create_dir(&dir).unwrap();
-    let file = dir.join("desktop-settings.json");
-    let state = |port, values: Value| Desktop {
-        origin: format!("http://127.0.0.1:{port}"),
-        data_dir: dir.clone(),
-        initial_settings: values.clone(),
-        settings: Mutex::new(values),
-        close: Mutex::new(CloseState::default()),
-        backend: Mutex::new(None),
-        #[cfg(debug_assertions)]
-        smoke: false,
-    };
-    let first = state(4317, json!({"accessibilitySupportEnabled":true,"interfaceLanguage":"fr"}));
-    assert!(first.public_settings(&first.initial_settings)["interfaceLanguage"].is_null());
-    for invalid in [json!("EN"), json!("en-US"), json!(null), json!({"language":"en"})] {
-        assert!(first.set_interface_language(&invalid).is_err());
-    }
-    assert!(!file.exists());
-    assert_eq!(first.set_interface_language(&json!("en")).unwrap()["restartRequired"], false);
-    let contents = read_json(&file).unwrap().unwrap();
-    assert_eq!(contents["accessibilitySupportEnabled"], true);
-    let next = state(4318, contents);
-    assert_eq!(next.public_settings(&next.initial_settings)["interfaceLanguage"], "en");
-    assert_eq!(next.set_interface_language(&json!("ja")).unwrap()["interfaceLanguage"], "ja");
-    fs::remove_file(file).unwrap();
-    fs::remove_dir(dir).unwrap();
-}
-
-#[cfg(test)]
-#[test]
 fn startup_page_is_embedded_in_the_desktop_context() {
     let context = desktop_context();
     let asset = context.assets().get(&"desktop-startup.html".into()).expect("bundled startup page");
     let page = std::str::from_utf8(&asset).unwrap();
-    assert!(page.contains("Loading your conversations and map"));
     assert!(page.contains("保存した会話と地図を読み込んでいます"));
     assert!(page.contains("default-src 'none'"));
     assert!(!page.contains("<script src="));
@@ -551,7 +512,7 @@ fn main() {
                     handle
                         .dialog()
                         .message(message)
-                        .title(Language::current(&handle).text("A2ACraft を起動できませんでした", "A2ACraft could not start"))
+                        .title(label("A2ACraft を起動できませんでした", "A2ACraft could not start"))
                         .kind(tauri_plugin_dialog::MessageDialogKind::Error)
                         .show(move |_| handle_on_dismiss.exit(1));
                 }

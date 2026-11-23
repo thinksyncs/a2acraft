@@ -1,11 +1,11 @@
-import {ui} from './interface-language.js';
+import {worldText} from './i18n-world.js';
 import {characterAppearance} from './character-appearance.js';
 
 export const VILLAGE_SQUAD_LIMIT=12;
 const statuses=new Set(['running','stopping','starting','gathering','waiting','paused','completed','cancelled','blocked','uncertain']);
 const liveStatuses=new Set(['running','stopping','paused']);
 const locations=new Set(['library','workshop','tavern','castle']);
-const labels={running:ui('作業中', "Working"),stopping:ui('停止中', "Stopping"),starting:ui('出発準備', "Preparing"),gathering:ui('集合中', "Gathering"),waiting:ui('待機中', "Waiting"),paused:ui('中断中', "Paused"),completed:ui('帰還済み', "Returned"),cancelled:ui('終了', "Finished"),blocked:ui('開始できません', "Cannot start"),uncertain:ui('記録の確認待ち', "Awaiting review")};
+const labels={get running(){return worldText('作業中');},get stopping(){return worldText('停止中');},get starting(){return worldText('出発準備');},get gathering(){return worldText('集合中');},get waiting(){return worldText('待機中');},get paused(){return worldText('中断中');},get completed(){return worldText('帰還済み');},get cancelled(){return worldText('終了');},get blocked(){return worldText('開始できません');},get uncertain(){return worldText('記録の確認待ち');}};
 const motionFor={running:'working',stopping:'paused',starting:'gathering',gathering:'gathering',waiting:'waiting',paused:'paused',completed:'returned',cancelled:'returned',blocked:'paused',uncertain:'paused'};
 const order={working:0,gathering:1,paused:2,waiting:3,returned:4};
 const array=value=>Array.isArray(value)?value:[];
@@ -25,7 +25,7 @@ function taskDetails({todo,record,execution,board,party,status,provisional,isCur
     seen.add(member.conversationId);
     const recordedStatus=stepStatuses.has(step.status)?step.status:'uncertain';
     const stepStatus=recordedStatus==='running'&&!live?(['paused','stopping'].includes(status)?'paused':'uncertain'):recordedStatus;
-    steps.push({conversationId:member.conversationId,name:member.name,role:text(step.role,120)||member.role,status:stepStatus,output:text(step.output,400),error:text(step.error,240)});
+    steps.push({conversationId:member.conversationId,name:member.name,role:text(step.role,120)||member.roleLabel||member.role,status:stepStatus,output:text(step.output,400),error:text(step.error,240)});
   }
   let progress=null;
   const total=recordedSteps.length||record?.stepCount,completed=recordedSteps.length?recordedSteps.filter(step=>step.status==='completed').length:record?.completedSteps;
@@ -37,22 +37,23 @@ function taskDetails({todo,record,execution,board,party,status,provisional,isCur
   // A resumed current quest can clear an error before its TODO snapshot is
   // broadcast. Explicit current state, including null, remains authoritative.
   const error=provisional?'':text(board?.error||(isCurrent?record?.error:record?.error||execution?.error),240);
-  const note=provisional?ui('開始前です。保存した編成で待機しています。', "Ready to begin with the saved party."):status==='uncertain'?ui('過去の実行記録です。現在の作業状況は確認できません。', "This is a previous run. Its current progress is unavailable."):status==='gathering'||status==='starting'?ui('この依頼を担当する仲間が集まっています。', "The party is gathering for this quest."):!isCurrent&&progress&&!steps.length?ui('保存された進み具合です。担当ごとの記録は元の依頼で確認できます。', "Saved progress. Open the quest to see each member's record."):!progress?ui('進み具合の記録はまだありません。', "No progress recorded yet."):'';
+  const note=provisional?worldText('開始前です。保存した編成で待機しています。'):status==='uncertain'?worldText('過去の実行記録です。現在の作業状況は確認できません。'):status==='gathering'||status==='starting'?worldText('この依頼を担当する仲間が集まっています。'):!isCurrent&&progress&&!steps.length?worldText('保存された進み具合です。担当ごとの記録は元の依頼で確認できます。'):!progress?worldText('進み具合の記録はまだありません。'):'';
   return {description:text(todo?.description||record?.text,400),criteria:text(todo?.criteria,240),artifact:text(todo?.source?.artifact,240),summary,error,progress,current,steps,live,note};
 }
 
-function formation(input,chats){
+function formation(input,chats,fallbackRole='担当'){
   const seen=new Set(),members=[];
   for(const member of array(input?.members).slice(0,8)){
     const conversationId=id(member?.conversationId),chat=chats.get(conversationId);
     if(!chat||seen.has(conversationId))continue;
     seen.add(conversationId);
-    const role=text(member.role,120)||ui('担当', "Assigned"),title=text(chat.title,120)||text(member.title,120)||ui('会話', "Chat");
-    members.push({conversationId,name:text(chat.characterName,80)||title,title,role,appearance:characterAppearance(role).id,seed:hash(conversationId),isLeader:conversationId===input.leaderId});
+    // Role is part of the formation receipt validated by both browser and server.
+    const recordedRole=text(member.role,120),role=recordedRole||fallbackRole,title=text(chat.title,120)||text(member.title,120)||worldText('会話');
+    members.push({conversationId,name:text(chat.characterName,80)||title,title,role,...(!recordedRole?{roleLabel:worldText(fallbackRole)}:{}),appearance:characterAppearance(role).id,seed:hash(conversationId),isLeader:conversationId===input.leaderId});
   }
   // A missing leader is not replaced by an invented assignment.
   const leaderId=members.some(member=>member.isLeader)?input.leaderId:null;
-  return {name:text(input?.name,80)||ui('クエストの仲間', "Quest companions"),leaderId,members};
+  return {name:text(input?.name,80)||worldText('クエストの仲間'),leaderId,members};
 }
 
 /**
@@ -76,7 +77,7 @@ export function projectVillageActivities(state,chats){
     const questId=id(input.questId),reference=references.get(questId),todoId=id(input.todoId)||reference?.todoId||null;
     const key=todoId?'todo:'+todoId:questId?'quest:'+questId:id(input.boardId)?'board:'+input.boardId:null;
     if(!key)return;
-    const party=formation(input.party,chatById),todo=todoById.get(todoId);
+    const party=formation(input.party,chatById,input.fallbackRole),todo=todoById.get(todoId);
     // An old run is a record, not evidence that another AI is still executing.
     const staleActivity=['running','starting','gathering'].includes(input.status)&&!input.live&&!input.gathering;
     const status=staleActivity?'uncertain':input.status;
@@ -93,7 +94,7 @@ export function projectVillageActivities(state,chats){
     const details=taskDetails({todo,record,execution,board:input.source==='board'?input.record:null,party,status,provisional,isCurrent:Boolean(matchingCurrent)});
     candidates.push({
       id:key,questId,todoId,runId,title,status,details,
-      statusLabel:provisional&&status==='waiting'?ui('編成予定・待機中', "Party ready · waiting"):labels[status],motion:motionFor[status],
+      statusLabel:provisional&&status==='waiting'?worldText('編成予定・待機中'):labels[status],motion:motionFor[status],
       members:party.members,leaderId:party.leaderId,partyName:party.name,source:input.source,provisional,
       location:locations.has(input.location)?input.location:locations.has(todo?.source?.location)?todo.source.location:null,
       targetConversationId,targetKeywords:[...new Set(title.normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}._-]{1,59}/gu)||[])].slice(0,12),
@@ -115,8 +116,8 @@ export function projectVillageActivities(state,chats){
         party:knownParty,source:'todo',record:run,location:todo.source?.location,
         updatedAt:Math.max(time(todo.updatedAt),time(run.completedAt),time(run.failedAt),time(run.createdAt)),priority:60});
     }else if(todo.status!=='done'){
-      const party=todo.assignee.type==='chat'?{name:todo.title,leaderId:todo.assignee.conversationId,members:[{conversationId:todo.assignee.conversationId,role:ui('担当チャット', "Assigned conversation")}]}:state.party?.party;
-      add({todoId:todo.id,title:todo.title,status:'waiting',party,provisional:true,source:'todo',location:todo.source?.location,updatedAt:todo.updatedAt,priority:60});
+      const party=todo.assignee.type==='chat'?{name:todo.title,leaderId:todo.assignee.conversationId,members:[{conversationId:todo.assignee.conversationId}]}:state.party?.party;
+      add({todoId:todo.id,title:todo.title,status:'waiting',party,fallbackRole:todo.assignee.type==='chat'?'担当チャット':undefined,provisional:true,source:'todo',location:todo.source?.location,updatedAt:todo.updatedAt,priority:60});
     }
   }
 
@@ -150,7 +151,7 @@ export function projectVillageActivities(state,chats){
     if(!previous||candidate._priority>previous._priority||candidate._priority===previous._priority&&candidate.updatedAt>previous.updatedAt)byId.set(candidate.id,candidate);
   }
   const allSquads=[...byId.values()];
-  let protagonist=saved.members.length?{...saved,id:'protagonist',status:'exploring',statusLabel:ui('あなたのパーティ', "Your party"),motion:'exploring',activityId:null,seed:hash('protagonist')}:null;
+  let protagonist=saved.members.length?{...saved,id:'protagonist',status:'exploring',statusLabel:worldText('あなたのパーティ'),motion:'exploring',activityId:null,seed:hash('protagonist')}:null;
   if(protagonist){
     const bound=allSquads.find(squad=>squad._live&&formationKey(squad)===formationKey(saved));
     if(bound){protagonist.activityId=bound.id;protagonist.status=bound.status;protagonist.statusLabel=bound.statusLabel;protagonist.motion=bound.motion;bound.isProtagonist=true;}

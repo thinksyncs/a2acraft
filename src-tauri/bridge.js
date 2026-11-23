@@ -7,7 +7,7 @@ if (window.top === window && location.protocol === "http:" && location.hostname 
     isTauri: true, practice: __CHAT_UI_PRACTICE__, platform: __CHAT_UI_PLATFORM__, version: __CHAT_UI_VERSION__,
     minimize: () => invoke('minimize'), toggleMaximize: () => invoke('toggleMaximize'), close: () => invoke('close'),
     openExternal: url => invoke('openExternal', url), getSettings: () => invoke('settingsRead'),
-    setInterfaceLanguage: language => invoke('settingsSetInterfaceLanguage', language),
+    setLocale: lang => invoke('settingsSetLanguage', lang), useLocale: lang => invoke('useLanguage', lang),
     getUiState: () => invoke('uiRead'), saveUiState: state => invoke('uiSave', state),
     getMapState: mode => invoke('mapRead', mode), saveMapState: state => invoke('mapSave', state),
     selectCodexPath: () => invoke('settingsChooseCodex'), resetCodexPath: () => invoke('settingsResetCodex'),

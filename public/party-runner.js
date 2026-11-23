@@ -1,9 +1,9 @@
-import {ui} from './interface-language.js';
+import {worldText} from './i18n-world.js';
 const activeStatuses=['running','stopping'];
 const stepStatuses=['pending','running','completed','blocked','failed','interrupted'];
 const maxOutput=12000;
-export const partyStatusLabels={running:ui("冒険中","On a quest"),stopping:ui("停止待ち","Stopping"),paused:ui("中断中","Paused"),completed:ui("クエスト完了","Quest complete"),cancelled:ui("クエスト終了","Quest ended")};
-export const partyStepLabels={pending:ui("順番待ち","Waiting"),running:ui("行動中","Working"),completed:ui("完了","Complete"),blocked:ui("開始できません","Cannot start"),failed:ui("失敗","Failed"),interrupted:ui("結果未確認","Result unconfirmed")};
+export const partyStatusLabels={get running(){return worldText('冒険中');},get stopping(){return worldText('停止待ち');},get paused(){return worldText('中断中');},get completed(){return worldText('クエスト完了');},get cancelled(){return worldText('クエスト終了');}};
+export const partyStepLabels={get pending(){return worldText('順番待ち');},get running(){return worldText('行動中');},get completed(){return worldText('完了');},get blocked(){return worldText('開始できません');},get failed(){return worldText('失敗');},get interrupted(){return worldText('結果未確認');}};
 export function validateParty(value,chats){
   if(!value||!Array.isArray(value.members)||value.members.length<2||value.members.length>8)throw Error('リーダーを含む2〜8人の仲間を選んでください。');
   const members=value.members.map(member=>{
