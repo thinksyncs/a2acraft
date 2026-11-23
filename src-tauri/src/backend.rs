@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc, Arc, Mutex,
     },
     time::{Duration, Instant},
@@ -28,13 +28,16 @@ fn startup_error(code: Option<&str>) -> String {
     format!("{label} ({})", code.unwrap_or_default())
 }
 
-pub struct Backend {
+struct ControlChannel {
+    stopped: Arc<AtomicBool>,
+    stopping: Arc<AtomicBool>,
     child: Mutex<Option<Child>>,
     next: AtomicU64,
     replies: Replies,
 }
-impl Drop for Backend {
+impl Drop for ControlChannel {
     fn drop(&mut self) {
+        self.stopping.store(true, Ordering::Release);
         if let Some(mut child) = self
             .child
             .get_mut()
@@ -54,14 +57,17 @@ impl Drop for Backend {
         }
     }
 }
-impl Backend {
-    pub fn request(&self, action: &str, value: Value) -> Result<Value, String> {
+impl ControlChannel {
+    fn request(&self, action: &str, value: Value) -> Result<Value, String> {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (send, receive) = mpsc::channel();
-        self.replies
-            .lock()
-            .map_err(|e| e.to_string())?
-            .insert(id, send);
+        {
+            let mut replies = self.replies.lock().map_err(|e| e.to_string())?;
+            if self.stopped.load(Ordering::Acquire) {
+                return Err("GUIサーバーは終了しました。".into());
+            }
+            replies.insert(id, send);
+        }
         let result = (|| {
             {
                 let mut child = self.child.lock().map_err(|e| e.to_string())?;
@@ -82,13 +88,75 @@ impl Backend {
     }
 }
 
+pub struct Backend {
+    control: ControlChannel,
+    state_only: Mutex<Option<ControlChannel>>,
+    node: PathBuf,
+    root: PathBuf,
+    data_dir: PathBuf,
+    demo: bool,
+}
+
+impl Backend {
+    pub fn request(&self, action: &str, value: Value) -> Result<Value, String> {
+        if !self.control.stopped.load(Ordering::Acquire) {
+            // An interrupted in-flight command fails; it is never replayed.
+            return self.control.request(action, value);
+        }
+        if !matches!(action, "uiSave" | "mapSave" | "uiRead" | "mapRead") {
+            return Err("GUIサーバーは終了しました。".into());
+        }
+        let mut worker = self.state_only.lock().map_err(|e| e.to_string())?;
+        {
+            let mut child = self.control.child.lock().map_err(|e| e.to_string())?;
+            if let Some(child) = child.as_mut() {
+                if child.try_wait().map_err(|e| e.to_string())?.is_none() {
+                    return Err("GUIサーバーが終了するまで保存を待ってください。".into());
+                }
+            }
+        }
+        if worker
+            .as_ref()
+            .is_none_or(|ipc| ipc.stopped.load(Ordering::Acquire))
+        {
+            let mut cmd = Command::new(&self.node);
+            cmd.arg(self.root.join("tauri-sidecar.mjs"))
+                .arg("--state-only")
+                .current_dir(&self.data_dir)
+                .env_clear()
+                .env("CHAT_UI_DATA_DIR", self.data_dir.join("data"))
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null());
+            if self.demo {
+                cmd.arg("--demo");
+            }
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                if let Some(root) = std::env::var_os("SystemRoot") {
+                    cmd.env("SystemRoot", root);
+                }
+                cmd.creation_flags(0x08000000);
+            }
+            let (ipc, ready, _) = spawn_controls(cmd).map_err(|e| e.to_string())?;
+            receive_ready(ready).map_err(|e| e.to_string())?;
+            *worker = Some(ipc);
+        }
+        worker
+            .as_ref()
+            .ok_or("保存サービスを開始できませんでした。")?
+            .request(action, value)
+    }
+}
+
 pub fn start(
     app: &tauri::AppHandle,
     data_dir: &Path,
     settings: &Value,
     practice: bool,
     demo: bool,
-) -> Result<(Backend, String, String), Box<dyn std::error::Error>> {
+) -> Result<(Backend, String, String, mpsc::Receiver<()>), Box<dyn std::error::Error>> {
     let root = if cfg!(debug_assertions) {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/backend")
     } else {
@@ -104,7 +172,7 @@ pub fn start(
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect::<String>();
-    let mut command = Command::new(node);
+    let mut command = Command::new(&node);
     command
         .arg(root.join("tauri-sidecar.mjs"))
         .current_dir(data_dir)
@@ -156,10 +224,41 @@ pub fn start(
         use std::os::windows::process::CommandExt;
         command.creation_flags(0x08000000);
     }
+    let (control, receive, exit) = spawn_controls(command)?;
+    let ready = receive_ready(receive)?;
+    let port = ready["port"]
+        .as_u64()
+        .filter(|p| *p > 0 && *p <= 65535)
+        .ok_or("Invalid backend port")?;
+    let origin = format!("http://127.0.0.1:{port}");
+    if ready["origin"] != origin {
+        return Err("Invalid backend origin".into());
+    }
+    let backend = Backend {
+        control,
+        node,
+        root,
+        data_dir: data_dir.to_owned(),
+        demo,
+        state_only: Mutex::new(None),
+    };
+    Ok((backend, origin, token, exit))
+}
+
+type Ready = mpsc::Receiver<Result<Value, String>>;
+
+fn spawn_controls(
+    mut command: Command,
+) -> Result<(ControlChannel, Ready, mpsc::Receiver<()>), Box<dyn std::error::Error>> {
     let mut child = command.spawn()?;
     let stdout = child.stdout.take().ok_or("Missing backend stdout")?;
     let replies: Replies = Default::default();
-    let backend = Backend {
+    let stopped = Arc::new(AtomicBool::new(false));
+    let stopping = Arc::new(AtomicBool::new(false));
+    let (exit_tx, exit) = mpsc::channel();
+    let control = ControlChannel {
+        stopped: stopped.clone(),
+        stopping: stopping.clone(),
         child: Mutex::new(Some(child)),
         next: AtomicU64::new(1),
         replies: replies.clone(),
@@ -195,28 +294,70 @@ pub fn start(
                 _ => {}
             }
         }
-        replies.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        // Publish EOF under the same lock used to register a pending request.
+        {
+            let mut pending = replies.lock().unwrap_or_else(|e| e.into_inner());
+            stopped.store(true, Ordering::Release);
+            for (_, tx) in pending.drain() {
+                let _ = tx.send(Err("GUIサーバーとの接続が終了しました。".into()));
+            }
+        }
+        if !stopping.load(Ordering::Acquire) {
+            let _ = exit_tx.send(());
+        }
     });
-    let ready = receive
+    Ok((control, receive, exit))
+}
+
+fn receive_ready(receive: Ready) -> Result<Value, Box<dyn std::error::Error>> {
+    Ok(receive
         .recv_timeout(Duration::from_secs(45))
         .map_err(|error| match error {
             mpsc::RecvTimeoutError::Timeout => "GUIサーバーが45秒以内に起動しませんでした。",
             mpsc::RecvTimeoutError::Disconnected => "GUIサーバーが起動完了前に終了しました。",
-        })??;
-    let port = ready["port"]
-        .as_u64()
-        .filter(|p| *p > 0 && *p <= 65535)
-        .ok_or("Invalid backend port")?;
-    let origin = format!("http://127.0.0.1:{port}");
-    if ready["origin"] != origin {
-        return Err("Invalid backend origin".into());
-    }
-    Ok((backend, origin, token))
+        })??)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(unix)]
+    fn lost_control_pipe_rejects_pending_request_and_reports_one_exit() {
+        let mut cmd = Command::new("/bin/sh");
+        cmd.env_clear()
+            .arg("-c")
+            .arg("read -r request")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped());
+        let (ipc, _, lost) = spawn_controls(cmd).unwrap();
+        let failure = ipc.request("uiSave", Value::Null).unwrap_err();
+        assert!(failure.contains("終了"));
+        assert!(lost.recv_timeout(Duration::from_secs(3)).is_ok());
+        assert!(lost.recv().is_err());
+        assert!(ipc
+            .request("uiRead", Value::Null)
+            .unwrap_err()
+            .contains("終了"));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn closing_owned_child_does_not_prompt_for_recovery() {
+        let mut cmd = Command::new("/bin/sh");
+        cmd.env_clear()
+            .arg("-c")
+            .arg("read -r request")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped());
+        let (ipc, _, lost) = spawn_controls(cmd).unwrap();
+        drop(ipc);
+        assert!(matches!(
+            lost.recv_timeout(Duration::from_secs(3)),
+            Err(mpsc::RecvTimeoutError::Disconnected)
+        ));
+    }
 
     #[test]
     fn startup_diagnostics_only_include_recognized_codes() {

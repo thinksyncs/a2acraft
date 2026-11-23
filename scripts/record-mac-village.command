@@ -6,8 +6,10 @@ cd -P -- "$(dirname -- "$0")"
 here=$PWD
 app="$here/A2ACraft.app"
 if [ ! -d "$app" ]; then app="$here/mac-arm64/A2ACraft.app"; fi
+if [ ! -d "$app" ]; then app="/Applications/A2ACraft.app"; fi
 run=$(/usr/bin/mktemp -d "$here/mac-walk-XXXXXX" 2>/dev/null) ||
   run=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/a2acraft-walk-XXXXXX")
+run=$(cd -P -- "$run" && pwd -P)
 log="$run/startup.txt"
 profile="$run/sample"
 recording="$profile/recording"
@@ -19,14 +21,17 @@ fail() {
   exit 1
 }
 info="$app/Contents/Info.plist"
-[ -f "$info" ] || fail 'このファイルを A2ACraft.app と同じフォルダに置いて開いてください。'
+[ -f "$info" ] || fail 'A2ACraft.app を「アプリケーション」またはこのファイルと同じフォルダに置いてから開いてください。'
 entry=$(/usr/bin/plutil -extract CFBundleExecutable raw -o - "$info") || fail '起動ファイル名を読み取れませんでした。'
 version=$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$info") || fail 'バージョンを読み取れませんでした。'
 identifier=$(/usr/bin/plutil -extract CFBundleIdentifier raw -o - "$info") || fail 'アプリの識別子を確認できません。'
-[ "$identifier" = com.thinksyncs.chatui ] && [ "$entry" = A2ACraft ] && [ -x "$app/Contents/MacOS/$entry" ] ||
-  fail 'A2ACraft の起動ファイルを確認できません。'
+case "$identifier/$entry" in
+  com.thinksyncs.chatui/A2ACraft|com.thinksyncs.chatui.tauri/chat-ui-tauri) ;;
+  *) fail 'A2ACraft の起動ファイルを確認できません。' ;;
+esac
+[ -x "$app/Contents/MacOS/$entry" ] || fail 'A2ACraft の起動ファイルを確認できません。'
 {
-  echo "A2ACraft $version"
+  echo "A2ACraft $version ($app)"
   /usr/bin/sw_vers -productVersion
   /usr/bin/file -b "$app/Contents/MacOS/$entry"
 } > "$log"
