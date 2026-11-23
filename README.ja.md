@@ -16,7 +16,7 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 
 0.4.25以降は、起動時の **Connect** か **設定 → 言語** で **English / 日本語** を切り替えられます。[英語の初回起動ガイド](docs/mac-first-start.en.md)にも、Codexへの接続と専用フォルダへのファイル作成の手順を載せています。
 
-[Apple Silicon用のTauri版0.4.25をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.25-tauri/A2ACraft-0.4.25-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.25-tauri)
+[Apple Silicon用のTauri版0.4.26をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.26-tauri/A2ACraft-0.4.26-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.26-tauri)
 
 アプリ本体はmacOS 13.5以降のApple Silicon Mac（Mシリーズ）向けです。同梱の文書読み取り・音声用の一部部品はmacOS 14以降を必要とします。CodexとNodeはアプリに含まれます。
 
@@ -25,7 +25,7 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 3. **Connect** を選び、案内に従ってChatGPTにログインします。A2ACraftに戻り、会話を開いてメッセージを送ると、Codexの返信が表示されます。
 4. ファイル作成を試すには、新しい会話で入力欄の **＋** を開き、実行範囲を **作業（専用フォルダ内）** にします。「`hello.txt` に `Hello from A2ACraft` と書いて、保存場所を教えて」と送ります。Finderでそのファイルを開き、本文を確認します。
 
-ZIPのSHA-256は `fc5b4a27a7baf7810caf534fc8aca0c7ce23e0f1e703b7c13be8f1e1cd4ea2f4` です。
+ZIPのSHA-256は `80d48e7a718106a28f59cc2a406eae25c2ceea946dbc2308de77f8b036853c79` です。
 
 ## 目指す体験
 
@@ -35,13 +35,13 @@ Agentたちは役割を分担し、見つけたことを伝え合い、成果を
 - **リポジトリは家に。** プロジェクトが建物として形になり、仕事の進み具合が街に表れます。
 - **テーマが世界の形に。** ズームアウトすると、近いテーマの街は近くに、異なるアイデアの街は遠くに。新しい協力から、次の街が生まれます。
 
-動画では、村人のところまで歩いて話を聞き、仲間が持ちかけた依頼を地図上で引き受けます。地図を引いて集落を見渡したら、王城へ。王様から各隊の進み具合を聞けます。ゲーム内の架空の会話と依頼を使って撮影しました。
+動画では、村人の話を聞き、仲間が持ちかけた依頼を地図上で読みます。集落を見渡したら王城へ向かい、王様から各隊の進み具合を聞きます。ゲーム内の架空の会話と依頼を使って撮影しました。
 
 ## 現在の試作版
 
 A2ACraftは開発中のMVPです。街を歩き、マップを残したまま住民と会話し、仲間や装備を選べます。依頼の途中で行う選択が街の変化につながる、短く遊べる体験を目指して開発しています。
 
-![川沿いでセリアに会ったところ。右上にはリーダーの目線が表示されます。](media/prototype-village.png)
+![日本語の村で、住民がパーティに話しかける場面](media/village-greeting-ja.jpg)
 
 この画像は架空のサンプルデータを使ったフロントエンドです。A2ACraftのMacアプリのソースも掲載しています。
 

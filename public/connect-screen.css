@@ -1,0 +1,301 @@
+/* The entry scene shares the landscape and diamond identity used in the town. */
+#connect-screen {
+  --entry-paper: #f6efdf;
+  --entry-subtle: #d4cebe;
+  --entry-gold: #e9cc8e;
+  --entry-line: rgb(231 219 191 / 34%);
+  --entry-inset: clamp(26px, 5.5vw, 100px);
+  --entry-font: -apple-system, BlinkMacSystemFont, "Noto Sans JP", system-ui, sans-serif;
+  display: block;
+  justify-items: stretch;
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  isolation: isolate;
+  overflow: auto;
+  background: #172521;
+  color: var(--entry-paper);
+  font-family: var(--entry-font);
+}
+#connect-screen .entry-shell {
+  width: 100%;
+  box-sizing: border-box;
+  justify-self: stretch;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100%;
+}
+#connect-screen .entry-landscape {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, rgb(10 17 16 / 80%), transparent 24%, transparent 82%, rgb(13 23 22 / 33%)),
+    linear-gradient(90deg, #11211ff5 0%, #142321e8 25%, #162522a8 45%, #17251c20 68%, #16211e12 100%),
+    #263830 url("/assets/adventure-landscape.png") 64% 49% / cover no-repeat;
+}
+#connect-screen .entry-bar,
+#connect-screen .entry-footer {
+  margin-inline: var(--entry-inset);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+#connect-screen .entry-bar {
+  padding-block: clamp(19px, 4vh, 38px);
+}
+#connect-screen .entry-maker {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: var(--entry-paper);
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+#connect-screen .entry-sigil {
+  position: relative;
+  width: 15px;
+  height: 19px;
+  margin: 0 3px;
+  color: var(--entry-gold);
+}
+#connect-screen .entry-sigil::before,
+#connect-screen .entry-sigil::after {
+  content: "";
+  position: absolute;
+  inset: 1px 0;
+  border: 1.6px solid currentColor;
+  transform: rotate(45deg) skew(7deg, 7deg);
+}
+#connect-screen .entry-sigil::after { inset: 6px 4px; border-width: 1px; }
+#connect-screen .entry-language {
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+#connect-screen .entry-language-control {
+  position: relative;
+  display: inline-flex;
+  background: rgb(19 31 28 / 89%);
+  color: var(--entry-paper);
+  border: 1px solid rgb(242 235 217 / 28%);
+  border-radius: 7px;
+}
+#connect-screen .entry-language-control::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+#connect-screen #connect-language {
+  width: auto;
+  min-height: 34px;
+  max-width: none;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  padding: 5px 30px 5px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: 500 13px/1.4 var(--entry-font);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+#connect-language option { background: #192723; color: var(--entry-paper); }
+#connect-language-status:not(:empty) {
+  display: block;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 1;
+  width: min(260px, 72vw);
+  padding: 10px 12px;
+  color: #ffe1d0;
+  background: #3a2722;
+  border-radius: 5px;
+  font-size: 13px;
+}
+#connect-screen .entry-content {
+  align-self: center;
+  box-sizing: content-box;
+  width: min(35rem, calc(100% - var(--entry-inset) * 2));
+  margin-left: var(--entry-inset);
+  padding-block: clamp(32px, 7vh, 90px);
+  -webkit-app-region: no-drag;
+}
+#connect-screen .entry-intro h1 {
+  margin: 0 0 18px -.035em;
+  color: var(--entry-paper);
+  font: 500 clamp(60px, 8vw, 130px)/.96 Baskerville, "Baskerville Old Face", Georgia, serif;
+  letter-spacing: -.055em;
+  text-shadow: 0 2px 18px rgb(10 20 16 / 24%);
+}
+#connect-screen .entry-intro p {
+  max-width: 33ch;
+  margin: 0;
+  color: var(--entry-subtle);
+  font: 450 clamp(15px, 1.4vw, 19px)/1.7 var(--entry-font);
+  text-wrap: pretty;
+}
+#connect-screen .entry-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin-top: clamp(25px, 5vh, 54px);
+}
+#connect-screen .entry-actions button,
+#connect-screen .entry-tools button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  box-shadow: none;
+  font: 550 14px/1.4 var(--entry-font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+#connect-screen #start-connect {
+  display: inline-flex;
+  width: auto;
+  min-width: 165px;
+  min-height: 46px;
+  align-items: center;
+  justify-content: start;
+  gap: 10px;
+  padding: 10px 18px;
+  border: 1px solid #f2d9a8;
+  border-radius: 7px;
+  background: var(--entry-gold);
+  box-shadow: 0 3px 10px rgb(4 11 10 / 20%);
+  color: #222923;
+  font: 650 15px/1.4 var(--entry-font);
+}
+#connect-screen #start-connect:enabled:hover { background: #f4dbac; }
+#connect-screen #start-connect:disabled { background: #bda779; color: #30352d; border-color: #c8b78c; opacity: 1; }
+#connect-screen .entry-arrow { margin-left: auto; padding-left: 12px; font-size: 20px; line-height: 1; }
+#connect-screen #connect-spinner { color: currentColor; border-color: rgb(34 41 35 / 23%); border-top-color: currentColor; }
+#connect-screen button.entry-offline,
+#connect-screen .entry-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 5px 2px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--entry-paper);
+}
+#connect-screen button.entry-offline { border-bottom: 1px solid rgb(233 204 142 / 45%); border-radius: 0; }
+#connect-screen button.entry-offline:disabled { opacity: .65; }
+#connect-screen button.entry-offline:enabled:hover,
+#connect-screen .entry-tools button:hover { color: var(--entry-gold); }
+#connect-screen .entry-feedback { max-width: 30rem; }
+#connect-screen :is(#connect-status, #connect-error),
+#connect-screen .entry-practice {
+  margin: 14px 0 0;
+  color: var(--entry-paper);
+  font: 450 13px/1.6 var(--entry-font);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#connect-screen #connect-error {
+  padding: 8px 12px;
+  border: 0;
+  border-left: 2px solid #e2a386;
+  border-radius: 0 4px 4px 0;
+  color: #ffe1d0;
+  background: rgb(53 32 28 / 95%);
+}
+#connect-screen .entry-practice {
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--entry-gold);
+  white-space: normal;
+}
+#connect-screen .entry-practice strong,
+#connect-screen .entry-practice span { display: block; }
+#connect-screen #connect-login-link {
+  display: inline-block;
+  min-height: 0;
+  margin-top: 10px;
+  padding: 3px 1px;
+  border: 0;
+  border-radius: 0;
+  color: var(--entry-gold);
+  font: 550 14px/1.45 var(--entry-font);
+  text-decoration: underline;
+  text-underline-offset: .22em;
+}
+#connect-screen .entry-footer {
+  padding-block: 10px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--entry-line);
+  color: var(--entry-subtle);
+}
+#connect-screen .entry-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 24px;
+  -webkit-app-region: no-drag;
+}
+#connect-screen .entry-tools button {
+  font-size: 13px;
+  font-weight: 500;
+}
+#connect-screen .entry-edition {
+  color: #efe9d9;
+  font: 500 11px/1.45 var(--entry-font);
+  letter-spacing: .045em;
+  text-align: end;
+}
+#connect-screen :is(button, select, a):focus-visible {
+  outline: 2px solid #ffe7ae;
+  outline-offset: 4px;
+}
+#connect-screen .connect-window-controls { z-index: 2; }
+body.electron-app:not([data-platform="darwin"]) #connect-screen .entry-bar { padding-right: 100px; }
+body.electron-app[data-platform="darwin"] #connect-screen .entry-bar { padding-left: 38px; }
+@media (max-width: 640px) {
+  #connect-screen { --entry-inset: clamp(20px, 6vw, 38px); }
+  #connect-screen .entry-shell { grid-template-rows: auto 1fr auto; }
+  #connect-screen .entry-bar { padding-block: 18px; }
+  #connect-screen .entry-landscape {
+    background:
+      linear-gradient(0deg, #10201ffa 0%, #12221fe8 23%, #17251fb0 46%, #17251c12 73%, #11201f40 100%),
+      #263830 url("/assets/adventure-landscape.png") 59% 36% / cover no-repeat;
+  }
+  #connect-screen .entry-content { align-self: end; padding-block: 84px 26px; }
+  #connect-screen .entry-intro h1 { font-size: clamp(52px, 12vw, 74px); margin-bottom: 12px; }
+  #connect-screen .entry-intro p { font-size: 14px; }
+  #connect-screen .entry-actions { margin-top: 20px; gap: 8px 18px; }
+  #connect-screen #start-connect { min-width: 134px; }
+  #connect-screen .entry-footer { flex-wrap: wrap; gap: 0 14px; }
+  #connect-screen .entry-tools { gap: 0 17px; }
+  #connect-screen .entry-edition { font-size: 10px; }
+}
+@media (max-height: 500px) {
+  #connect-screen .entry-bar { padding-block: 12px; }
+  #connect-screen .entry-content { padding-block: 18px; }
+  #connect-screen .entry-intro h1 { font-size: clamp(42px, 7vw, 68px); margin-bottom: 8px; }
+  #connect-screen .entry-actions { margin-top: 14px; }
+  #connect-screen .entry-footer { padding-block: 4px 8px; }
+}
+@media (forced-colors: active) {
+  #connect-screen .entry-landscape { display: none; }
+  #connect-screen .entry-language-control,
+  #connect-screen #start-connect { border: 1px solid ButtonText; }
+}
