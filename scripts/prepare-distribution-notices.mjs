@@ -97,5 +97,6 @@ export async function prepareDistributionNotices({
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length > 2) throw Error('This build step takes no arguments');
+  await import('electron');
   console.log(JSON.stringify(await prepareDistributionNotices()));
 }
