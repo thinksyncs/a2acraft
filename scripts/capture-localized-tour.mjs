@@ -198,7 +198,7 @@ function encode() {
   });
 }
 try {
-  const port=await poll(async()=>{if(chrome.exitCode!==null)throw Error('Chrome exited '+chrome.exitCode);try{return (await readFile(path.join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0];}catch{return null;}},'Chrome startup');
+  const port=await poll(async()=>{if(chrome.exitCode!==null)throw Error('Chrome exited '+chrome.exitCode);try{return (await readFile(path.join(profile,'DevToolsActivePort'),'utf8')).split('\n')[0];}catch{return null;}},'Chrome startup',90000);
   const tabs=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
   socket=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);
   await new Promise((resolve,reject)=>{socket.onopen=resolve;socket.onerror=reject;});
@@ -212,7 +212,7 @@ try {
   };
   const call=(method,params={})=>new Promise((resolve,reject)=>{
     const id=++serial;
-    const timer=setTimeout(()=>{pending.delete(id);reject(Error('Renderer timeout: '+method));},25000);
+    const timer=setTimeout(()=>{pending.delete(id);reject(Error('Renderer timeout: '+method));},60000);
     pending.set(id,{resolve:value=>{clearTimeout(timer);resolve(value);},reject:error=>{clearTimeout(timer);reject(error);}});
     socket.send(JSON.stringify({id,method,params}));
   });
