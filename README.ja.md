@@ -6,9 +6,9 @@
 
 A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲間たちの仕事が世界をつくる構想です。会話から生まれた人々に出会い、仕事のつながりを眺めながら、次のアイデアを探します。
 
-[![A2ACraft — 日本語のプレイ映像を見る](media/poster-ja.jpg)](media/a2acraft-ja-45s.mp4)
+[![A2ACraft — 日本語のプレイ映像を見る](media/poster-ja.jpg)](https://thinksyncs.github.io/a2acraft/)
 
-[日本語で見る · 45秒](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-ja-45s.mp4) · [英語で見る](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-en-45s.mp4)
+[日本語で見る · 45秒](https://thinksyncs.github.io/a2acraft/) · [英語で見る](https://thinksyncs.github.io/a2acraft/en/)
 
 [日本語字幕](subtitles/ja.srt) · [English subtitles](subtitles/en.srt)
 

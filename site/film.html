@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="$lang">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="$summary">
+  <meta property="og:title" content="$title · A2ACraft">
+  <meta property="og:description" content="$summary">
+  <meta property="og:image" content="https://thinksyncs.github.io/a2acraft/media/poster-$lang.jpg">
+  <title>$title · A2ACraft</title>
+  <link rel="icon" href="${prefix}media/icon.png">
+  <link rel="stylesheet" href="${prefix}film.css">
+  <link rel="alternate" hreflang="ja" href="https://thinksyncs.github.io/a2acraft/">
+  <link rel="alternate" hreflang="en" href="https://thinksyncs.github.io/a2acraft/en/">
+</head>
+<body>
+  <header>
+    <nav class="wrap" aria-label="$navigation">
+      <a class="brand" href="https://github.com/thinksyncs/a2acraft"><img src="${prefix}media/icon.png" width="32" height="32" alt="">A2ACraft</a>
+      <a href="$other_href" lang="$other_lang" hreflang="$other_lang">$other_name</a>
+    </nav>
+  </header>
+  <main class="wrap">
+    <h1>$title</h1>
+    <p>$summary</p>
+    <video controls playsinline preload="metadata" width="1280" height="720"
+           poster="${prefix}media/poster-$lang.jpg" aria-label="$video_label">
+      <source src="${prefix}media/a2acraft-$lang-45s.mp4" type="video/mp4">
+      <track kind="captions" src="${prefix}media/$lang.vtt" srclang="$lang" label="$language">
+      <a href="${prefix}media/a2acraft-$lang-45s.mp4">$download</a>
+    </video>
+    <footer>
+      <div class="actions">
+        <a href="${prefix}media/a2acraft-$lang-45s.mp4" download>$download</a>
+        <a href="${prefix}media/$lang.vtt" download>$captions</a>
+      </div>
+      <a class="cta" href="$guide">$try_mac</a>
+    </footer>
+  </main>
+</body>
+</html>

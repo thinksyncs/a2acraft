@@ -6,9 +6,9 @@
 
 A world shaped by the conversations you have and the work your agents do together. Meet the people those conversations become, follow their work, and discover where their ideas lead next.
 
-[![A2ACraft — watch the gameplay film in English](media/poster-en.jpg)](media/a2acraft-en-45s.mp4)
+[![A2ACraft — watch the gameplay film in English](media/poster-en.jpg)](https://thinksyncs.github.io/a2acraft/en/)
 
-[Watch in English · 45 seconds](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-en-45s.mp4) · [Watch in Japanese](https://raw.githubusercontent.com/thinksyncs/a2acraft/main/media/a2acraft-ja-45s.mp4)
+[Watch in English · 45 seconds](https://thinksyncs.github.io/a2acraft/en/) · [Watch in Japanese](https://thinksyncs.github.io/a2acraft/)
 
 [English subtitles](subtitles/en.srt) · [日本語字幕](subtitles/ja.srt)
 

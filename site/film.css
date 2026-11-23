@@ -1,0 +1,46 @@
+:root {
+  color-scheme: dark;
+  --ink: #faf3df;
+  --muted: #c2c6b9;
+  --line: #42483f;
+  --gold: #e2bd78;
+  font-family: "Source Sans 3", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: radial-gradient(ellipse at 28% 30%, #212c25, transparent 68%), #131a17;
+}
+.wrap { width: min(100% - 2.5rem, 66rem); margin-inline: auto; }
+header { border-bottom: 1px solid var(--line); }
+nav, .brand, footer, .actions { display: flex; align-items: center; }
+nav { min-height: 4.5rem; justify-content: space-between; gap: 1rem; }
+.brand { gap: .6rem; color: var(--ink); font: bold 1.6rem Georgia, serif; text-decoration: none; }
+.brand img { width: 2rem; height: 2rem; }
+a { color: var(--gold); text-underline-offset: .25em; }
+a:hover { color: white; }
+a:focus-visible, video:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+main { padding-block: clamp(2rem, 5vw, 4rem) 1.25rem; }
+h1 {
+  margin: 0;
+  font: 500 clamp(2rem, 5.4vw, 4rem)/1.2 "Spectral", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+  text-wrap: balance;
+}
+p { color: var(--muted); line-height: 1.7; margin: .65rem 0 1.65rem; }
+video {
+  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9;
+  background: #0b0e0c; border: 1px solid #5c5846; border-radius: .35rem;
+}
+footer { justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-block: 1.25rem 2.25rem; }
+.actions { flex-wrap: wrap; gap: 1.4rem; }
+.cta {
+  display: inline-flex; align-items: center; min-height: 2.7rem; padding: .55rem 1.1rem;
+  background: var(--ink); border-radius: .3rem; color: #19231c; text-decoration: none; font-weight: 650;
+}
+.cta:hover { color: #111a14; background: white; }
+@media (max-width: 36rem) {
+  .wrap { width: calc(100% - 2rem); }
+  nav { min-height: 3.8rem; }
+  p { margin-bottom: 1.15rem; }
+}
