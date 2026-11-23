@@ -1,6 +1,16 @@
 const givenNames=['リオン','アレン','ルカ','ノエル','シオン','レオン','カイル','セナ','エリオ','フィン','ロイ','ユアン','ルーク','レイ','トア','オリバー','アリア','セリア','リリカ','ミーナ','ルナ','ティナ','エマ','アイリス','メル','ニーナ','リゼ','サラ','リナ','ユリカ','ソフィア','エルナ','ガイ','ラルフ','ジーク','ロラン','グレン','テオ','キース','ヴィオ','レナ','クララ','フローラ','マリル','アデル','イリス','フェリ','スピカ'];
 const familyNames=['ルーン','ノール','アステル','リーフ','ベル','ルーチェ','ミスト','セレス','オーク','フォルテ','ブラン','ウィンド','ロゼ','ヴェイル','リーヴ','ソレイユ'];
 
+const romanGiven = ['Rion','Allen','Luca','Noel','Shion','Leon','Kyle','Sena','Elio','Finn','Roy','Ewan','Luke','Rei','Toa','Oliver','Aria','Celia','Lyrica','Mina','Luna','Tina','Emma','Iris','Mel','Nina','Lise','Sara','Rina','Yurika','Sophia','Erna','Guy','Ralph','Sieg','Roland','Glen','Theo','Keith','Vio','Lena','Clara','Flora','Maril','Adele','Ilis','Feri','Spica'];
+const romanFamily = ['Rune','Nord','Aster','Leaf','Bell','Luce','Mist','Ceres','Oak','Forte','Blanc','Wind','Rose','Vale','Reeve','Soleil'];
+const sampleNameForms = new Map([...givenNames.map((name,i) => [name,romanGiven[i]]),
+  ...familyNames.map((name,i) => [name,romanFamily[i]])]);
+
+// Fictional, generated residents only. Player-created names stay as entered.
+export function romanizeSampleName(name) {
+  return name.split('・').map(part => sampleNameForms.get(part) || part).join(' ');
+}
+
 /** Add names only where missing. Existing titles, names and other fields stay intact. */
 export function assignCharacterNames(rows,{random=Math.random}={}){
  const used=new Set(rows.map(row=>row.characterName).filter(name=>typeof name==='string'&&name.trim()));

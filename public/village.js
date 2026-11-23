@@ -1,3 +1,4 @@
+import {ui} from './interface-language.js';
 import {mapBuildingBounds} from './world-map-models.js';
 import {projectModel} from './world-model-descriptors.js';
 import {mapStorage} from './map-storage.js';
@@ -33,7 +34,7 @@ const button=(id,label,handler,className='outline')=>{const node=make('button',l
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 const normalized=value=>String(value||'').normalize('NFKC').toLowerCase();
 const labels=Object.fromEntries(VILLAGE_STAGES.map(stage=>[stage.id,stage.label]));
-const shortLabels={planned:'構想',building:'建設',testing:'検証',complete:'完成'};
+const shortLabels={planned:ui('構想', "Planned"),building:ui('建設', "Building"),testing:ui('検証', "Testing"),complete:ui('完成', "Complete")};
 const iconPaths={find:'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',history:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',quests:'M5 21V3m0 1h14l-3 5 3 5H5',shop:'m4 4 16 16M7 3 3 7m14 10 4 4M5 19l14-14m-4-2 6 6',tavern:'M4 9h13v11H4zm13 2h3v6h-3M6 3v3m5-3v3m5-3v3',castle:'M3 21V5h4v4h3V3h4v6h3V5h4v16H3m7 0v-6h4v6',board:'M3 4h18v13H3zm4 13v4m10-4v4M7 8h10M7 12h7'};
 function iconButton(node,key,label){node.title=label;node.setAttribute('aria-label',label);node.replaceChildren();const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',iconPaths[key]);icon.append(path);node.append(icon);return node;}
 
@@ -44,78 +45,78 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let demoOverrides=[],demoRevision=0;
  try{const stored=JSON.parse(mapStorage.getItem(DEMO_KEY)||'null');if(demo&&Array.isArray(stored?.overrides)){demoOverrides=stored.overrides;demoRevision=Number.isSafeInteger(stored.revision)?stored.revision:0;}}catch{}
  const heading=make('header',undefined,'village-heading'),headingCopy=make('div');
- const title=make('h2','Village');title.lang='en';title.id='village-title';title.tabIndex=-1;
- const intro=make('p','会話が村人に。ソフトづくりが建物に。','village-intro');headingCopy.append(title,intro);
+ const title=make('h2',ui('村','Village'));title.id='village-title';title.tabIndex=-1;
+ const intro=make('p',ui('会話が村人に。ソフトづくりが建物に。', "Conversations become villagers. Software projects become buildings."),'village-intro');headingCopy.append(title,intro);
  const headerActions=make('div',undefined,'village-header-actions');
- const find=iconButton(button('village-find','村人を探す',()=>{closeQuestPeek(false);directory.open=true;questDrawer.hidden=true;search.focus();}), 'find','村人を探す');find.setAttribute('aria-expanded','false');
- const history=iconButton(button('village-history','履歴を取り込む',()=>onOpenHistory?.()),'history','履歴を取り込む');
- const questButton=iconButton(button('village-quests','冒険中の隊を見る',()=>{questDrawer.hidden=!questDrawer.hidden;if(!questDrawer.hidden){closeQuestPeek(false);directory.open=false;questClose.focus();}questButton.setAttribute('aria-expanded',String(!questDrawer.hidden));}),'quests','依頼とパーティを見る');questButton.setAttribute('aria-expanded','false');headerActions.append(find,history,questButton);heading.append(headingCopy,headerActions);
- const statistics=make('div',undefined,'village-statistics');statistics.setAttribute('aria-label','村の成長');
+ const find=iconButton(button('village-find',ui('村人を探す', "Find a villager"),()=>{closeQuestPeek(false);directory.open=true;questDrawer.hidden=true;search.focus();}), 'find',ui('村人を探す', "Find a villager"));find.setAttribute('aria-expanded','false');
+ const history=iconButton(button('village-history',ui('履歴を取り込む', "Import history"),()=>onOpenHistory?.()),'history',ui('履歴を取り込む', "Import history"));
+ const questButton=iconButton(button('village-quests',ui('冒険中の隊を見る', "See adventuring parties"),()=>{questDrawer.hidden=!questDrawer.hidden;if(!questDrawer.hidden){closeQuestPeek(false);directory.open=false;questClose.focus();}questButton.setAttribute('aria-expanded',String(!questDrawer.hidden));}),'quests',ui('依頼とパーティを見る', "View quests and parties"));questButton.setAttribute('aria-expanded','false');headerActions.append(find,history,questButton);heading.append(headingCopy,headerActions);
+ const statistics=make('div',undefined,'village-statistics');statistics.setAttribute('aria-label',ui('村の成長', "Village growth"));
  const stat=(id,label)=>{const row=make('div'),value=make('strong','0');value.id=id;row.append(value,make('span',label));statistics.append(row);return value;};
- const population=stat('village-population','人'),projectCount=stat('village-project-count','棟'),finished=stat('village-completed-count','完成');
+ const population=stat('village-population',ui('人', "residents")),projectCount=stat('village-project-count',ui('棟', "buildings")),finished=stat('village-completed-count',ui('完成', "Complete"));
  const previewNote=make('p',undefined,'village-preview-note');previewNote.id='village-preview-note';previewNote.hidden=!demo;
- if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',sample?'サンプル':'自分の村'));if(!sample){const link=make('a','サンプルの村へ →');link.href='/?demo=1&village=sample';previewNote.append(link);}const back=make('a','自分の村に戻る');back.id='village-preview-return';back.href='/';previewNote.append(back);}
- const mapSection=make('section',undefined,'village-map-section');mapSection.setAttribute('aria-label','村の風景');
- const frame=make('div',undefined,'village-map-frame'),canvas=make('canvas');canvas.id='village-canvas';canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','冒険者の村。村人に話しかけ、建物やパーティを確認できます。Enterで名簿、矢印キーで見回す、WASDキーで仲間と歩きます。');canvas.setAttribute('aria-describedby','village-map-help');
- const sites=make('div',undefined,'village-sites');sites.setAttribute('aria-label','この地区の建物');
- const questSites=make('div',undefined,'village-quest-sites');questSites.setAttribute('aria-label','村にいるパーティ');
+ if(demo){const sample=new URLSearchParams(location.search).get('village')==='sample';previewNote.append(make('span',sample?ui('サンプル', "Sample"):ui('自分の村', "My village")));if(!sample){const link=make('a',ui('サンプルの村へ →', "Visit the sample village →"));link.href='/?demo=1&village=sample';previewNote.append(link);}const back=make('a',ui('自分の村に戻る', "Return to my village"));back.id='village-preview-return';back.href='/';previewNote.append(back);}
+ const mapSection=make('section',undefined,'village-map-section');mapSection.setAttribute('aria-label',ui('村の風景', "Village landscape"));
+ const frame=make('div',undefined,'village-map-frame'),canvas=make('canvas');canvas.id='village-canvas';canvas.tabIndex=0;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',ui('冒険者の村。村人に話しかけ、建物やパーティを確認できます。Enterで名簿、矢印キーで見回す、WASDキーで仲間と歩きます。', "Adventurers' village. Meet villagers and inspect buildings and parties. Press Enter for the directory, use the arrow keys to look around, and WASD to walk."));canvas.setAttribute('aria-describedby','village-map-help');
+ const sites=make('div',undefined,'village-sites');sites.setAttribute('aria-label',ui('この地区の建物', "Buildings in this district"));
+ const questSites=make('div',undefined,'village-quest-sites');questSites.setAttribute('aria-label',ui('村にいるパーティ', "Parties in the village"));
  const speech=make('section',undefined,'village-speech');speech.id='village-speech';speech.hidden=true;speech.setAttribute('role','dialog');speech.setAttribute('aria-modal','false');speech.setAttribute('aria-labelledby','village-speech-name');
- const speechName=make('strong');speechName.id='village-speech-name';const speechClose=button('village-speech-close','×',()=>closeSpeech());speechClose.setAttribute('aria-label','吹き出しを閉じる');
+ const speechName=make('strong');speechName.id='village-speech-name';const speechClose=button('village-speech-close','×',()=>closeSpeech());speechClose.setAttribute('aria-label',ui('吹き出しを閉じる', "Close speech bubble"));
  const speechText=make('div');speechText.id='village-speech-text';
- const speechActions=make('div',undefined,'village-speech-actions');speechActions.append(button('village-speech-chat','話す',()=>{const id=speechId,snapshot=getEncounter();closeSpeech(false,{preserveEncounter:true});if(id)onOpenChat?.(id,snapshot);},'primary'),button('village-speech-detail','詳しく',()=>{const id=speechId;closeSpeech(false);if(id)openResident(id);}));speech.append(speechName,speechClose,speechText,speechActions);
- const empty=make('div',undefined,'village-empty');empty.id='village-empty';empty.append(make('strong','最初の村人を迎えましょう'),make('p','このアプリにある過去の会話が、村の住民になります。'));
- empty.append(button('village-import','会話の履歴を開く',()=>onOpenHistory?.(),'primary'));
- const places=make('div',undefined,'village-places');places.setAttribute('aria-label','道の先にある施設');
- for(const place of VILLAGE_PLACES){const entry=button('village-enter-'+place.id,place.shortName+'に入る →',()=>{cancelTravel();onNavigate?.(place.id);},'village-place');entry.dataset.villagePlace=place.id;entry.hidden=true;entry.setAttribute('aria-label',place.name+'に入る');places.append(entry);}
+ const speechActions=make('div',undefined,'village-speech-actions');speechActions.append(button('village-speech-chat',ui('話す', "Talk"),()=>{const id=speechId,snapshot=getEncounter();closeSpeech(false,{preserveEncounter:true});if(id)onOpenChat?.(id,snapshot);},'primary'),button('village-speech-detail',ui('詳しく', "Details"),()=>{const id=speechId;closeSpeech(false);if(id)openResident(id);}));speech.append(speechName,speechClose,speechText,speechActions);
+ const empty=make('div',undefined,'village-empty');empty.id='village-empty';empty.append(make('strong',ui('最初の村人を迎えましょう', "Welcome your first villager")),make('p',ui('このアプリにある過去の会話が、村の住民になります。', "Your past conversations become residents of this village.")));
+ empty.append(button('village-import',ui('会話の履歴を開く', "Open conversation history"),()=>onOpenHistory?.(),'primary'));
+ const places=make('div',undefined,'village-places');places.setAttribute('aria-label',ui('道の先にある施設', "Facilities along the road"));
+ for(const place of VILLAGE_PLACES){const entry=button('village-enter-'+place.id,place.shortName+ui('に入る →', " · enter →"),()=>{cancelTravel();onNavigate?.(place.id);},'village-place');entry.dataset.villagePlace=place.id;entry.hidden=true;entry.setAttribute('aria-label',place.name+ui('に入る', " · enter"));places.append(entry);}
  frame.append(canvas,sites,questSites,places,empty,speech);
  const mapControls=make('div',undefined,'village-map-controls'),cameraControls=make('div',undefined,'village-camera-controls');
- const zoomOut=button('village-zoom-out','−',()=>changeZoom(zoom/1.2));zoomOut.setAttribute('aria-label','村を縮小');
- const fit=button('village-fit','全体へ',()=>{if(travel)travel.follow=false;automaticZoom=false;fitIsland();draw();queueViewSave();});fit.setAttribute('aria-label','島全体を見る');
- const zoomIn=button('village-zoom-in','＋',()=>changeZoom(zoom*1.2));zoomIn.setAttribute('aria-label','村を拡大');cameraControls.append(zoomOut,fit,zoomIn);
- const follow=button('village-follow','歩行に追従',()=>{if(!travel)return;travel.follow=true;automaticZoom=false;zoom=Math.max(zoom,.8);camera=travelCamera(heroPoint);draw();queueViewSave();});follow.hidden=true;cameraControls.append(follow);
- const returnHome=button('village-control-home','自分の隊に戻る',()=>{if(setControlledSquad('protagonist'))closeQuestPeek();},'outline');returnHome.hidden=true;cameraControls.append(returnHome);
+ const zoomOut=button('village-zoom-out','−',()=>changeZoom(zoom/1.2));zoomOut.setAttribute('aria-label',ui('村を縮小', "Zoom out"));
+ const fit=button('village-fit',ui('全体へ', "Fit map"),()=>{if(travel)travel.follow=false;automaticZoom=false;fitIsland();draw();queueViewSave();});fit.setAttribute('aria-label',ui('島全体を見る', "View the whole island"));
+ const zoomIn=button('village-zoom-in','＋',()=>changeZoom(zoom*1.2));zoomIn.setAttribute('aria-label',ui('村を拡大', "Zoom in"));cameraControls.append(zoomOut,fit,zoomIn);
+ const follow=button('village-follow',ui('歩行に追従', "Follow party"),()=>{if(!travel)return;travel.follow=true;automaticZoom=false;zoom=Math.max(zoom,.8);camera=travelCamera(heroPoint);draw();queueViewSave();});follow.hidden=true;cameraControls.append(follow);
+ const returnHome=button('village-control-home',ui('自分の隊に戻る', "Return to my party"),()=>{if(setControlledSquad('protagonist'))closeQuestPeek();},'outline');returnHome.hidden=true;cameraControls.append(returnHome);
  const districtControls=make('div',undefined,'village-district-controls');
- const previous=button('village-district-prev','←',()=>changeDistrict(district-1));previous.setAttribute('aria-label','前の地区');
- const districtLabel=make('span','第1地区');districtLabel.id='village-district-label';districtLabel.setAttribute('role','status');
- const next=button('village-district-next','→',()=>changeDistrict(district+1));next.setAttribute('aria-label','次の地区');districtControls.append(previous,districtLabel,next);
- const pause=button('village-motion','動きを止める',()=>{locallyPaused=!locallyPaused;syncAnimation();});pause.setAttribute('aria-pressed','false');
+ const previous=button('village-district-prev','←',()=>changeDistrict(district-1));previous.setAttribute('aria-label',ui('前の地区', "Previous district"));
+ const districtLabel=make('span',ui('第1地区', "District 1"));districtLabel.id='village-district-label';districtLabel.setAttribute('role','status');
+ const next=button('village-district-next','→',()=>changeDistrict(district+1));next.setAttribute('aria-label',ui('次の地区', "Next district"));districtControls.append(previous,districtLabel,next);
+ const pause=button('village-motion',ui('動きを止める', "Pause motion"),()=>{locallyPaused=!locallyPaused;syncAnimation();});pause.setAttribute('aria-pressed','false');
  mapControls.append(cameraControls,districtControls,pause);
- const mapHelp=make('p','近い会話は近くに · 強い関連の主な道を表示 · 太い道ほど強い関連','village-map-help');mapHelp.id='village-map-help';
+ const mapHelp=make('p',ui('近い会話は近くに · 強い関連の主な道を表示 · 太い道ほど強い関連', "Related conversations live nearby. Thicker roads show stronger connections."),'village-map-help');mapHelp.id='village-map-help';
  const populationNote=make('p',undefined,'village-population-note');populationNote.id='village-population-note';
- const legend=make('div',undefined,'village-legend');legend.setAttribute('aria-label','建物の育ち方');for(const stage of VILLAGE_STAGES){const item=make('span',stage.label);item.dataset.stage=stage.id;legend.append(item);}
+ const legend=make('div',undefined,'village-legend');legend.setAttribute('aria-label',ui('建物の育ち方', "Building stages"));for(const stage of VILLAGE_STAGES){const item=make('span',stage.label);item.dataset.stage=stage.id;legend.append(item);}
  mapSection.append(frame,mapControls,mapHelp,populationNote,legend);
- const inset=make('section',undefined,'world-3d-inset');inset.id='village-leader-window';inset.hidden=true;inset.setAttribute('aria-label','リーダー目線の小窓');
- const insetHeader=make('header',undefined,'world-3d-inset-header'),insetTitle=make('strong','リーダー目線');insetTitle.title='操作中のパーティ先頭の目線';
- const insetClose=button('village-leader-close','×',()=>setInsetVisible(false,true),'world-3d-inset-close');insetClose.setAttribute('aria-label','リーダー目線の小窓を閉じる');insetHeader.append(insetTitle,insetClose);
- const canvas3D=make('canvas',undefined,'world-3d-inset-canvas');canvas3D.id='village-map-3d';canvas3D.tabIndex=0;canvas3D.setAttribute('role','img');canvas3D.setAttribute('aria-label','リーダー目線。俯瞰地図と同じ隊の視界です。ドラッグ・矢印キーで見回し、WASDで歩けます。');
+ const inset=make('section',undefined,'world-3d-inset');inset.id='village-leader-window';inset.hidden=true;inset.setAttribute('aria-label',ui('リーダー目線の小窓', "Party leader view"));
+ const insetHeader=make('header',undefined,'world-3d-inset-header'),insetTitle=make('strong',ui('リーダー目線', "Leader view"));insetTitle.title=ui('操作中のパーティ先頭の目線', "View from the head of the active party");
+ const insetClose=button('village-leader-close','×',()=>setInsetVisible(false,true),'world-3d-inset-close');insetClose.setAttribute('aria-label',ui('リーダー目線の小窓を閉じる', "Close leader view"));insetHeader.append(insetTitle,insetClose);
+ const canvas3D=make('canvas',undefined,'world-3d-inset-canvas');canvas3D.id='village-map-3d';canvas3D.tabIndex=0;canvas3D.setAttribute('role','img');canvas3D.setAttribute('aria-label',ui('リーダー目線。俯瞰地図と同じ隊の視界です。ドラッグ・矢印キーで見回し、WASDで歩けます。', "Party leader view. Drag or use the arrow keys to look around. Walk with WASD."));
  inset.append(insetHeader,canvas3D);frame.append(inset);
- const insetToggle=button('village-leader-toggle','リーダー目線',()=>setInsetVisible(true,true),'world-3d-inset-toggle village-leader-toggle');insetToggle.setAttribute('aria-controls',inset.id);insetToggle.setAttribute('aria-expanded','false');
+ const insetToggle=button('village-leader-toggle',ui('リーダー目線', "Leader view"),()=>setInsetVisible(true,true),'world-3d-inset-toggle village-leader-toggle');insetToggle.setAttribute('aria-controls',inset.id);insetToggle.setAttribute('aria-expanded','false');
  const viewError=make('p',undefined,'world-3d-error village-inset-error');viewError.id='village-3d-error';viewError.hidden=true;viewError.setAttribute('role','status');mapSection.append(insetToggle,viewError);
- const services=make('nav',undefined,'village-services');services.setAttribute('aria-label','村の施設');services.append(iconButton(button('village-shop','武器屋',()=>travelTo('weapon')),'shop','武器屋へ向かう'),iconButton(button('village-tavern','酒場と仲間',()=>travelTo('tavern')),'tavern','酒場へ向かう'),iconButton(button('village-castle','お城で依頼',()=>travelTo('castle')),'castle','お城へ向かう'),iconButton(button('village-board','隊の掲示板',()=>onOpenBoard?.()),'board','隊の掲示板'));
+ const services=make('nav',undefined,'village-services');services.setAttribute('aria-label',ui('村の施設', "Village facilities"));services.append(iconButton(button('village-shop',ui('武器屋', "Weapon shop"),()=>travelTo('weapon')),'shop',ui('武器屋へ向かう', "Walk to the weapon shop")),iconButton(button('village-tavern',ui('酒場と仲間', "Tavern and companions"),()=>travelTo('tavern')),'tavern',ui('酒場へ向かう', "Walk to the tavern")),iconButton(button('village-castle',ui('お城で依頼', "Castle quests"),()=>travelTo('castle')),'castle',ui('お城へ向かう', "Walk to the castle")),iconButton(button('village-board',ui('隊の掲示板', "Party board"),()=>onOpenBoard?.()),'board',ui('隊の掲示板', "Party board")));
  const directory=make('details',undefined,'village-directory');directory.id='village-directory';
- const directorySummary=make('summary','村の名簿');const directoryClose=button('village-directory-close','閉じる',()=>{directory.open=false;find.focus();});directory.append(directorySummary,directoryClose);directory.ontoggle=()=>find.setAttribute('aria-expanded',String(directory.open));
- const searchLabel=make('label','名前や会話のタイトルで探す');searchLabel.htmlFor='village-search';
- const search=make('input');search.id='village-search';search.type='search';search.placeholder='探したい会話の言葉';
+ const directorySummary=make('summary',ui('村の名簿', "Village directory"));const directoryClose=button('village-directory-close',ui('閉じる', "Close"),()=>{directory.open=false;find.focus();});directory.append(directorySummary,directoryClose);directory.ontoggle=()=>find.setAttribute('aria-expanded',String(directory.open));
+ const searchLabel=make('label',ui('名前や会話のタイトルで探す', "Find a name or conversation title"));searchLabel.htmlFor='village-search';
+ const search=make('input');search.id='village-search';search.type='search';search.placeholder=ui('探したい会話の言葉', "Search conversations");
  const directoryCount=make('p',undefined,'village-directory-count');directoryCount.id='village-directory-count';directoryCount.setAttribute('role','status');
  const residentList=make('div',undefined,'village-residents');residentList.id='village-residents';residentList.setAttribute('role','list');
  let listLimit=LIST_PAGE;
- const more=button('village-more','さらに50人を見る',()=>{listLimit+=LIST_PAGE;renderDirectory();});
+ const more=button('village-more',ui('さらに50人を見る', "Show 50 more villagers"),()=>{listLimit+=LIST_PAGE;renderDirectory();});
  directory.append(searchLabel,search,directoryCount,residentList,more);
  search.oninput=()=>{listLimit=LIST_PAGE;renderDirectory();};
- const questDrawer=make('section',undefined,'village-quest-drawer');questDrawer.id='village-quest-drawer';questDrawer.hidden=true;questDrawer.setAttribute('aria-labelledby','village-quest-title');const questTitle=make('h3','依頼とパーティ');questTitle.id='village-quest-title';const questClose=button('village-quest-close','閉じる',()=>{questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');questButton.focus();});const questSummary=make('p');questSummary.id='village-quest-summary';const questList=make('div',undefined,'village-quest-list');questList.id='village-quest-list';questDrawer.append(questTitle,questClose,questSummary,questList);
+ const questDrawer=make('section',undefined,'village-quest-drawer');questDrawer.id='village-quest-drawer';questDrawer.hidden=true;questDrawer.setAttribute('aria-labelledby','village-quest-title');const questTitle=make('h3',ui('依頼とパーティ', "Quests and parties"));questTitle.id='village-quest-title';const questClose=button('village-quest-close',ui('閉じる', "Close"),()=>{questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');questButton.focus();});const questSummary=make('p');questSummary.id='village-quest-summary';const questList=make('div',undefined,'village-quest-list');questList.id='village-quest-list';questDrawer.append(questTitle,questClose,questSummary,questList);
  const questPeek=make('section',undefined,'village-quest-peek');questPeek.id='village-quest-peek';questPeek.hidden=true;questPeek.setAttribute('role','dialog');questPeek.setAttribute('aria-modal','false');questPeek.setAttribute('aria-labelledby','village-quest-peek-title');
  const peekHeading=make('header',undefined,'village-peek-heading'),questPartyName=make('p');questPartyName.id='village-quest-party-name';
  const questPeekTitle=make('h3');questPeekTitle.id='village-quest-peek-title';
- const questPeekClose=button('village-quest-peek-close','×',()=>closeQuestPeek());questPeekClose.setAttribute('aria-label','パーティの案内を閉じる');peekHeading.append(questPartyName,questPeekTitle,questPeekClose);
+ const questPeekClose=button('village-quest-peek-close','×',()=>closeQuestPeek());questPeekClose.setAttribute('aria-label',ui('パーティの案内を閉じる', "Close party details"));peekHeading.append(questPartyName,questPeekTitle,questPeekClose);
  const questBody=make('div',undefined,'village-peek-body'),questPeekStatus=make('p');questPeekStatus.id='village-quest-peek-status';questPeekStatus.setAttribute('role','status');
  const questCurrent=make('p');questCurrent.id='village-quest-current';
  const questProgress=make('p');questProgress.id='village-quest-progress';
  const questTask=make('p');questTask.id='village-quest-task';
  const questResult=make('p');questResult.id='village-quest-result';
  const questNote=make('p');questNote.id='village-quest-note';
- const questMore=make('details',undefined,'village-peek-more');questMore.append(make('summary','役割と達成条件'));
+ const questMore=make('details',undefined,'village-peek-more');questMore.append(make('summary',ui('役割と達成条件', "Roles and success criteria")));
  const questCriteria=make('p');questCriteria.id='village-quest-criteria';const questArtifact=make('p');questArtifact.id='village-quest-artifact';
- const questPeekMembers=make('div',undefined,'village-quest-peek-members');questPeekMembers.id='village-quest-members';questPeekMembers.setAttribute('aria-label','この隊の仲間と役割');questMore.append(questCriteria,questArtifact,questPeekMembers);
+ const questPeekMembers=make('div',undefined,'village-quest-peek-members');questPeekMembers.id='village-quest-members';questPeekMembers.setAttribute('aria-label',ui('この隊の仲間と役割', "Party members and roles"));questMore.append(questCriteria,questArtifact,questPeekMembers);
  const teamChat=createTeamChat({messaging:teamMessaging,target:fresh=>{
   if(!visible||questPeek.hidden)return null;
   const chats=getChats()||[],source=fresh?projectVillageActivities(getState()||{},chats):activities;
@@ -125,8 +126,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }});
  const ideaCard=make('section',undefined,'village-idea-offer'),ideaQuote=make('p');
  const ideaHint=make('p');ideaHint.setAttribute('role','status');
- const ideaStart=button('village-idea-start','この依頼を始める',()=>startIdea(),'primary');
- const ideaDismiss=button('village-idea-dismiss','今は見送る',()=>{
+ const ideaStart=button('village-idea-start',ui('この依頼を始める', "Start this quest"),()=>startIdea(),'primary');
+ const ideaDismiss=button('village-idea-dismiss',ui('今は見送る', "Maybe later"),()=>{
   if(!reviewedIdea||pendingIdea)return;
   dismissedIdeas.add(reviewedIdea.dismissal);saveView();updateProjection(true);closeQuestPeek();
  });
@@ -134,39 +135,39 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  ideaCard.append(ideaQuote,ideaStart,ideaDismiss,ideaHint);
  questBody.append(ideaCard,teamChat.element,questPeekStatus,questCurrent,questProgress,questTask,questResult,questNote,questMore);
  const questFooter=make('footer',undefined,'village-peek-footer'),questActions=make('div',undefined,'village-peek-actions');
- const questOpen=button('village-quest-open','依頼を開く →',()=>{const squad=selectedSquad();closeQuestPeek(false);if(squad?.id==='protagonist')onNavigate?.('tavern');else if(squad)onOpenQuest?.(squad);});
- const questChat=button('village-quest-chat','担当の会話',()=>{const id=questChat.dataset.conversationId;closeQuestPeek(false);if(id)onOpenChat?.(id);});questActions.append(questOpen,questChat);
- const questControl=button('village-quest-control','この隊を操作',()=>{
+ const questOpen=button('village-quest-open',ui('依頼を開く →', "Open quest →"),()=>{const squad=selectedSquad();closeQuestPeek(false);if(squad?.id==='protagonist')onNavigate?.('tavern');else if(squad)onOpenQuest?.(squad);});
+ const questChat=button('village-quest-chat',ui('担当の会話', "Worker chat"),()=>{const id=questChat.dataset.conversationId;closeQuestPeek(false);if(id)onOpenChat?.(id);});questActions.append(questOpen,questChat);
+ const questControl=button('village-quest-control',ui('この隊を操作', "Control this party"),()=>{
   const squad=selectedSquad();if(!squad)return;
   if(setControlledSquad(squad.id)){questPeekClose.focus({preventScroll:true});return;}
-  renderQuestPeek();questControlNote.hidden=false;questControlNote.textContent='この隊を動かせません。現在の編成と作業状態を確認してください。';
+  renderQuestPeek();questControlNote.hidden=false;questControlNote.textContent=ui('この隊を動かせません。現在の編成と作業状態を確認してください。', "This party cannot move. Check its members and current work.");
  });
  const questControlNote=make('small',undefined,'village-control-note');questControlNote.id='village-control-note';questControlNote.setAttribute('role','status');
  questControl.setAttribute('aria-describedby',questControlNote.id);questActions.append(questControl);
- const questCycle=make('nav',undefined,'village-peek-cycle');questCycle.setAttribute('aria-label','確認するパーティを切り替える');
- const questPrevious=button('village-quest-prev','‹ 前の隊',()=>cycleSquad(-1));const questNext=button('village-quest-next','次の隊 ›',()=>cycleSquad(1));const questLocate=button('village-quest-locate','隊の場所へ',()=>locateSquad());questCycle.append(questPrevious,questLocate,questNext);questFooter.append(questActions,questControlNote,questCycle);questPeek.append(peekHeading,questBody,questFooter);
- const note=make('p','建物の段階は会話からの推定です。','village-explanation');
- const wayfinding=make('nav',undefined,'village-wayfinding');wayfinding.setAttribute('aria-label','道の先へ');
- for(const place of VILLAGE_PLACES){const guide=button('village-travel-'+place.id,place.shortName,()=>travelTo(place.id),'village-waypoint');guide.dataset.destination=place.id;guide.setAttribute('aria-label',place.name+'へ向かう');wayfinding.append(guide);}
+ const questCycle=make('nav',undefined,'village-peek-cycle');questCycle.setAttribute('aria-label',ui('確認するパーティを切り替える', "Switch parties"));
+ const questPrevious=button('village-quest-prev',ui('‹ 前の隊', "‹ Previous party"),()=>cycleSquad(-1));const questNext=button('village-quest-next',ui('次の隊 ›', "Next party ›"),()=>cycleSquad(1));const questLocate=button('village-quest-locate',ui('隊の場所へ', "Locate party"),()=>locateSquad());questCycle.append(questPrevious,questLocate,questNext);questFooter.append(questActions,questControlNote,questCycle);questPeek.append(peekHeading,questBody,questFooter);
+ const note=make('p',ui('建物の段階は会話からの推定です。', "Building stages are estimated from conversations."),'village-explanation');
+ const wayfinding=make('nav',undefined,'village-wayfinding');wayfinding.setAttribute('aria-label',ui('道の先へ', "Follow the road"));
+ for(const place of VILLAGE_PLACES){const guide=button('village-travel-'+place.id,place.shortName,()=>travelTo(place.id),'village-waypoint');guide.dataset.destination=place.id;guide.setAttribute('aria-label',place.name+ui('へ向かう', " · walk there"));wayfinding.append(guide);}
  const journey=make('p',undefined,'village-journey');journey.id='village-journey';journey.setAttribute('role','status');journey.hidden=true;
  const neighborhoodContext=createVillageContext({onTalk:id=>openSpeech(id)});
  root.replaceChildren(mapSection,heading,statistics,previewNote,services,wayfinding,journey,directory,questDrawer,questPeek,neighborhoodContext.element,note);
 
  const detail=make('dialog',undefined,'village-detail');detail.id='village-detail';detail.setAttribute('aria-labelledby','village-detail-title');
  const detailHeader=make('div',undefined,'village-detail-header'),detailTitle=make('h2');detailTitle.id='village-detail-title';
- const close=button('village-detail-close','閉じる',()=>detail.close());detailHeader.append(detailTitle,close);
+ const close=button('village-detail-close',ui('閉じる', "Close"),()=>detail.close());detailHeader.append(detailTitle,close);
  const detailChat=make('p',undefined,'village-detail-chat');detailChat.id='village-detail-chat';
  const detailStage=make('p',undefined,'village-detail-stage');detailStage.id='village-detail-stage';
  const detailContent=make('div');detailContent.id='village-detail-content';
- const openChat=button('village-open-chat','この会話を開く →',()=>{const id=selected;if(!id)return;detail.close();onOpenChat?.(id);},'primary');
- const evidence=make('details',undefined,'village-evidence');evidence.append(make('summary','この建物になった手がかり'));
+ const openChat=button('village-open-chat',ui('この会話を開く →', "Open this conversation →"),()=>{const id=selected;if(!id)return;detail.close();onOpenChat?.(id);},'primary');
+ const evidence=make('details',undefined,'village-evidence');evidence.append(make('summary',ui('この建物になった手がかり', "Evidence for this building")));
  const evidenceList=make('ul');evidenceList.id='village-evidence';evidence.append(evidenceList);
  const form=make('form',undefined,'village-correction');form.id='village-correction';
- const formHeading=make('h3','村での見え方を整える'),kindLabel=make('label','会話の種類');kindLabel.htmlFor='village-kind';
- const kind=make('select');kind.id='village-kind';for(const [value,label]of [['auto','会話から自動で判定'],['software','ソフトづくり · 建物にする'],['resident','住民として暮らす · 建物にしない']])kind.add(new Option(label,value));
- const stageLabel=make('label','建物の進み具合');stageLabel.htmlFor='village-stage';const stage=make('select');stage.id='village-stage';stage.add(new Option('会話から推定する','auto'));for(const item of VILLAGE_STAGES)stage.add(new Option(item.label,item.id));
- const correctionHelp=make('p','会話だけでは分からない進み具合は、自分で直せます。ここで変わるのは村の表示だけです。');
- const save=button('village-save','村の記録を保存',null,'primary');save.type='submit';
+ const formHeading=make('h3',ui('村での見え方を整える', "Customize village appearance")),kindLabel=make('label',ui('会話の種類', "Conversation type"));kindLabel.htmlFor='village-kind';
+ const kind=make('select');kind.id='village-kind';for(const [value,label]of [['auto',ui('会話から自動で判定', "Detect from conversation")],['software',ui('ソフトづくり · 建物にする', "Software project · create a building")],['resident',ui('住民として暮らす · 建物にしない', "Resident only")]])kind.add(new Option(label,value));
+ const stageLabel=make('label',ui('建物の進み具合', "Building progress"));stageLabel.htmlFor='village-stage';const stage=make('select');stage.id='village-stage';stage.add(new Option(ui('会話から推定する', "Estimate from conversation"),'auto'));for(const item of VILLAGE_STAGES)stage.add(new Option(item.label,item.id));
+ const correctionHelp=make('p',ui('会話だけでは分からない進み具合は、自分で直せます。ここで変わるのは村の表示だけです。', "You can adjust progress when the conversation is incomplete. This changes the village display only."));
+ const save=button('village-save',ui('村の記録を保存', "Save village record"),null,'primary');save.type='submit';
  const error=make('p',undefined,'village-error');error.id='village-error';error.hidden=true;error.setAttribute('role','alert');
  const feedback=make('p',undefined,'village-feedback');feedback.id='village-feedback';feedback.hidden=true;feedback.setAttribute('role','status');
  form.append(formHeading,kindLabel,kind,stageLabel,stage,correctionHelp,save,error,feedback);detail.append(detailHeader,detailChat,detailStage,openChat,detailContent,evidence,form);document.body.append(detail);
@@ -183,11 +184,11 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const project=projection.projects.find(item=>item.conversationId===selected);
   detailTitle.textContent=resident.name;detailChat.textContent=resident.title;
   renderConversationDetails(detailContent,getChats().find(chat=>chat.id===selected));
-  detailStage.textContent=project?(project.source==='manual'?'自分で指定した進み具合':'会話からの推定')+' · '+project.stageLabel:'この会話は、村で暮らす住民です。';detailStage.dataset.stage=project?.stage||'resident';
+  detailStage.textContent=project?(project.source==='manual'?ui('自分で指定した進み具合', "Manually set progress"):ui('会話からの推定', "Estimated from conversation"))+' · '+project.stageLabel:ui('この会話は、村で暮らす住民です。', "This conversation is a village resident.");detailStage.dataset.stage=project?.stage||'resident';
   evidence.hidden=!project;evidenceList.replaceChildren(...(project?.evidence||[]).map(item=>make('li',item.text)));
-  if(project&&!evidenceList.children.length)evidenceList.append(make('li',project.source==='manual'?'村の見え方を自分で指定しています。':'ソフトづくりの会話として、建物の場所を用意しました。'));
+  if(project&&!evidenceList.children.length)evidenceList.append(make('li',project.source==='manual'?ui('村の見え方を自分で指定しています。', "The village appearance was set manually."):ui('ソフトづくりの会話として、建物の場所を用意しました。', "This software project has a building plot.")));
   if(resetFields){const value=overrides().find(item=>item.conversationId===selected);kind.value=value?.kind||'auto';stage.value=value?.stage||'auto';}
-  kind.disabled=busy;stage.disabled=busy||kind.value==='resident';save.disabled=busy;save.textContent=busy?'保存しています…':'村の記録を保存';
+  kind.disabled=busy;stage.disabled=busy||kind.value==='resident';save.disabled=busy;save.textContent=busy?ui('保存しています…', "Saving…"):ui('村の記録を保存', "Save village record");
  }
  form.onsubmit=async event=>{
   event.preventDefault();if(busy||!selected)return;
@@ -196,8 +197,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
    let result;
    if(demo){const next=demoOverrides.filter(item=>item.conversationId!==params.conversationId);if(params.kind!=='auto'||params.stage!=='auto')next.push(params);result={version:1,revision:demoRevision+1,overrides:next};mapStorage.setItem(DEMO_KEY,JSON.stringify(result));demoOverrides=next;demoRevision=result.revision;}
    else result=await api('village/configure',params);
-   onState?.(result);signature='';updateProjection();feedback.textContent=demo?'このデモの村に保存しました。':'村の記録を保存しました。';feedback.hidden=false;
-  }catch(reason){error.textContent=reason?.message||'村の記録を保存できませんでした。';error.hidden=false;}
+   onState?.(result);signature='';updateProjection();feedback.textContent=demo?ui('このデモの村に保存しました。', "Saved in this sample village."):ui('村の記録を保存しました。', "Village record saved.");feedback.hidden=false;
+  }catch(reason){error.textContent=reason?.message||ui('村の記録を保存できませんでした。', "Could not save the village record.");error.hidden=false;}
   finally{busy=false;refreshDetail();}
  };
  detail.addEventListener('close',()=>{selected=null;draw();if(visible&&previousFocus?.isConnected&&previousFocus.getClientRects().length)previousFocus.focus({preventScroll:true});syncAnimation();});
@@ -238,7 +239,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function saveView(){clearTimeout(viewSaveTimer);viewSaveTimer=0;const homeView=controlledSquadId===homeSquadId?null:parkedPoses.get(homeSquadId);try{mapStorage.setItem(viewKey,JSON.stringify({mode:'2d',camera:homeView?.camera||{...camera,zoom},district,showLeaderView,insetCamera:world3D?.getCameraState()||insetCamera,
   dismissedIdeas:[...dismissedIdeas].slice(-200),hero:savedHero||(controlledSquadId===homeSquadId?currentPose():parkedPoses.get(homeSquadId))}));}catch{}}
  function queueViewSave(){clearTimeout(viewSaveTimer);viewSaveTimer=setTimeout(saveView,300);}
- function fail3D(){setInsetVisible(false);viewError.textContent='目線の小窓を表示できません。俯瞰地図はそのまま使えます。';viewError.hidden=false;insetToggle.disabled=true;}
+ function fail3D(){setInsetVisible(false);viewError.textContent=ui('目線の小窓を表示できません。俯瞰地図はそのまま使えます。', "Leader view is unavailable. The overhead map is still available.");viewError.hidden=false;insetToggle.disabled=true;}
  function resizeInset(){if(insetVisible&&canvas3D.clientWidth&&canvas3D.clientHeight)world3D?.resize(canvas3D.clientWidth,canvas3D.clientHeight,Math.min(devicePixelRatio||1,2));}
  function setInsetVisible(value,focus=false){
   if(focus)showLeaderView=Boolean(value);
@@ -279,7 +280,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   root.dataset.encounterId=id;root.dataset.encounterStatus='approaching';
   const terrain=movementTerrain(),goal=villageEncounterApproach(target,leader,[...movementObstacles(),...islandWaterObstacles(terrain.water,terrain.bridges)]);
   const title=String(person.title||''),journeyTitle=title.length>48?title.slice(0,48)+'…':title;
-  if(!goal||!moveHero(goal.x,goal.y,()=>showSpeech(id),{preserveEncounter:true,follow:true,label:person.name+'へ移動中 · '+journeyTitle}))endEncounter();else directory.open=false;
+  if(!goal||!moveHero(goal.x,goal.y,()=>showSpeech(id),{preserveEncounter:true,follow:true,label:person.name+ui('へ移動中 · ', " · en route · ")+journeyTitle}))endEncounter();else directory.open=false;
  }
  function showSpeech(id){
   const resident=projection.residents.find(item=>item.conversationId===id);if(!resident)return;
@@ -342,7 +343,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const nextAssignments=JSON.stringify([...assignments]);if(nextAssignments!==previousAssignments)try{mapStorage.setItem(layoutKey,nextAssignments);}catch{}
   population.textContent=String(projection.stats.population);projectCount.textContent=String(projection.stats.projects);finished.textContent=String(projection.stats.stages.complete||0);
   root.dataset.population=String(projection.stats.population);root.dataset.projectCount=String(projection.stats.projects);
-  directorySummary.textContent='村の名簿 · '+projection.residents.length+'人';updateEmptyNotice();
+  directorySummary.textContent=ui('村の名簿 · ', "Village directory · ")+projection.residents.length+ui('人', "residents");updateEmptyNotice();
   district=clamp(district,0,districtCount()-1);syncDistrict();renderDirectory();renderActivities();if(detail.open)refreshDetail();const heldId=encounter?.conversationId||speechId;if(heldId&&!projection.residents.some(item=>item.conversationId===heldId))closeSpeech(false);
  }
  function updateEmptyNotice(){
@@ -362,11 +363,11 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   restoreHeroView();
   refreshNearbyResidents();
   root.dataset.district=String(district+1);root.dataset.renderedResidents=String(shownResidents.length);canvas.dataset.renderedResidents=String(shownResidents.length);
-  districtLabel.textContent='集落 '+(district+1)+' / '+districtCount();previous.disabled=district===0;next.disabled=district>=districtCount()-1;
-  populationNote.textContent=projection.residents.length>RESIDENT_LIMIT?'この景色には'+shownResidents.length+'人。全'+projection.residents.length+'人の会話は、村の名簿で探せます。':projection.projects.length?'ソフトづくりの会話ごとに1棟。建物を選ぶと、元の会話と進み具合が分かります。':'ソフトづくりの会話が増えると、この村に建設現場が生まれます。';
+  districtLabel.textContent=ui('集落 ', "Settlement ")+(district+1)+' / '+districtCount();previous.disabled=district===0;next.disabled=district>=districtCount()-1;
+  populationNote.textContent=projection.residents.length>RESIDENT_LIMIT?ui('この景色には', "Visible here: ")+shownResidents.length+ui('人。全', " residents. Find all ")+projection.residents.length+ui('人の会話は、村の名簿で探せます。', " residents in the directory."):projection.projects.length?ui('ソフトづくりの会話ごとに1棟。建物を選ぶと、元の会話と進み具合が分かります。', "Each software project has a building. Select one to see its conversation and progress."):ui('ソフトづくりの会話が増えると、この村に建設現場が生まれます。', "New software conversations create building sites in this village.");
   populationNote.classList.toggle('village-cap-note',projection.residents.length>RESIDENT_LIMIT);
   const focused=sites.contains(document.activeElement)?document.activeElement.dataset.villageProject:null;
-  sites.replaceChildren(...projectSlots.map(project=>{const control=button('',undefined,()=>openResident(project.conversationId),'village-building');control.dataset.villageProject=project.conversationId;control.dataset.stage=project.stage;control.setAttribute('aria-label',project.title+' · '+project.stageLabel+' · 会話と建物を確認');control.title=project.title;control.onfocus=()=>{if(control.matches(':focus-visible'))centerResident(project.conversationId);};const tag=make('span',shortLabels[project.stage],'village-building-tag');tag.setAttribute('aria-hidden','true');control.append(tag);return control;}));overlaySignature='';
+  sites.replaceChildren(...projectSlots.map(project=>{const control=button('',undefined,()=>openResident(project.conversationId),'village-building');control.dataset.villageProject=project.conversationId;control.dataset.stage=project.stage;control.setAttribute('aria-label',project.title+' · '+project.stageLabel+ui(' · 会話と建物を確認', " · view conversation and building"));control.title=project.title;control.onfocus=()=>{if(control.matches(':focus-visible'))centerResident(project.conversationId);};const tag=make('span',shortLabels[project.stage],'village-building-tag');tag.setAttribute('aria-hidden','true');control.append(tag);return control;}));overlaySignature='';
   if(focused)Array.from(sites.children).find(item=>item.dataset.villageProject===focused)?.focus({preventScroll:true});
   syncQuestSites();draw();syncAnimation();
  }
@@ -476,13 +477,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(ideaCard.hidden)return;
   const current=invitations.get(selectedSquadId);
   const stale=current?.version!==invite.version;
-  const blocked=stale?'依頼の状態が変わりました。':initiative?.blocked?.()||'';
+  const blocked=stale?ui('依頼の状態が変わりました。', "The quest has changed."):initiative?.blocked?.()||'';
   const accepted=dismissedIdeas.has(invite.dismissal);
   ideaQuote.hidden=ideaStart.hidden=ideaDismiss.hidden=accepted;
-  ideaQuote.textContent=invite.speaker+'「この依頼、一緒にやってみない？」';
+  ideaQuote.textContent=invite.speaker+ui('「この依頼、一緒にやってみない？」', ": “Shall we take this quest together?”");
   ideaStart.disabled=Boolean(pendingIdea||blocked||accepted);
   ideaDismiss.disabled=Boolean(pendingIdea);
-  ideaHint.textContent=ideaFeedback||(pendingIdea?'依頼を渡しています…':blocked);
+  ideaHint.textContent=ideaFeedback||(pendingIdea?ui('依頼を渡しています…', "Assigning quest…"):blocked);
   ideaHint.hidden=!ideaHint.textContent;
  }
  async function startIdea(){
@@ -495,7 +496,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
    await initiative.start(invite);
    dismissedIdeas.add(invite.dismissal);saveView();
    if(reviewedIdea===invite){
-    ideaFeedback=invite.speaker+'に依頼を渡しました。';
+    ideaFeedback=invite.speaker+ui('に依頼を渡しました。', " received the quest.");
     if(document.activeElement===ideaStart)questPeekClose.focus({preventScroll:true});
    }
   }catch(error){if(reviewedIdea===invite)ideaFeedback=error.message;}
@@ -509,30 +510,30 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   questPrevious.disabled=questNext.disabled=inspectionSquads().length<2;
   const controlled=squad.id===getControlledSquadId(),movable=squad.id===homeSquadId||Boolean(villageControlTarget(activities,squad.id));
   questControl.disabled=controlled||!movable;
-  questControl.textContent=controlled?'操作中':squad.id==='protagonist'?'自分の隊に戻る':'この隊を操作';
+  questControl.textContent=controlled?ui('操作中', "In control"):squad.id==='protagonist'?ui('自分の隊に戻る', "Return to my party"):ui('この隊を操作', "Control this party");
   questControlNote.hidden=controlled||movable;
-  if(!questControlNote.hidden)questControlNote.textContent=squad.members?.some(member=>member.conversationId===squad.leaderId)?'この隊は現在の作業状態では移動できません。':'移動できるリーダーがいません。';
+  if(!questControlNote.hidden)questControlNote.textContent=squad.members?.some(member=>member.conversationId===squad.leaderId)?ui('この隊は現在の作業状態では移動できません。', "This party is busy and cannot travel."):ui('移動できるリーダーがいません。', "No leader is available to travel.");
   const key=JSON.stringify(squad);if(key===peekSignature)return;peekSignature=key;
   const info=squad.details||{},current=info.current,steps=info.steps||[],progress=info.progress,idle=squad.id==='protagonist';
-  questPeek.dataset.questId=squad.id;questPeek.dataset.live=String(Boolean(info.live));questPartyName.textContent=squad.partyName||squad.name||'依頼のパーティ';questPartyName.title=questPartyName.textContent;
-  questPeekTitle.textContent=idle?'次の冒険へ':squad.title;questPeekTitle.title=questPeekTitle.textContent;questPeekStatus.textContent=squad.statusLabel+(squad.provisional?' · 保存した編成で待機':'');questPeekStatus.dataset.status=squad.status;
-  questCurrent.textContent=current?current.name+' · '+current.role+'を担当中':idle?'仲間と村を歩いています':squad.status==='completed'?'作業を終えて帰還しました':squad.status==='paused'?'作業を中断しています':squad.status==='waiting'?'この依頼の開始を待っています':squad.status==='uncertain'?'保存された記録を確認できます':squad.status==='gathering'?'依頼に向けて仲間が集合しています':squad.status==='cancelled'?'この依頼は終了しています':squad.status==='running'?'依頼を進めています':'作業の状態を確認できます';
-  questProgress.hidden=!progress;questProgress.textContent=progress?'工程 '+progress.completed+' / '+progress.total+' 完了':'';
-  questTask.textContent=info.description|| (idle?'酒場で仲間を編成し、お城や依頼ノートから仕事を受けられます。':'');questTask.hidden=!questTask.textContent;
-  questResult.textContent=info.error?'確認が必要です: '+info.error:info.summary?'成果: '+info.summary:'';questResult.hidden=!questResult.textContent;questResult.dataset.error=String(Boolean(info.error));
+  questPeek.dataset.questId=squad.id;questPeek.dataset.live=String(Boolean(info.live));questPartyName.textContent=squad.partyName||squad.name||ui('依頼のパーティ', "Quest party");questPartyName.title=questPartyName.textContent;
+  questPeekTitle.textContent=idle?ui('次の冒険へ', "The next adventure"):squad.title;questPeekTitle.title=questPeekTitle.textContent;questPeekStatus.textContent=squad.statusLabel+(squad.provisional?ui(' · 保存した編成で待機', " · saved party ready"):'');questPeekStatus.dataset.status=squad.status;
+  questCurrent.textContent=current?current.name+' · '+current.role+ui('を担当中', " (current task)"):idle?ui('仲間と村を歩いています', "Exploring the village together"):squad.status==='completed'?ui('作業を終えて帰還しました', "The party has finished work and returned"):squad.status==='paused'?ui('作業を中断しています', "Work is paused"):squad.status==='waiting'?ui('この依頼の開始を待っています', "Waiting to start this quest"):squad.status==='uncertain'?ui('保存された記録を確認できます', "Saved records are available"):squad.status==='gathering'?ui('依頼に向けて仲間が集合しています', "The party is gathering for the quest"):squad.status==='cancelled'?ui('この依頼は終了しています', "This quest has ended"):squad.status==='running'?ui('依頼を進めています', "Quest in progress"):ui('作業の状態を確認できます', "Check the current work status");
+  questProgress.hidden=!progress;questProgress.textContent=progress?ui('工程 ', "Steps: ")+progress.completed+' / '+progress.total+ui(' 完了', " complete"):'';
+  questTask.textContent=info.description|| (idle?ui('酒場で仲間を編成し、お城や依頼ノートから仕事を受けられます。', "Choose your party at the tavern and take quests at the castle or in the quest log."):'');questTask.hidden=!questTask.textContent;
+  questResult.textContent=info.error?ui('確認が必要です: ', "Needs attention: ")+info.error:info.summary?ui('成果: ', "Result: ")+info.summary:'';questResult.hidden=!questResult.textContent;questResult.dataset.error=String(Boolean(info.error));
   questNote.textContent=info.note||'';questNote.hidden=!questNote.textContent;
-  questCriteria.textContent=info.criteria?'達成条件: '+info.criteria:'';questCriteria.hidden=!questCriteria.textContent;questArtifact.textContent=info.artifact?'残す成果: '+info.artifact:'';questArtifact.hidden=!questArtifact.textContent;
+  questCriteria.textContent=info.criteria?ui('達成条件: ', "Success criteria: ")+info.criteria:'';questCriteria.hidden=!questCriteria.textContent;questArtifact.textContent=info.artifact?ui('残す成果: ', "Deliverable: ")+info.artifact:'';questArtifact.hidden=!questArtifact.textContent;
   const focused=questPeekMembers.contains(document.activeElement)?document.activeElement.dataset.villageMember:null;
-  const stepLabels={pending:'これから',running:'担当中',completed:'完了',interrupted:'中断',failed:'失敗',blocked:'確認待ち',uncertain:'記録の確認待ち',paused:'中断'};
-  questPeekMembers.replaceChildren(...squad.members.map(member=>{const step=steps.find(item=>item.conversationId===member.conversationId),status=step?.status||'unknown';const row=button('',undefined,()=>{closeQuestPeek(false);onOpenChat?.(member.conversationId);},'village-quest-member');row.dataset.villageMember=member.conversationId;row.dataset.status=status;row.setAttribute('aria-label',member.name+'の会話を開く');row.append(make('strong',member.name),make('span',step?.role||member.role),make('small',stepLabels[status]||'会話を見る →'));return row;}));
+  const stepLabels={pending:ui('これから', "Upcoming"),running:ui('担当中', "In progress"),completed:ui('完了', "Complete"),interrupted:ui('中断', "Interrupted"),failed:ui('失敗', "Failed"),blocked:ui('確認待ち', "Needs review"),uncertain:ui('記録の確認待ち', "Awaiting review"),paused:ui('中断', "Interrupted")};
+  questPeekMembers.replaceChildren(...squad.members.map(member=>{const step=steps.find(item=>item.conversationId===member.conversationId),status=step?.status||'unknown';const row=button('',undefined,()=>{closeQuestPeek(false);onOpenChat?.(member.conversationId);},'village-quest-member');row.dataset.villageMember=member.conversationId;row.dataset.status=status;row.setAttribute('aria-label',member.name+ui('の会話を開く', " · open conversation"));row.append(make('strong',member.name),make('span',step?.role||member.role),make('small',stepLabels[status]||ui('会話を見る →', "View conversation →")));return row;}));
   if(focused)Array.from(questPeekMembers.children).find(item=>item.dataset.villageMember===focused)?.focus({preventScroll:true});
-  const conversationId=current?.conversationId||squad.targetConversationId;questChat.dataset.conversationId=conversationId||'';questChat.hidden=!conversationId;questChat.textContent=current?'担当の会話':'関連する会話';
-  questOpen.textContent=idle?'酒場で編成を見る':'依頼の詳細';
+  const conversationId=current?.conversationId||squad.targetConversationId;questChat.dataset.conversationId=conversationId||'';questChat.hidden=!conversationId;questChat.textContent=current?ui('担当の会話', "Worker chat"):ui('関連する会話', "Related chat");
+  questOpen.textContent=idle?ui('酒場で編成を見る', "View party at tavern"):ui('依頼の詳細', "Quest details");
  }
  function renderActivities(){
-  const stats=activities.stats;questSummary.textContent=stats.total?stats.total+'件の依頼 · 進行中 '+stats.running+'隊 · 待機 '+stats.waiting+'隊 · 帰還 '+stats.returned+'隊':'まだ依頼の記録はありません。酒場で仲間を編成できます。';
-  questButton.setAttribute('aria-label','依頼とパーティを見る · '+(stats.total||0)+'件');root.dataset.questCount=String(stats.total||0);
-  questList.replaceChildren(...inspectionSquads().map(squad=>{const row=button('',undefined,()=>selectSquad(squad.id),'village-quest-row');row.dataset.villageQuestRow=squad.id;row.dataset.status=squad.status;row.append(make('strong',squad.partyName||squad.name||'依頼のパーティ'),make('span',squad.title||'次の冒険を待っています'),make('small',squad.statusLabel+(squad.details?.current?' · '+squad.details.current.role+'を担当中':'')));return row;}));renderQuestPeek();
+  const stats=activities.stats;questSummary.textContent=stats.total?stats.total+ui('件の依頼 · 進行中 ', " quests · working: ")+stats.running+ui('隊 · 待機 ', " · waiting: ")+stats.waiting+ui('隊 · 帰還 ', " · returned: ")+stats.returned+ui('隊', " "):ui('まだ依頼の記録はありません。酒場で仲間を編成できます。', "No quest records yet. Form a party at the tavern.");
+  questButton.setAttribute('aria-label',ui('依頼とパーティを見る · ', "View quests and parties · ")+(stats.total||0)+ui('件', " quests"));root.dataset.questCount=String(stats.total||0);
+  questList.replaceChildren(...inspectionSquads().map(squad=>{const row=button('',undefined,()=>selectSquad(squad.id),'village-quest-row');row.dataset.villageQuestRow=squad.id;row.dataset.status=squad.status;row.append(make('strong',squad.partyName||squad.name||ui('依頼のパーティ', "Quest party")),make('span',squad.title||ui('次の冒険を待っています', "Waiting for the next adventure")),make('small',squad.statusLabel+(squad.details?.current?' · '+squad.details.current.role+ui('を担当中', " (current task)"):'')));return row;}));renderQuestPeek();
  }
  function syncQuestSites(){
   const groups=[...visibleSquads(),...(activities.protagonist&&!activities.protagonist.activityId?[activities.protagonist]:[])];
@@ -540,8 +541,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   questSites.replaceChildren(...groups.flatMap(squad=>{
    const control=button('',undefined,()=>selectSquad(squad.id),'village-quest-flag');
    const controlled=squad.id===getControlledSquadId(),home=squad.id==='protagonist';
-   const status=home?'自分の隊':squad.statusLabel;
-   const label=controlled?(home?'操作中':'操作中 · '+status):status;
+   const status=home?ui('自分の隊', "My party"):squad.statusLabel;
+   const label=controlled?(home?ui('操作中', "In control"):ui('操作中 · ', "In control · ")+status):status;
    control.dataset.villageQuest=squad.id;control.dataset.status=squad.status;control.dataset.motion=squad.motion;control.dataset.controlled=String(controlled);
    control.title=[squad.partyName||squad.name,squad.title,label].filter(Boolean).join(' · ');
    control.setAttribute('aria-label',control.title);control.append(make('span',label));
@@ -550,9 +551,9 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
    if(!invite||dismissedIdeas.has(invite.dismissal))return [control];
    const idea=button('',undefined,()=>{selectSquad(squad.id,{focus:false,idea:invite});(ideaStart.disabled?ideaDismiss:ideaStart).focus({preventScroll:true});},'village-resident-idea');
    idea.dataset.villageIdea=squad.id;idea.dataset.speaker=invite.leaderId;
-   idea.title=invite.speaker+'の提案「'+invite.title+'」';idea.setAttribute('aria-label',idea.title);
+   idea.title=invite.speaker+ui('の提案「', " suggests: “")+invite.title+'」';idea.setAttribute('aria-label',idea.title);
    const mark=make('b','!');mark.setAttribute('aria-hidden','true');
-   idea.append(mark,make('small','ちょっと、相談していい？'));
+   idea.append(mark,make('small',ui('ちょっと、相談していい？', "Can we talk for a moment?")));
    idea.onfocus=control.onfocus;
    return [control,idea];
   }));
@@ -560,17 +561,17 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  function renderDirectory(){
   const query=normalized(search.value),matches=projection.residents.filter(item=>!query||normalized(item.name+' '+item.title).includes(query));
   const focused=residentList.contains(document.activeElement)?document.activeElement.dataset.villageResident:null;
-  directoryCount.textContent=query?matches.length+'人が見つかりました':'過去の会話がある '+matches.length+'人の村人';
+  directoryCount.textContent=query?matches.length+ui('人が見つかりました', " residents found"):ui('過去の会話がある ', "Conversations from ")+matches.length+ui('人の村人', " villagers");
   const projectById=new Map(projection.projects.map(item=>[item.conversationId,item]));
   residentList.replaceChildren(...matches.slice(0,listLimit).map(resident=>{
-   const row=make('div',undefined,'village-resident-row');row.setAttribute('role','listitem');const control=button('',undefined,()=>openSpeech(resident.conversationId),'village-resident');control.dataset.villageResident=resident.conversationId;control.dataset.villageTalk=resident.conversationId;control.setAttribute('aria-label',resident.name+'に話しかける');const nearby=projectFor(resident);control.dataset.gatheringProject=nearby?.conversationId||'';
+   const row=make('div',undefined,'village-resident-row');row.setAttribute('role','listitem');const control=button('',undefined,()=>openSpeech(resident.conversationId),'village-resident');control.dataset.villageResident=resident.conversationId;control.dataset.villageTalk=resident.conversationId;control.setAttribute('aria-label',resident.name+ui('に話しかける', " · talk"));const nearby=projectFor(resident);control.dataset.gatheringProject=nearby?.conversationId||'';
    const portrait=make('span',undefined,'village-resident-portrait');portrait.style.setProperty('--villager-shirt',['#c6ac6a','#8ab2b3','#b893a9','#afbc77'][resident.seed%4]);portrait.setAttribute('aria-hidden','true');
-   const copy=make('span',undefined,'village-resident-copy');copy.append(make('strong',resident.name),make('span',resident.title));const project=projectById.get(resident.conversationId);copy.append(make('small',project?project.stageLabel+' · '+(project.source==='manual'?'自分で指定':'会話から推定'):nearby?'「'+nearby.title+'」のそば':resident.messageCount+'件のメッセージ'));
-   const delegates=delegationSummary(resident.delegation);if(delegates){copy.append(make('small',delegates,'village-native-delegates'));control.setAttribute('aria-label',resident.name+'に話しかける · '+delegates);row.dataset.nativeSubagents=String(resident.delegation.total);}
-   control.append(portrait,copy);const records=button('','住民の記録',()=>openResident(resident.conversationId),'village-resident-talk');records.dataset.villageRecord=resident.conversationId;records.setAttribute('aria-label',resident.name+'の住民の記録を開く');row.append(control,records);return row;
+   const copy=make('span',undefined,'village-resident-copy');copy.append(make('strong',resident.name),make('span',resident.title));const project=projectById.get(resident.conversationId);copy.append(make('small',project?project.stageLabel+' · '+(project.source==='manual'?ui('自分で指定', "Manually set"):ui('会話から推定', "Estimated")):nearby?'「'+nearby.title+ui('」のそば', "” nearby"):resident.messageCount+ui('件のメッセージ', " messages")));
+   const delegates=delegationSummary(resident.delegation);if(delegates){copy.append(make('small',delegates,'village-native-delegates'));control.setAttribute('aria-label',resident.name+ui('に話しかける · ', " · talk · ")+delegates);row.dataset.nativeSubagents=String(resident.delegation.total);}
+   control.append(portrait,copy);const records=button('',ui('住民の記録', "Resident record"),()=>openResident(resident.conversationId),'village-resident-talk');records.dataset.villageRecord=resident.conversationId;records.setAttribute('aria-label',resident.name+ui('の住民の記録を開く', " · open resident record"));row.append(control,records);return row;
   }));
-  if(!matches.length)residentList.append(make('p',query?'見つかりませんでした。別の言葉で探してみてください。':'履歴を読み込むと、村人がここに並びます。','village-list-empty'));
-  more.hidden=matches.length<=listLimit;more.textContent='さらに'+Math.min(LIST_PAGE,Math.max(0,matches.length-listLimit))+'人を見る';
+  if(!matches.length)residentList.append(make('p',query?ui('見つかりませんでした。別の言葉で探してみてください。', "No matches. Try a different search."):ui('履歴を読み込むと、村人がここに並びます。', "Import conversation history to meet your villagers."),'village-list-empty'));
+  more.hidden=matches.length<=listLimit;more.textContent=ui('さらに', "Show ")+Math.min(LIST_PAGE,Math.max(0,matches.length-listLimit))+ui('人を見る', " more");
   if(focused)residentList.querySelectorAll('[data-village-resident]').forEach(item=>{if(item.dataset.villageResident===focused)item.focus({preventScroll:true});});
  }
  function residentPosition(resident){
@@ -603,13 +604,13 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(!points.length)return false;
   cancelTravel();closeSpeech(false);questPeek.hidden=true;directory.open=false;questDrawer.hidden=true;questButton.setAttribute('aria-expanded','false');
   const engine=new PartyTravel({...heroPoint},getControlledParty()?.members.length||1),version=travelVersion;
-  travel={place,walking:true,engine,follow:true,last:elapsed,label:place.shortName+'へ向かっています'};arrivalMembers=null;
-  root.dataset.travelling=id;journey.textContent=place.shortName+'へ向かっています';journey.hidden=false;automaticZoom=false;
+  travel={place,walking:true,engine,follow:true,last:elapsed,label:place.shortName+ui('へ向かっています', " · on the way")};arrivalMembers=null;
+  root.dataset.travelling=id;journey.textContent=place.shortName+ui('へ向かっています', " · on the way");journey.hidden=false;automaticZoom=false;
   engine.go(points,()=>{
    if(version!==travelVersion)return;
    holdTravelPosition(engine);queueViewSave();
    if(travel?.follow)camera=travelCamera(place.entrance);
-   root.dataset.travelling='';root.dataset.arrivedPlace=place.id;journey.textContent=place.shortName+'に着きました';travel=null;
+   root.dataset.travelling='';root.dataset.arrivedPlace=place.id;journey.textContent=place.shortName+ui('に着きました', " · arrived");travel=null;
    queueMicrotask(()=>{if(version===travelVersion&&visible)onNavigate?.(place.id);});
   });
   if(reducedMotion())engine.advance(Infinity);
@@ -631,7 +632,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(travel!==trip){follow.hidden=true;root.dataset.cameraFollowing='false';delete root.dataset.travelRemainingSeconds;return;}
   if(trip.follow)camera=travelCamera(heroPoint);
   const remaining=Math.max(0,Math.ceil((trip.engine.length+(trip.engine.count-1)*18-trip.engine.progress)/90));root.dataset.travelRemainingSeconds=String(remaining);
-  if(trip.label){journey.textContent=trip.label+' · '+(locallyPaused?'一時停止中':'残り約'+remaining+'秒');journey.hidden=false;}
+  if(trip.label){journey.textContent=trip.label+' · '+(locallyPaused?ui('一時停止中', "Paused"):ui('残り約', "About ")+remaining+ui('秒', " seconds left"));journey.hidden=false;}
  }
  function movementObstacles(){
   return [...sceneBuildingObstacles(village3DScene({projects:projectSlots,population:projection.residents.length})),...(semanticLayout?.mountains||[])];
@@ -794,7 +795,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  // lastFrame below; the 1 s ceiling only prevents jumps after system sleep.
  function tick(now){frameId=0;if(!canAnimate()){syncAnimation();return;}const delta=lastFrame?Math.min(1000,Math.max(0,now-lastFrame)):0;lastFrame=now;elapsed+=delta;if(now-lastPaint>=32){lastPaint=now;draw();}frameId=requestAnimationFrame(tick);}
  function syncAnimation(){
-  const reduced=media.matches||document.body.dataset.motion==='reduced';pause.disabled=reduced;pause.textContent=reduced?'静かな表示':locallyPaused?'動きを再開':'動きを止める';pause.setAttribute('aria-pressed',String(locallyPaused||reduced));
+  const reduced=media.matches||document.body.dataset.motion==='reduced';pause.disabled=reduced;pause.textContent=reduced?ui('静かな表示', "Reduced motion"):locallyPaused?ui('動きを再開', "Resume motion"):ui('動きを止める', "Pause motion");pause.setAttribute('aria-pressed',String(locallyPaused||reduced));
   const active=canAnimate();root.dataset.animated=String(active);if(active&&!frameId){lastFrame=0;frameId=requestAnimationFrame(tick);}else if(!active&&frameId){cancelAnimationFrame(frameId);frameId=0;lastFrame=0;}if(!active)draw();
  }
  const mapTarget=target=>target===canvas||Boolean(target.closest?.('.village-building,.village-quest-flag,.village-place'));
@@ -835,7 +836,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   const score=person=>Math.abs(person.y-y)+Math.abs(Math.abs(person.x-heroPoint.x)-210)*.45;
   const person=locals.sort((a,b)=>score(a)-score(b))[0];
   if(!person)return;
-  const label=person.name+'へ移動中';
+  const label=person.name+ui('へ移動中', " · en route");
   neighborhoodContext.element.open=false;
   setInsetVisible(true);
   const walk=(x,atY,arrived)=>moveHero(x,atY,()=>queueMicrotask(arrived),{follow:true,label});
@@ -845,7 +846,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   });
  }
  if(demo&&new URLSearchParams(location.search).get('walk')==='resident'){
-  const watch=button('village-walk-sample','小道を歩く',walkToSampleResident);
+  const watch=button('village-walk-sample',ui('小道を歩く', "Walk the trail"),walkToSampleResident);
   previewNote.append(watch);
  }
  function dispose(){saveView();disposed=true;visible=false;inputFrame.cancel();endEncounter({redraw:false});clearTimeout(projectionTimer);if(frameId)cancelAnimationFrame(frameId);world3D?.destroy();observer.disconnect();insetObserver.disconnect();modalObserver.disconnect();media.removeEventListener('change',motionChanged);removeEventListener('chat-ui-motion',motionChanged);document.removeEventListener('visibilitychange',motionChanged);detail.remove();}

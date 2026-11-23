@@ -1,3 +1,4 @@
+import {ui} from "./interface-language.js";
 import {latestConversationExchange} from './conversation-details.js';
 import {mapTranscriptText} from './world-dialogue.js';
 
@@ -29,8 +30,8 @@ function dialogue(companion, resident, chat) {
   return {
     companionId: companion.conversationId, residentId: resident.conversationId,
     companionName, residentName,
-    question: '「' + topic + '」の' + (turn.label.includes('依頼') ? '依頼内容' : '続き') + 'を教えて。',
-    answer: turn.label + 'より「' + excerpt(turn.text, 82) + '」',
+    question: ui('「' + topic + '」の' + (turn.label.includes('依頼') ? '依頼内容' : '続き') + 'を教えて。', `Tell me about “${topic}”.`),
+    answer: ui(turn.label + 'より「' + excerpt(turn.text, 82) + '」', `${turn.label}: “${excerpt(turn.text, 82)}”`),
   };
 }
 
@@ -83,7 +84,7 @@ export function createAmbientNotice({frame, controls, getChat, readEnabled, save
   const notice = document.createElement('aside');
   notice.id = 'village-ambient';
   notice.hidden = true;
-  notice.setAttribute('aria-label', '仲間と村人の立ち話');
+  notice.setAttribute('aria-label', ui("仲間と村人の立ち話", "Companion conversation"));
   // Passers-by should never interrupt a screen reader or take input focus.
   notice.setAttribute('aria-live', 'off');
   const question = document.createElement('p'), answer = document.createElement('p');
@@ -92,7 +93,7 @@ export function createAmbientNotice({frame, controls, getChat, readEnabled, save
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.id = 'village-ambient-toggle';
-  toggle.textContent = '仲間の立ち話';
+  toggle.textContent = ui("仲間の立ち話", "Companions talking");
   toggle.setAttribute('aria-pressed', String(enabled));
   toggle.setAttribute('aria-controls', notice.id);
   toggle.onclick = () => {

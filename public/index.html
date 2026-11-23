@@ -44,6 +44,7 @@
     <span class="connect-mark" aria-hidden="true">✳</span>
     <div class="eyebrow">A2ACRAFT · TOPPY</div>
     <h1 id="connect-title">Connect</h1>
+    <select data-interface-language aria-label="Interface language / 表示言語"><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option></select>
     <p>AIとの会話・作業・成果を、街として見渡す。<br><small>Research Preview · 開発中</small></p>
     <div id="connect-practice-badge" class="practice-banner" hidden><strong>練習用の街</strong><span>通常の街とは別のデータを使います。<br>AIの処理には実際のChatGPT利用枠を使います。</span></div>
     <button id="start-connect" class="primary" disabled><span id="connect-spinner" class="pane-spinner" aria-hidden="true" hidden></span><span id="start-connect-label">Connect</span></button>
@@ -112,7 +113,7 @@
         </svg>
       </div>
       <nav id="town-navigation" aria-label="メインメニュー" hidden>
-        <div class="town-navigation-brand"><span class="app-identity" aria-label="A2ACraft by Toppy — 開発中"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 10-8 10-8-10Z"/><path d="m12 7 4 5-4 5-4-5Z"/></svg><span>A2ACraft</span></span><strong id="town-navigation-title" tabindex="-1">冒険</strong><span id="town-connection-status"></span></div>
+        <div class="town-navigation-brand"><span class="app-identity" aria-label="A2ACraft by Toppy — 開発中"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 10-8 10-8-10Z"/><path d="m12 7 4 5-4 5-4-5Z"/></svg><span>A2ACraft</span></span><strong id="town-navigation-title" tabindex="-1">冒険</strong><span id="town-connection-status"></span><select data-interface-language aria-label="Interface language / 表示言語"><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option></select></div>
         <div class="town-navigation-actions">
           <button id="adventure-home" type="button" class="outline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 5-2 6 2 5-2v14l-5 2-6-2-5 2Z"/><path d="M9 4v14m6-12v14"/></svg><span>冒険</span></button>
           <button id="adventure-town-nav" type="button" class="outline" aria-label="街と仲間"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/><path d="M2 21h20"/></svg><span>村</span></button>
@@ -344,6 +345,6 @@
   <button id="history-retry-save" class="outline" type="button" hidden>履歴の保存を再試行</button>
   <div id="history-list" class="history-list" aria-label="保存された会話"></div>
 </dialog>
-<script type="module" src="/app.js"></script>
+<script type="module" src="/interface-entry.js"></script>
 </body>
 </html>

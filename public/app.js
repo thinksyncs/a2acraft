@@ -1,3 +1,4 @@
+import {ui, interfaceLanguage} from './interface-language.js';
 import {initContextSharing} from './context-sharing.js';
 import {initAttachments} from './attachments.js';
 import {renderMessageMarkdown} from './message-markdown.js';
@@ -10,7 +11,7 @@ import {initTodos} from './todos.js';
 import {initMedia} from './media.js';
 import {initTown} from './town.js';
 import {initWorkspaceTabs,chatGroupsFor,groupForConversation} from './workspace-tabs.js';
-import {assignCharacterNames} from './character-names.js';
+import {assignCharacterNames, romanizeSampleName} from './character-names.js';
 import {initActivity} from './activity.js';
 import {initHistory} from './history.js';
 import {initConnectionReadiness} from './connection-readiness.js';
@@ -41,8 +42,8 @@ await mapStorage.initialize({desktop,demo,onError:error=>toast(error.message)});
 const desktopName = desktop?.isTauri ? 'Tauri' : 'Electron';
 const storeKey = demo ? 'chat-ui-demo' : 'chat-ui';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[character]));
-const statusLabels = {idle:'待機中', starting:'開始中', running:'実行中', stopping:'停止待ち', completed:'完了', cancelled:'停止', failed:'エラー'};
-let state = {connected:false, account:null, limits:null, models:[], policy:{ok:false, reason:'Codexに接続してください。'}};
+const statusLabels = {idle:ui('待機中', "Waiting"), starting:ui('開始中', "Starting"), running:ui('実行中', "Running"), stopping:ui('停止待ち', "Stopping"), completed:ui('完了', "Complete"), cancelled:ui('停止', "Stopped"), failed:ui('エラー', "Error")};
+let state = {connected:false, account:null, limits:null, models:[], policy:{ok:false, reason:ui('Codexに接続してください。', "Connect to Codex.")}};
 let chats = [], selected = null, layout = 1, drafts = {}, sendRequests = {}, view = 'town', steerPending = false, sendBlocked = true;
 const groupSelections=new Map();
 const pendingSends=new Set();
@@ -54,6 +55,9 @@ function nameDemoChats(rows){
   assignCharacterNames([...chats.filter(chat=>!rows.some(row=>row.id===chat.id)),...rows]);
   for(const chat of rows)demoCharacterNames[chat.id]=chat.characterName;
   try{localStorage.setItem(storeKey+'-character-names',JSON.stringify(demoCharacterNames));}catch{}
+  if (interfaceLanguage === 'en') for (const chat of rows) {
+    if (/^(?:demo[1-4]|village-demo-\d+)$/.test(chat.id)) chat.characterName = romanizeSampleName(chat.characterName);
+  }
   return rows;
 }
 let motionPreference = 'system', demoDelay, demoStream;
@@ -77,8 +81,8 @@ function showDraftSaveError(error){
     draftSaveNotice.append(draftSaveMessage,draftSaveRetry);$('#composer').before(draftSaveNotice);
   }
   draftSaveNotice.hidden=false;
-  draftSaveMessage.textContent=(desktopDraftReadError?'下書きの保存を止めています。':'下書きを保存できませんでした。')+error.message+' ';
-  draftSaveRetry.textContent=desktopDraftReadError?'下書きの読み込みを再試行':'下書きの保存を再試行';
+  draftSaveMessage.textContent=(desktopDraftReadError?ui('下書きの保存を止めています。', "Draft saving is paused."):ui('下書きを保存できませんでした。', "Could not save the draft."))+error.message+' ';
+  draftSaveRetry.textContent=desktopDraftReadError?ui('下書きの読み込みを再試行', "Retry loading drafts"):ui('下書きの保存を再試行', "Retry saving drafts");
 }
 const desktopDrafts=desktop&&!demo?createDraftPersistence({
   write:snapshot=>{if(desktopDraftReadError)throw desktopDraftReadError;return desktop.saveUiState(snapshot);},
@@ -86,7 +90,7 @@ const desktopDrafts=desktop&&!demo?createDraftPersistence({
     if(!draftSaveNotice)return;
     draftSaveNotice.hidden=!status.error&&!desktopDraftReadError;
     draftSaveRetry.disabled=status.saving||desktopDraftReloading;
-    draftSaveRetry.textContent=desktopDraftReloading?'読み込んでいます…':status.saving?'保存しています…':desktopDraftReadError?'下書きの読み込みを再試行':'下書きの保存を再試行';
+    draftSaveRetry.textContent=desktopDraftReloading?ui('読み込んでいます…', "Loading…"):status.saving?ui('保存しています…', "Saving…"):desktopDraftReadError?ui('下書きの読み込みを再試行', "Retry loading drafts"):ui('下書きの保存を再試行', "Retry saving drafts");
   },
   onError:showDraftSaveError
 }):null;
@@ -99,7 +103,7 @@ async function retryDesktopDrafts(){
     // No old fallback snapshot can race the recovered snapshot into the host.
     await desktopDrafts.flush().catch(()=>{});
     const saved=await desktop.getUiState();
-    if(!saved||saved.loadError)throw Error(saved?.loadError||'前回の下書きを読み込めませんでした。');
+    if(!saved||saved.loadError)throw Error(saved?.loadError||ui('前回の下書きを読み込めませんでした。', "Could not load previous drafts."));
     recoverSendDrafts(saved.sendRequests||{},chats,saved.drafts||{});
     const recovered=mergeRecoveredDrafts(saved,{drafts,sendRequests,selected,layout,motion:motionPreference});
     drafts=recovered.drafts;sendRequests=recovered.sendRequests;selected=recovered.selected;
@@ -107,7 +111,7 @@ async function retryDesktopDrafts(){
     $('#prompt').value=drafts[selected]||'';
     persist();await desktopDrafts.flush();renderChats();
   }catch(error){showDraftSaveError(error);}
-  finally{desktopDraftReloading=false;document.body.inert=wasInert;focused?.focus?.();if(draftSaveRetry){draftSaveRetry.disabled=false;draftSaveRetry.textContent=desktopDraftReadError?'下書きの読み込みを再試行':'下書きの保存を再試行';}}
+  finally{desktopDraftReloading=false;document.body.inert=wasInert;focused?.focus?.();if(draftSaveRetry){draftSaveRetry.disabled=false;draftSaveRetry.textContent=desktopDraftReadError?ui('下書きの読み込みを再試行', "Retry loading drafts"):ui('下書きの保存を再試行', "Retry saving drafts");}}
 }
 let closeFocus=null;
 desktop?.onBeforeClose?.(async closing=>{
@@ -187,19 +191,19 @@ const villageRoom = createWorldRoom({
   ...castleRecords,
 });
 function visitVillageFacility(place) {
-  const facility = {id: place, name: place === 'weapon' ? 'スキルの武器屋' : place === 'castle' ? '王城' : '旅立ちの酒場',
-    host: place === 'weapon' ? '武器屋の店主' : place === 'castle' ? '王様' : '酒場の主人'};
-  const label = place === 'weapon' ? '武器を選んで試着する' : place === 'castle' ? '依頼を書く' : '仲間と役割を編成する';
+  const facility = {id: place, name: place === 'weapon' ? ui('スキルの武器屋', "Skill shop") : place === 'castle' ? ui('王城', "Royal castle") : ui('旅立ちの酒場', "Wayfarers' Tavern"),
+    host: place === 'weapon' ? ui('武器屋の店主', "Shopkeeper") : place === 'castle' ? ui('王様', "King") : ui('酒場の主人', "Innkeeper")};
+  const label = place === 'weapon' ? ui('武器を選んで試着する', "Try a weapon") : place === 'castle' ? ui('依頼を書く', "Write a quest") : ui('仲間と役割を編成する', "Choose a party and roles");
   villageRoom.open(facility, village.getControlledParty()?.members.length || 1, (content, close) => {
     content.append(roomButton(label, () => { close(); openFacilityView(place); }, 'primary'));
   });
 }
 function villageState(){return villageSample?villageDemoActivityState(state):state;}
 function villageIdeaBlock(){
- if(boardActive()||['running','stopping','paused'].includes(state.party?.quest?.status)||state.workQuestPlanning||state.projects?.activeCount||chats.some(active))return '今の作業が終わったら始めよう。';
- if(!demo&&(serverUnavailable||!state.connected||state.account?.type!=='chatgpt'||state.login))return '開始するにはCodexに接続してください。';
- if(!state.policy?.ok)return state.policy?.reason||'現在は依頼を開始できません。';
- return $('#model').value?'':'使用するモデルを選んでください。';
+ if(boardActive()||['running','stopping','paused'].includes(state.party?.quest?.status)||state.workQuestPlanning||state.projects?.activeCount||chats.some(active))return ui('今の作業が終わったら始めよう。', "Let's start when the current work is done.");
+ if(!demo&&(serverUnavailable||!state.connected||state.account?.type!=='chatgpt'||state.login))return ui('開始するにはCodexに接続してください。', "Connect to Codex to start.");
+ if(!state.policy?.ok)return state.policy?.reason||ui('現在は依頼を開始できません。', "This quest cannot start right now.");
+ return $('#model').value?'':ui('使用するモデルを選んでください。', "Select a model.");
 }
 async function acceptVillageIdea(invite){
  const blocked=villageIdeaBlock();if(blocked)throw Error(blocked);
@@ -232,7 +236,7 @@ const residentConversation=createResidentConversation({host:$('#chat-view'),onPa
 function currentResidentParty(){
  if(activeEncounter?.source!=='village')return null;
  if(activeEncounter.squadId===undefined)return villageState().party?.party;
- if(village.getControlledSquadId()!==activeEncounter.squadId)throw Error('操作する隊が変わりました。地図でもう一度話しかけてください。');
+ if(village.getControlledSquadId()!==activeEncounter.squadId)throw Error(ui('操作する隊が変わりました。地図でもう一度話しかけてください。', "The active party changed. Talk to them on the map again."));
  return residentSquadParty(activeEncounter.squadId,villageState(),chats);
 }
 function residentVisitForChat(id){return activeEncounter?.conversationId===id?residentVisitFor(activeEncounter,id,currentResidentParty()):null;}
@@ -248,7 +252,7 @@ function endResidentConversation(){
   activeEncounter=null;residentConversation.show(null);queueConversationRender();
 }
 function openResidentChat(id,encounter){
-  if(!chats.some(chat=>chat.id===id)){toast('この会話を開けませんでした。');return;}
+  if(!chats.some(chat=>chat.id===id)){toast(ui('この会話を開けませんでした。', "Could not open this conversation."));return;}
   if(activeEncounter?.source!==encounter?.source||activeEncounter?.conversationId!==id)endResidentConversation();
   const focusChat=()=>{if(!$('#composer').hidden)$('#prompt').focus({preventScroll:true});scrollChatLatest(id);};
   if(!encounter?.scene){select(id,'chat',focusChat);return;}
@@ -284,11 +288,11 @@ function openActivitySource(source){
  const target=source.type==='schedule'?source.target:source;
  if(!target||target.type==='none')return switchView('schedules');
  const id=target.id||target.conversationId||target.todoId||target.questId;
- if(target.type==='chat'){if(!chats.some(chat=>chat.id===id))return toast('元の会話が見つかりません。');return select(id);}
- if(target.type==='todo'){if(!state.todos?.items.some(item=>item.id===id))return toast('元のTODOが見つかりません。');return switchView('todos',()=>todoView.open(id));}
+ if(target.type==='chat'){if(!chats.some(chat=>chat.id===id))return toast(ui('元の会話が見つかりません。', "The original conversation was not found."));return select(id);}
+ if(target.type==='todo'){if(!state.todos?.items.some(item=>item.id===id))return toast(ui('元のTODOが見つかりません。', "The original task was not found."));return switchView('todos',()=>todoView.open(id));}
  if(target.type==='party'){
   if(source.todoId&&state.todos?.items.some(item=>item.id===source.todoId))return switchView('todos',()=>todoView.open(source.todoId));
-  if(id&&state.party?.quest?.id!==id)toast('過去のクエストの通知です。現在保存されている冒険の記録を開きます。');
+  if(id&&state.party?.quest?.id!==id)toast(ui('過去のクエストの通知です。現在保存されている冒険の記録を開きます。', "This notification is from a past quest. Opening the saved adventure log."));
   return switchView('tavern');
  }
  switchView('schedules');
@@ -299,7 +303,7 @@ function openVillageQuest(activity){
  if(activity.todoId&&state.todos?.items.some(item=>item.id===activity.todoId))return switchView('todos',()=>todoView.open(activity.todoId));
  if(activity.questId&&state.party?.quest?.id===activity.questId||!activity.questId&&!activity.todoId)return switchView('tavern');
  if(activity.targetConversationId&&chats.some(chat=>chat.id===activity.targetConversationId))return select(activity.targetConversationId,'chat',()=>panels.get(activity.targetConversationId)?.element.focus({preventScroll:true}));
- toast('この依頼の元の記録が見つかりません。');
+ toast(ui('この依頼の元の記録が見つかりません。', "The original record for this quest was not found."));
 }
 function currentChatGroup(){return groupForConversation(state.chatGroups,chats,selected)||chatGroupsFor(state.chatGroups,chats)[0];}
 function chooseChatGroup(group){
@@ -313,7 +317,7 @@ async function addChatGroup(){
   if(demo){
     const groups=chatGroupsFor(state.chatGroups,chats),id=crypto.randomUUID();
     const conversations=nameDemoChats(Array.from({length:4},(_,index)=>({id:crypto.randomUUID(),title:`チャット ${groups.length+1} · ${index+1}`,status:'idle',messages:[]})));
-    const group={id,title:'チャット '+(groups.length+1),conversationIds:conversations.map(chat=>chat.id)};
+    const group={id,title:ui('チャット ', "Chat ")+(groups.length+1),conversationIds:conversations.map(chat=>chat.id)};
     result={group,conversations,chatGroups:{version:1,revision:(state.chatGroups?.revision||0)+1,items:[...groups,group]}};
   }else result=await api('chat-groups');
   for(const chat of result.conversations)if(!chats.some(item=>item.id===chat.id))chats.push(chat);
@@ -339,7 +343,7 @@ function applyAdventureState(value){
 function updateAdventureReturn(){
   const button=$('#party-world-return');
   button.hidden=!state.adventure?.active&&!state.adventure?.candidate;
-  button.textContent=state.adventure?.candidate?'世界地図で成果を確認 →':'世界地図へ戻る →';
+  button.textContent=state.adventure?.candidate?ui('世界地図で成果を確認 →', "View the results on the world map →"):ui('世界地図へ戻る →', "Return to the world map →");
 }
 function townSection(section){
   currentTownSection=section;
@@ -353,8 +357,8 @@ function townSection(section){
   updateAppNavigation();
 }
 function updateAppNavigation(){
-  const titles={chat:'会話',tavern:'仲間',equipment:'装備',castle:'依頼',terminal:'ターミナル',usage:'利用状況',settings:'設定',todos:'依頼ノート',image:'画像と資料',backlog:'Backlog',teams:'Teams',inbox:'お知らせ',reports:'日報',schedules:'予約'};
-  $('#town-navigation-title').textContent=view==='town'?(currentTownSection==='projects'?'開発の街':currentTownSection==='town'?'村':'冒険'):(titles[view]||'旅人の街');
+  const titles={chat:ui('会話', "Chat"),tavern:ui('仲間', "Party"),equipment:ui('装備', "Equipment"),castle:ui('依頼', "Quests"),terminal:ui('ターミナル', "Terminal"),usage:ui('利用状況', "Usage"),settings:ui('設定', "Settings"),todos:ui('依頼ノート', "Quest log"),image:ui('画像と資料', "Images and files"),backlog:'Backlog',teams:'Teams',inbox:ui('お知らせ', "Inbox"),reports:ui('日報', "Daily log"),schedules:ui('予約', "Schedule")};
+  $('#town-navigation-title').textContent=view==='town'?(currentTownSection==='projects'?ui('開発の街', "Project town"):currentTownSection==='town'?ui('村', "Village"):ui('冒険', "Adventure")):(titles[view]||ui('旅人の街', "Wayfarers' town"));
   for(const [id,current]of [['town-nav-tavern',view==='tavern'],['town-nav-chat',view==='chat'],['town-tools-toggle',!['town','tavern','chat'].includes(view)]]){
     const node=$('#'+id);if(current)node.setAttribute('aria-current','page');else node.removeAttribute('aria-current');
   }
@@ -384,7 +388,7 @@ function toast(message) {
 async function api(route, data = {}) {
   const response = await fetch('/api/' + route, {method:'POST', headers:{'Content-Type':'application/json', 'X-Chat-UI':'1'}, body:JSON.stringify(data)});
   const result = await response.json();
-  if (!response.ok) throw Error(result.error || '操作に失敗しました。');
+  if (!response.ok) throw Error(result.error || ui('操作に失敗しました。', "The operation failed."));
   return result;
 }
 function loginUrl() {
@@ -395,10 +399,10 @@ function loginUrl() {
   return null;
 }
 async function openTeamsExternal(value){
- if(demo)throw Error('デモではMicrosoftの認証画面やTeamsを開きません。');
- let url;try{url=new URL(value);}catch{throw Error('Teamsのリンクを確認できません。');}
+ if(demo)throw Error(ui('デモではMicrosoftの認証画面やTeamsを開きません。', "Microsoft sign-in and Teams are unavailable in the demo."));
+ let url;try{url=new URL(value);}catch{throw Error(ui('Teamsのリンクを確認できません。', "Could not verify the Teams link."));}
  const device=url.href==='https://microsoft.com/devicelogin',teams=url.hostname==='teams.microsoft.com'&&url.pathname.startsWith('/l/');
- if(url.protocol!=='https:'||url.username||url.password||url.port||url.href.length>6000||(!device&&!teams))throw Error('Microsoftの接続画面またはTeamsのメッセージリンクだけを開けます。');
+ if(url.protocol!=='https:'||url.username||url.password||url.port||url.href.length>6000||(!device&&!teams))throw Error(ui('Microsoftの接続画面またはTeamsのメッセージリンクだけを開けます。', "Only Microsoft sign-in and Teams message links can be opened."));
  if(desktop)await desktop.openExternal(url.href);else window.open(url.href,'_blank','noopener,noreferrer');
 }
 function practiceMode(){return desktop?.isTauri===true&&desktop.practice===true&&state.practice===true;}
@@ -417,8 +421,8 @@ function updateConnectionScreen() {
   $('#open-offline').disabled = booting || connectionBusy;
   $('#connect-spinner').hidden = !(booting || connectionBusy || waiting);
   $('#connect-screen').setAttribute('aria-busy', String(booting || connectionBusy));
-  setText('#start-connect-label', booting ? '準備中…' : connectionBusy ? '接続中…' : waiting ? 'ログインをやり直す' : error || connectionRequested ? '再接続' : 'Connect');
-  const status = booting ? '保存した街の状態を読み込んでいます…' : connectionBusy ? 'Codexへの接続・ログイン状態を確認しています…' : waiting ? 'ブラウザでログインを完了してください。完了後にメイン画面へ進みます。' : '';
+  setText('#start-connect-label', booting ? ui('準備中…', "Preparing…") : connectionBusy ? ui('接続中…', "Connecting…") : waiting ? ui('ログインをやり直す', "Sign in again") : error || connectionRequested ? ui('再接続', "Reconnect") : 'Connect');
+  const status = booting ? ui('保存した街の状態を読み込んでいます…', "Loading your saved town…") : connectionBusy ? ui('Codexへの接続・ログイン状態を確認しています…', "Checking your Codex connection and sign-in…") : waiting ? ui('ブラウザでログインを完了してください。完了後にメイン画面へ進みます。', "Complete sign-in in your browser to continue.") : '';
   setText('#connect-status', status); $('#connect-status').hidden = !status;
   setText('#connect-error', error); $('#connect-error').hidden = !error;
   const link = $('#connect-login-link'); link.hidden = !url || serverUnavailable;
@@ -459,14 +463,14 @@ async function openTerminal(restart = false) {
   if (terminalStarted && !restart) { fitTerminal(); terminal?.focus(); return; }
   terminalOpening = (async () => {
     $('#terminal-start').disabled = true;
-    terminalStatus('起動中…');
+    terminalStatus(ui('起動中…', "Starting…"));
     try {
       if (!terminal) {
         const [{Terminal}, {FitAddon}] = await Promise.all([import('/vendor/xterm.mjs'), import('/vendor/addon-fit.mjs')]);
         terminal = new Terminal({cursorBlink:true, fontFamily:'"Share Tech Mono", monospace', fontSize:14, scrollback:3000, screenReaderMode:true, theme:{background:'#090f17',foreground:'#c6e9e5',cursor:'#a5fff1',selectionBackground:'#416b7c80'}});
         terminalFit = new FitAddon(); terminal.loadAddon(terminalFit);
         terminal.open($('#terminal-container'));
-        terminal.textarea.setAttribute('aria-label', 'ターミナル入力');
+        terminal.textarea.setAttribute('aria-label', ui('ターミナル入力', "Terminal input"));
         terminal.onData(writeTerminal);
         terminal.onResize(({cols,rows}) => {
           clearTimeout(terminalResizeTimer);
@@ -484,18 +488,18 @@ async function openTerminal(restart = false) {
       const stream = terminalStream;
       stream.addEventListener('open', () => terminalStatus(session.shell + ' · ' + session.cwd, true));
       stream.addEventListener('output', event => terminal.write(JSON.parse(event.data).data));
-      stream.addEventListener('gap', () => terminal.writeln('\r\n[再接続前の古い出力を省略しました]'));
+      stream.addEventListener('gap', () => terminal.writeln(ui('\r\n[再接続前の古い出力を省略しました]', "\r\n[Older output omitted after reconnect]")));
       stream.addEventListener('exit', event => {
         const result = JSON.parse(event.data); session.ended = true; stream.close();
-        terminal.writeln('\r\n[シェル終了: ' + result.exitCode + ']'); terminalStatus('終了 · 新しいシェルで再開できます');
+        terminal.writeln(ui('\r\n[シェル終了: ', "\r\n[Shell exited: ") + result.exitCode + ']'); terminalStatus(ui('終了 · 新しいシェルで再開できます', "Exited · start a new shell to continue"));
       });
       stream.onerror = () => {
-        if (stream.readyState === EventSource.CLOSED) { session.ended = true; terminalStatus('接続終了 · 新しいシェルで再開できます'); }
-        else terminalStatus('ターミナルに再接続中…');
+        if (stream.readyState === EventSource.CLOSED) { session.ended = true; terminalStatus(ui('接続終了 · 新しいシェルで再開できます', "Disconnected · start a new shell to continue")); }
+        else terminalStatus(ui('ターミナルに再接続中…', "Reconnecting to terminal…"));
       };
       terminalStatus(session.shell + ' · ' + session.cwd, true);
       terminal.focus();
-    } catch (error) { terminalStatus('起動失敗: ' + error.message); throw error; }
+    } catch (error) { terminalStatus(ui('起動失敗: ', "Could not start: ") + error.message); throw error; }
     finally { $('#terminal-start').disabled = false; }
   })();
   try { await terminalOpening; } finally { terminalOpening = null; }
@@ -506,7 +510,7 @@ async function closeTerminal() {
   terminalSession = null;
   clearTimeout(terminalResizeTimer);
   if (session) await api('terminal/close',{id:session.id});
-  terminalStatus('終了 · 新しいシェルで再開できます');
+  terminalStatus(ui('終了 · 新しいシェルで再開できます', "Exited · start a new shell to continue"));
 }
 $('#terminal-start').onclick = () => openTerminal(true).catch(error => toast(error.message));
 $('#terminal-interrupt').onclick = () => { writeTerminal('\u0003'); terminal?.focus(); };
@@ -596,8 +600,8 @@ function quotaHtml() {
   for (const bucket of buckets()) for (const [index, window] of [bucket.primary, bucket.secondary].entries()) if (window) {
     const valid = Number.isFinite(window.usedPercent) && window.usedPercent >= 0 && window.usedPercent <= 100;
     const left = valid ? Math.round(100 - window.usedPercent) : null;
-    const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '未取得';
-    output += `<div class="quota-window"><div class="quota-label"><span>${esc(windowLabel(window,index ? '追加枠' : '利用枠'))}</span><strong>${left === null ? '—' : left + '%'} <small>残り</small></strong></div><div class="bar"><div class="fill ${left !== null && left <= 20 ? 'warn' : ''}" style="width:${left || 0}%"></div></div><div class="quota-reset">${esc(bucket.limitName || bucket.limitId || 'Codex')} · ${esc(reset)} リセット</div></div>`;
+    const reset = window.resetsAt ? new Date(window.resetsAt * 1000).toLocaleString('ja-JP', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ui('未取得', "Unavailable");
+    output += `<div class="quota-window"><div class="quota-label"><span>${esc(windowLabel(window,index ? ui('追加枠', "Additional quota") : ui('利用枠', "Quota")))}</span><strong>${left === null ? '—' : left + '%'} <small>残り</small></strong></div><div class="bar"><div class="fill ${left !== null && left <= 20 ? 'warn' : ''}" style="width:${left || 0}%"></div></div><div class="quota-reset">${esc(bucket.limitName || bucket.limitId || 'Codex')} · ${esc(reset)} リセット</div></div>`;
   }
   return output || '<div class="quota-window"><div class="quota-label"><span>利用枠</span><strong>— <small>未取得</small></strong></div><div class="bar"></div><div class="quota-reset">接続後に実際の残量を表示します</div></div>';
 }
@@ -611,23 +615,23 @@ function updateState() {
   workspaceTabs.render();
   $('#quota-windows').innerHTML = quotaHtml();
   $('#usage-detail').innerHTML = '<div class="quota-windows">' + quotaHtml() + '</div>';
-  setText('#plan-caption', state.account?.type === 'chatgpt' ? (state.account.planType || 'ChatGPT').toUpperCase() + ' · ' + (demo ? 'SAMPLE' : 'CONNECTED') : 'ChatGPTログイン待ち');
+  setText('#plan-caption', state.account?.type === 'chatgpt' ? (state.account.planType || 'ChatGPT').toUpperCase() + ' · ' + (demo ? 'SAMPLE' : 'CONNECTED') : ui('ChatGPTログイン待ち', "Waiting for ChatGPT sign-in"));
   $('#connection-dot').classList.toggle('mint', state.connected);
   setText('#connection-text', demo ? 'DEMO MODE' : state.connected ? 'APP SERVER ONLINE' : 'DISCONNECTED');
-  setText('#quota-updated', state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + ' 更新' : '未取得');
+  setText('#quota-updated', state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + ui(' 更新', " updated") : ui('未取得', "Unavailable"));
   const offline=offlineBrowsing&&!demo&&(!state.connected||state.account?.type!=='chatgpt');
   const policyReason=!state.policy?.ok?state.policy?.reason||'':'';
   // Only routine sign-in guidance becomes a chip. Unknown policy failures,
   // persistence failures and runtime errors must retain their full notice.
-  const routineSignIn=['','Codexに接続してください。','ChatGPTアカウントでログインしてください。APIキー接続は利用できません。'].includes(policyReason);
+  const routineSignIn=['',ui('Codexに接続してください。', "Connect to Codex."),ui('ChatGPTアカウントでログインしてください。APIキー接続は利用できません。', "Sign in with your ChatGPT account. API key connections are unavailable.")].includes(policyReason);
   const blockingNotice=state.persistenceError||state.error||(!routineSignIn?policyReason:'');
   $('#chat-connect').hidden=!offline;
   $('#notice').dataset.kind=blockingNotice?'error':offline?'offline':'policy';
-  setText('#notice',blockingNotice||(offline?'Codexは未接続です。送信するにはCodexに接続してください。':policyReason));
+  setText('#notice',blockingNotice||(offline?ui('Codexは未接続です。送信するにはCodexに接続してください。', "Codex is offline. Connect to send a message."):policyReason));
   history.render();
-  setText('#connect-btn', demo ? 'DEMO ONLINE' : state.connected ? (state.account?.type === 'chatgpt' ? 'CODEX ONLINE ✓' : 'ChatGPTでログイン ↗') : 'Codexに接続 ↗');
-  setText('#auth-pill', state.account?.type === 'chatgpt' ? 'ChatGPT認証済み' : state.connected ? '未ログイン' : '未接続');
-  setText('#account-label', state.account?.type === 'chatgpt' ? (state.account.email || 'ChatGPTアカウント') + ' · ' + (state.account.planType || '') : 'アカウント未接続');
+  setText('#connect-btn', demo ? 'DEMO ONLINE' : state.connected ? (state.account?.type === 'chatgpt' ? 'CODEX ONLINE ✓' : ui('ChatGPTでログイン ↗', "Sign in to ChatGPT ↗")) : ui('Codexに接続 ↗', "Connect to Codex ↗"));
+  setText('#auth-pill', state.account?.type === 'chatgpt' ? ui('ChatGPT認証済み', "Signed in to ChatGPT") : state.connected ? ui('未ログイン', "Signed out") : ui('未接続', "Offline"));
+  setText('#account-label', state.account?.type === 'chatgpt' ? (state.account.email || ui('ChatGPTアカウント', "ChatGPT account")) + ' · ' + (state.account.planType || '') : ui('アカウント未接続', "No account connected"));
   $('#logout-btn').disabled = !state.account || chats.some(active);
   $('#login-btn').disabled = chats.some(active);
   const oldModel = $('#model').value, models = state.models || [];
@@ -643,7 +647,7 @@ function updateState() {
 function updateEfforts() {
   const oldEffort = $('#effort').value, model = state.models.find(model => model.model === $('#model').value);
   const choices = model?.supportedReasoningEfforts || [{reasoningEffort:'medium'}];
-  const names = {none:'なし', minimal:'最小', low:'軽め', medium:'標準', high:'深め', xhigh:'最大'};
+  const names = {none:ui('なし', "None"), minimal:ui('最小', "Minimal"), low:ui('軽め', "Low"), medium:ui('標準', "Standard"), high:ui('深め', "High"), xhigh:ui('最大', "Maximum")};
   $('#effort').innerHTML = choices.map(choice => `<option value="${esc(choice.reasoningEffort)}">${esc(names[choice.reasoningEffort] || choice.reasoningEffort)}</option>`).join('');
   $('#effort').value = choices.some(choice => choice.reasoningEffort === oldEffort) ? oldEffort : (model?.defaultReasoningEffort || choices[0]?.reasoningEffort || 'medium');
   if(practiceMode()&&!practiceEffortInitialized&&model){practiceEffortInitialized=true;if(choices.some(choice=>choice.reasoningEffort==='low'))$('#effort').value='low';}
@@ -669,27 +673,27 @@ function updatePanel(chat, index) {
   const panel = panels.get(chat.id) || createPanel(chat), element = panel.element;
   element.classList.toggle('selected', chat.id === selected);
   for (const status of ['running','starting','stopping']) element.classList.toggle('is-' + status, chat.status === status);
-  element.setAttribute('aria-label', chat.title + 'を選択');
+  element.setAttribute('aria-label', chat.title + ui('を選択', " · select"));
   element.setAttribute('aria-busy', String(active(chat)));
   element.querySelector('.pane-spinner').hidden = !active(chat);
-  element.querySelector('.panel-index').textContent = '会話 ' + (index + 1);
+  element.querySelector('.panel-index').textContent = ui('会話 ', "Chat ") + (index + 1);
   element.querySelector('.panel-title').textContent = chat.title;
   const status = element.querySelector('.status');
   status.className = 'status' + (active(chat) ? ' running' : chat.id === selected ? ' selected-status' : '');
-  status.textContent = (chat.id === selected ? '選択中 · ' : '') + (statusLabels[chat.status] || chat.status);
+  status.textContent = (chat.id === selected ? ui('選択中 · ', "Selected · ") : '') + (statusLabels[chat.status] || chat.status);
   const error = element.querySelector('.panel-error');
   error.hidden = !chat.error; error.textContent = chat.error || '';
   const notice = element.querySelector('.panel-notice');
   notice.hidden = !chat.threadRecovery&&!chat.migration;
-  notice.querySelector('summary').textContent = chat.migration ? '移行した会話 · 元の作業環境は引き継ぎません' : '保存した履歴から会話を再開しています';
-  notice.querySelector('p').textContent = chat.migration ? (chat.migration.method==='local'?'Codexから移行した会話です。送信すると元の履歴を複製して続けます。':'ファイルから移行した会話です。最初の送信で過去の本文を新しい会話に渡します。添付の実体・ツール結果は引き継ぎません。')+' 作業場所はこのアプリ専用のフォルダです。元のプロジェクトは開きません。' : chat.threadRecovery ? '履歴を引き継いだ新しい接続で続けています。元の会話は保持しています。' : '';
-  element.querySelector('.panel-model').textContent = chat.model || 'モデル未選択';
+  notice.querySelector('summary').textContent = chat.migration ? ui('移行した会話 · 元の作業環境は引き継ぎません', "Imported conversation · separate workspace") : ui('保存した履歴から会話を再開しています', "Resuming saved conversation history");
+  notice.querySelector('p').textContent = chat.migration ? (chat.migration.method==='local'?ui('Codexから移行した会話です。送信すると元の履歴を複製して続けます。', "Imported from Codex. Sending a message starts a new session with a copy of the history."):ui('ファイルから移行した会話です。最初の送信で過去の本文を新しい会話に渡します。添付の実体・ツール結果は引き継ぎません。', "Imported from a file. Your first message includes the past conversation text. Attachments and tool results are not included."))+ui(' 作業場所はこのアプリ専用のフォルダです。元のプロジェクトは開きません。', " Files are saved in the app workspace. The original project is not opened.") : chat.threadRecovery ? ui('履歴を引き継いだ新しい接続で続けています。元の会話は保持しています。', "Continuing with a copy of the history. The original conversation is preserved.") : '';
+  element.querySelector('.panel-model').textContent = chat.model || ui('モデル未選択', "No model selected");
   const list = element.querySelector('.messages');
   // A focusable region lets keyboard and assistive-technology users reach the
   // scrollable history. Imported transcripts must not become live announcements.
   list.tabIndex = 0;
   list.setAttribute('role', 'region');
-  list.setAttribute('aria-label', chat.title + 'の会話履歴');
+  list.setAttribute('aria-label', chat.title + ui('の会話履歴', " · conversation history"));
   const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
   const current = streamingMessage(chat), ids = new Set();
   const residentView = activeEncounter?.conversationId === chat.id;
@@ -711,7 +715,7 @@ function updatePanel(chat, index) {
       list.append(node);
       node.addEventListener('animationend', () => node.classList.remove('message-enter'), {once:true});
     }
-    node.querySelector('.msg-label b').textContent = message.role === 'user' ? (message.steer ? 'YOU · STEER' : 'YOU') + (message.contextIds?.length ? ' · CONTEXT ' + message.contextIds.length : '') : activeEncounter?.conversationId===chat.id ? activeEncounter.name+(demo?' · デモ':' · Codex') : 'CODEX';
+    node.querySelector('.msg-label b').textContent = message.role === 'user' ? (message.steer ? 'YOU · STEER' : 'YOU') + (message.contextIds?.length ? ' · CONTEXT ' + message.contextIds.length : '') : activeEncounter?.conversationId===chat.id ? activeEncounter.name+(demo?ui(' · デモ', " · Demo"):' · Codex') : 'CODEX';
     const text = node.querySelector('.msg-text');
     renderMessageMarkdown(text, body, {openLink:desktop ? url=>desktop.openExternal(url) : undefined,onLinkError:error=>toast(error.message)});
     attachments.renderMessage(node.querySelector('.message-attachments'),message.attachments || []);
@@ -721,14 +725,14 @@ function updatePanel(chat, index) {
     if(partyLabel)partyLabel.textContent=message.partyRole?'PARTY · '+message.partyRole:'';
     let visitLabel=node.querySelector('.resident-message-context');
     if(message.residentContext&&!visitLabel){visitLabel=document.createElement('div');visitLabel.className='resident-message-context';node.querySelector('.msg-label').after(visitLabel);}
-    if(visitLabel)visitLabel.textContent=message.residentContext?.companions?.length?'同行：'+message.residentContext.companions.map(member=>member.name+'（'+member.role+'）').join('・'):'ひとりで相談';
+    if(visitLabel)visitLabel.textContent=message.residentContext?.companions?.length?ui('同行：', "With: ")+message.residentContext.companions.map(member=>member.name+'（'+member.role+'）').join(ui('・', ", ")):ui('ひとりで相談', "Talk one-to-one");
     node.querySelector('.streaming-caret').hidden = message !== current || Boolean(demo && chat.project);
     if(list.children[visibleCount]!==node)list.insertBefore(node,list.children[visibleCount]||null);
     visibleCount++;
   }
   for (const [id, node] of panel.messages) if (!ids.has(id)) { node.remove(); panel.messages.delete(id); }
   panel.visibleMessageCount = visibleCount;
-  element.querySelector('.panel-count').textContent = (demo ? 'DEMO' : 'CODEX PLAN') + ' · ' + visibleCount + '件のメッセージ';
+  element.querySelector('.panel-count').textContent = (demo ? 'DEMO' : 'CODEX PLAN') + ' · ' + visibleCount + ui('件のメッセージ', " messages");
   if (visibleCount) list.querySelector('.empty')?.remove();
   else if (!list.querySelector('.empty')) {
     const empty = document.createElement('div'); empty.className = 'empty';
@@ -743,7 +747,7 @@ function updatePanel(chat, index) {
       list.append(progress);
     }
     const label = progress.querySelector('.progress-label');
-    const progressText = chat.status === 'starting' ? '実行を準備しています' : chat.status === 'stopping' ? '停止を待っています' : chat.project ? '作業を進めています' : '応答を作成しています';
+    const progressText = chat.status === 'starting' ? ui('実行を準備しています', "Preparing to run") : chat.status === 'stopping' ? ui('停止を待っています', "Waiting for stop") : chat.project ? ui('作業を進めています', "Working") : ui('応答を作成しています', "Composing a reply");
     if (label.textContent !== progressText) label.textContent = progressText;
     list.append(progress);
   } else progress?.remove();
@@ -766,7 +770,7 @@ function renderChats() {
   if (!chats.some(chat => chat.id === selected)) selected = chats[0]?.id || null;
   if(activeEncounter&&activeEncounter.conversationId!==selected)endResidentConversation();
   equipment.render();
-  setText('#count', chats.length + '件の会話');
+  setText('#count', chats.length + ui('件の会話', " conversations"));
   const group=currentChatGroup(),groupChats=(group?.conversationIds||[]).map(id=>chats.find(chat=>chat.id===id)).filter(Boolean);
   const navigation = JSON.stringify([selected,group?.id,group?.conversationIds,chats.map(chat => [chat.id,chat.title,active(chat)])]);
   if (navigation !== renderedNavigation) {
@@ -795,13 +799,13 @@ function renderChats() {
   updateComposer(); persist(); contextSharing.render();workspaceTabs.render();town.render();history.render();village.render();
 }
 function updateHud() {
-  setText('#town-connection-status',demo?'デモ':serverUnavailable?'再接続が必要です':state.connected&&state.account?.type==='chatgpt'?'Codex 接続済み':'Codex 未接続');
+  setText('#town-connection-status',demo?ui('デモ', "Demo"):serverUnavailable?ui('再接続が必要です', "Reconnect required"):state.connected&&state.account?.type==='chatgpt'?ui('Codex 接続済み', "Codex online"):ui('Codex 未接続', "Codex offline"));
   const running = chats.find(active), chat = chats.find(chat => chat.id === selected);
   setText('#hud-active', running ? '1' : '0');
   setText('#hud-model', $('#model').selectedOptions[0]?.textContent || 'MODEL PENDING');
   setText('#hud-effort', $('#effort').value.toUpperCase());
-  setText('#mission-title', running?.title || chat?.title || '会話未選択');
-  setText('#mission-state', running ? (statusLabels[running.status] || running.status).toUpperCase() : 'READY · 入力待ち');
+  setText('#mission-title', running?.title || chat?.title || ui('会話未選択', "No conversation selected"));
+  setText('#mission-state', running ? (statusLabels[running.status] || running.status).toUpperCase() : ui('READY · 入力待ち', "Ready for input"));
   activityView.render();
   setText('#service-codex', demo ? 'CODEX DEMO' : state.connected ? 'CODEX ONLINE' : 'CODEX OFFLINE');
   setText('#service-runtime', desktop ? desktopName.toUpperCase() + ' · LOCAL' : 'BROWSER · LOCAL');
@@ -812,24 +816,24 @@ function normalSendUnavailable(chat,steering){
 }
 function teamSendStatus(id){
   const chat=chats.find(item=>item.id===id);
-  if(!chat)return {reason:'会話を開けません。'};
-  if(chat.project)return {reason:'この会話は作業の記録です。'};
-  if(chat.workMode==='work')return {reason:'作業モードの会話です。送信は会話画面で確認してください。'};
-  if(!demo&&(!state.connected||state.account?.type!=='chatgpt'||state.login||serverUnavailable))return {reason:'送信するにはCodexに接続してください。'};
-  if(attachments.get(id).length||attachments.busy(id))return {reason:'準備中の添付を会話画面で確認してください。'};
+  if(!chat)return {reason:ui('会話を開けません。', "Cannot open conversation.")};
+  if(chat.project)return {reason:ui('この会話は作業の記録です。', "This is a work record.")};
+  if(chat.workMode==='work')return {reason:ui('作業モードの会話です。送信は会話画面で確認してください。', "Open this work conversation to review before sending.")};
+  if(!demo&&(!state.connected||state.account?.type!=='chatgpt'||state.login||serverUnavailable))return {reason:ui('送信するにはCodexに接続してください。', "Connect to Codex to send.")};
+  if(attachments.get(id).length||attachments.busy(id))return {reason:ui('準備中の添付を会話画面で確認してください。', "Check the pending attachments in the chat.")};
   if(!state.policy?.ok){
-    const quota=state.policy?.quota, reason=state.policy?.reason||'現在は送信できません。';
+    const quota=state.policy?.quota, reason=state.policy?.reason||ui('現在は送信できません。', "Sending is unavailable now.");
     if(!quota)return {reason};
     const bucket=buckets()[quota.bucketIndex], window=bucket?.[quota.slot];
     if(!window)return {reason,refreshQuota:true};
-    const name=windowLabel(window,quota.slot==='secondary'?'追加枠':'利用枠');
+    const name=windowLabel(window,quota.slot==='secondary'?ui('追加枠', "Additional quota"):ui('利用枠', "Quota"));
     const remaining=new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1}).format(100-window.usedPercent);
     const reset=new Date(window.resetsAt*1000);
     const next=Number.isFinite(window.resetsAt)&&reset.getTime()>Date.now()
-      ? '（'+reset.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' リセット予定）':'';
-    return {reason:reason+' '+(bucket.limitName||bucket.limitId||'Codex')+' · '+name+' 残り'+remaining+'%'+next,refreshQuota:true};
+      ? '（'+reset.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+ui(' リセット予定）', " reset)"):'';
+    return {reason:reason+' '+(bucket.limitName||bucket.limitId||'Codex')+' · '+name+ui(' 残り', " remaining")+remaining+'%'+next,refreshQuota:true};
   }
-  if(normalSendUnavailable(chat,false)||connectionReadiness?.busy||state.projects?.activeCount)return {reason:'現在は送信できません。'};
+  if(normalSendUnavailable(chat,false)||connectionReadiness?.busy||state.projects?.activeCount)return {reason:ui('現在は送信できません。', "Sending is unavailable now.")};
   return {reason:''};
 }
 function sendTeamChatMessage(id,mapSquadId){
@@ -857,12 +861,12 @@ function updateComposer() {
     try{residentConversation.updateCompanions(companionRoster(currentResidentParty(),chats,selected));}
     catch(error){residentConversation.updateCompanions([],error.message);}
   }
-  setText('#target', activeEncounter?.name || (chat ? chat.title : '会話を作成してください'));
-  setText('#chat-heading',activeEncounter?.name || chat?.characterName || chat?.title || '会話');
+  setText('#target', activeEncounter?.name || (chat ? chat.title : ui('会話を作成してください', "Create a conversation")));
+  setText('#chat-heading',activeEncounter?.name || chat?.characterName || chat?.title || ui('会話', "Chat"));
   const topic=(activeEncounter?.name||chat?.characterName)&&chat?.title!==$('#chat-heading').textContent?chat?.title:'';
   setText('#chat-topic',topic||'');$('#chat-topic').hidden=!topic;$('#chat-topic').title=topic||'';
-  setText('#chat-status',demo?'デモ':chat?(statusLabels[chat.status]||chat.status):'');
-  setText('#chat-information',chat?(chat.model||'モデル未選択')+' · '+(panels.get(chat.id)?.visibleMessageCount??chat.messages.length)+'件のメッセージ · 会話ごとに下書きを保存':'履歴を選ぶか、新しい会話を作成してください。');
+  setText('#chat-status',demo?ui('デモ', "Demo"):chat?(statusLabels[chat.status]||chat.status):'');
+  setText('#chat-information',chat?(chat.model||ui('モデル未選択', "No model selected"))+' · '+(panels.get(chat.id)?.visibleMessageCount??chat.messages.length)+ui('件のメッセージ · 会話ごとに下書きを保存', " messages · drafts saved per chat"):ui('履歴を選ぶか、新しい会話を作成してください。', "Choose a saved conversation or start a new one."));
   $('#chat-share').disabled=!chat;
   const files=attachments.get(selected),model=state.models.find(item=>item.model===(steering?chat?.model:$('#model').value));
   const unsupportedImage=files.some(file=>file.kind==='image')&&Array.isArray(model?.inputModalities)&&!model.inputModalities.includes('image');
@@ -873,17 +877,17 @@ function updateComposer() {
   attachments.render();
   $('#send-btn').setAttribute('aria-disabled', String(sendBlocked));
   $('#send-btn').innerHTML = steering ? '追加 <span>↗</span>' : '送信 <span>↑</span>';
-  $('#send-btn').setAttribute('aria-label',steering?'実行中の会話に指示を追加':'メッセージを送信');
-  setText('#send-hint', state.workQuestPlanning?'お城でクエストを分解中です':boardActive()?'掲示板の仲間が集合・処理中です':partyActive()?'PARTY QUEST · 酒場でクエストを停止できます':unsupportedImage?'画像対応モデルを選択してください':attachments.busy(selected)?'添付の準備完了を待つか、エラーの添付を削除してください':steering ? 'STEER · 実行中の会話へ指示を追加' : 'Enter 送信 · Shift+Enter 改行');
-  if(chat?.project){setText('#send-hint',demo?question?'会話内の選択肢から回答を選んでください':'作業の記録':question?'回答を送信すると、条件を確認して自動で再開します':'作業の記録です。必要な判断があるときだけ確認します');$('#send-btn').textContent='回答 ↑';$('#send-btn').setAttribute('aria-label','相談への回答を送信');}
-  $('#prompt').placeholder = steering ? '追加の指示…' : 'メッセージを入力…';
+  $('#send-btn').setAttribute('aria-label',steering?ui('実行中の会話に指示を追加', "Add instructions to the active conversation"):ui('メッセージを送信', "Send message"));
+  setText('#send-hint', state.workQuestPlanning?ui('お城でクエストを分解中です', "Splitting the quest at the castle"):boardActive()?ui('掲示板の仲間が集合・処理中です', "The quest board party is gathering or working"):partyActive()?ui('PARTY QUEST · 酒場でクエストを停止できます', "Party quest · stop the quest at the tavern"):unsupportedImage?ui('画像対応モデルを選択してください', "Choose an image-capable model"):attachments.busy(selected)?ui('添付の準備完了を待つか、エラーの添付を削除してください', "Wait for attachments to finish or remove failed attachments"):steering ? ui('STEER · 実行中の会話へ指示を追加', "Steer · add instructions while the conversation runs") : ui('Enter 送信 · Shift+Enter 改行', "Enter to send · Shift+Enter for a new line"));
+  if(chat?.project){setText('#send-hint',demo?question?ui('会話内の選択肢から回答を選んでください', "Choose an answer from the conversation"):ui('作業の記録', "Work record"):question?ui('回答を送信すると、条件を確認して自動で再開します', "Reply to resume when the conditions are met"):ui('作業の記録です。必要な判断があるときだけ確認します', "A work record. You will be asked when a decision is needed."));$('#send-btn').textContent=ui('回答 ↑', "Reply ↑");$('#send-btn').setAttribute('aria-label',ui('相談への回答を送信', "Send your answer"));}
+  $('#prompt').placeholder = steering ? ui('追加の指示…', "Add instructions…") : ui('メッセージを入力…', "Write a message…");
   $('#prompt').readOnly = Boolean(chat?.project && (demo || !question));
-  if ($('#prompt').readOnly) $('#prompt').placeholder = demo ? question?'回答を選ぶ':'作業の記録' : '相談が届くと回答できます';
+  if ($('#prompt').readOnly) $('#prompt').placeholder = demo ? question?ui('回答を選ぶ', "Choose an answer"):ui('作業の記録', "Work record") : ui('相談が届くと回答できます', "You can reply when asked");
   $('#prompt').title=$('#send-hint').textContent;
   $('#stop-btn').hidden = !active(chat);
   $('#stop-btn').disabled = chat?.status !== 'running';
-  setText('#stop-btn', chat?.status === 'stopping' ? '停止待ち' : '停止');
-  $('#stop-btn').setAttribute('aria-label',chat?.status === 'stopping'?'停止要求中':'この会話を停止');
+  setText('#stop-btn', chat?.status === 'stopping' ? ui('停止待ち', "Stopping") : ui('停止', "Stopped"));
+  $('#stop-btn').setAttribute('aria-label',chat?.status === 'stopping'?ui('停止要求中', "Stop requested"):ui('この会話を停止', "Stop this conversation"));
   $('#model').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active); $('#effort').disabled = Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
   $('#logout-btn').disabled = !state.account || connectionBusy || Boolean(connectionReadiness?.busy) || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
   $('#login-btn').disabled = connectionBusy || Boolean(connectionReadiness?.busy) || Boolean(state.workQuestPlanning)||boardActive()||partyActive()||chats.some(active);
@@ -905,7 +909,7 @@ async function addChat() {
   try { const chat = await api('conversations'); if (!chats.some(item => item.id === chat.id)) chats.push(chat); select(chat.id); } catch (error) { toast(error.message); }
 }
 async function connect(login = false) {
-  if (demo) return toast('デモ表示です。実接続モードでログインできます。');
+  if (demo) return toast(ui('デモ表示です。実接続モードでログインできます。', "This is the demo. Switch to the connected app to sign in."));
   if (booting || connectionBusy || connectionReadiness?.busy) return;
   connectionReadiness?.reset();
   offlineBrowsing=false;
@@ -929,7 +933,7 @@ function applyMotion() {
   if (reduced) document.getAnimations().filter(animation=>animation.effect?.target?.getRootNode()===document).forEach(animation => animation.cancel());
   contextSharing.render();
   const button = $('#motion-toggle');
-  if (button) { button.setAttribute('aria-pressed', !reduced); button.title = reduced ? 'アニメーションを有効にする' : 'アニメーションを減らす'; button.querySelector('[data-motion-label]')?.replaceChildren(document.createTextNode(reduced ? 'MOTION OFF' : 'MOTION ON')); }
+  if (button) { button.setAttribute('aria-pressed', !reduced); button.title = reduced ? ui('アニメーションを有効にする', "Enable animation") : ui('アニメーションを減らす', "Reduce animation"); button.querySelector('[data-motion-label]')?.replaceChildren(document.createTextNode(reduced ? 'MOTION OFF' : 'MOTION ON')); }
 }
 reducedMotion.addEventListener('change', applyMotion);
 $('#motion-toggle')?.addEventListener('click', () => { motionPreference = document.body.dataset.motion === 'full' ? 'reduced' : 'full'; try { localStorage.setItem('chat-ui-motion',motionPreference); } catch {} applyMotion(); persist(); });
@@ -941,10 +945,10 @@ async function updateDesktopSettings() {
   setText('#desktop-version', desktopName + ' ' + desktop.version);
   setText('#desktop-runtime', desktopName.toUpperCase() + ' RUNTIME');
   const settings = await desktop.getSettings();
-  setText('#codex-path', settings.codexPath || 'アプリに同梱したCodex');
-  setText('#work-directory', settings.workDirectory || 'アプリ専用の作業フォルダ');
+  setText('#codex-path', settings.codexPath || ui('アプリに同梱したCodex', "Bundled Codex"));
+  setText('#work-directory', settings.workDirectory || ui('アプリ専用の作業フォルダ', "App workspace"));
   if($('#work-directory-input'))$('#work-directory-input').value=settings.workDirectory||'';
-  setText('#desktop-settings-status',settings.restartRequired?'保存しました。アプリを終了して開き直すと反映されます。':'');
+  setText('#desktop-settings-status',settings.restartRequired?ui('保存しました。アプリを終了して開き直すと反映されます。', "Saved. Quit and reopen the app to apply."):'');
 }
 $('#select-codex-path')?.addEventListener('click', async () => { try { await desktop.selectCodexPath(); await updateDesktopSettings(); } catch (error) { toast(error.message); } });
 $('#reset-codex-path')?.addEventListener('click', async () => { try { await desktop.resetCodexPath(); await updateDesktopSettings(); } catch (error) { toast(error.message); } });
@@ -958,7 +962,7 @@ if (desktop) {
     try { await desktop.openExternal(event.currentTarget.href); }
     catch (error) { connectionError = error.message; updateState(); }
   });
-  desktop.onWindowState?.(windowState => { document.body.classList.toggle('window-maximized',windowState.maximized); for (const button of $$('[data-window-action="maximize"]')) { button.title = windowState.maximized ? '元のサイズに戻す' : '最大化'; button.setAttribute('aria-label',button.title); } });
+  desktop.onWindowState?.(windowState => { document.body.classList.toggle('window-maximized',windowState.maximized); for (const button of $$('[data-window-action="maximize"]')) { button.title = windowState.maximized ? ui('元のサイズに戻す', "Restore window size") : ui('最大化', "Maximize"); button.setAttribute('aria-label',button.title); } });
   updateDesktopSettings().catch(error => toast(error.message));
 }
 function updateClock() { setText('#hud-clock', new Date().toLocaleTimeString('en-GB',{hour12:false})); }
@@ -985,7 +989,7 @@ $('#workbench-toggle').onclick=()=>{
   if(townToolsOpen){townSidebarWasCollapsed=document.body.classList.contains('sidebar-collapsed');document.body.classList.remove('sidebar-collapsed');}
   else if(townSidebarWasCollapsed)document.body.classList.add('sidebar-collapsed');
   $('#workbench-toggle').setAttribute('aria-pressed',String(townToolsOpen));
-  $('#workbench-toggle').textContent=townToolsOpen?'シンプルな画面に戻す':'詳細な作業デスクを表示';
+  $('#workbench-toggle').textContent=townToolsOpen?ui('シンプルな画面に戻す', "Return to the simple view"):ui('詳細な作業デスクを表示', "Open detailed workbench");
   $('#sidebar-toggle').setAttribute('aria-expanded',String(!document.body.classList.contains('sidebar-collapsed')));
 };
 $('#party-world-return').onclick=()=>switchView('town',()=>{townSection('adventure');adventure.focusCurrent();});
@@ -1005,8 +1009,8 @@ connectionReadiness=initConnectionReadiness({api,getState:()=>({...state,connect
   isBlocked:()=>booting||connectionBusy||Boolean(state.login)||Boolean(state.workQuestPlanning)||boardActive()||partyActive()||Boolean(state.projects?.activeCount)||chats.some(active),
   onBusyChange:busy=>{for(const id of ['select-codex-path','reset-codex-path','select-work-directory','save-work-directory'])$('#'+id).disabled=busy;updateComposer();}});
 $('#start-connect').onclick = () => connect(); $('#connect-btn').onclick = () => connect(); $('#login-btn').onclick = () => connect(true);
-$('#logout-btn').onclick = async () => { if (demo) return toast('デモアカウントです。'); try { await api('logout'); } catch (error) { toast(error.message); } };
-async function refreshUsage() { if (demo) { state.updatedAt = Date.now(); updateState(); return toast('デモの残量表示を更新しました。'); } try { state = await api('refresh'); updateState(); } catch (error) { toast(error.message); } }
+$('#logout-btn').onclick = async () => { if (demo) return toast(ui('デモアカウントです。', "Demo account.")); try { await api('logout'); } catch (error) { toast(error.message); } };
+async function refreshUsage() { if (demo) { state.updatedAt = Date.now(); updateState(); return toast(ui('デモの残量表示を更新しました。', "Demo usage refreshed.")); } try { state = await api('refresh'); updateState(); } catch (error) { toast(error.message); } }
 $('#refresh-btn').onclick = refreshUsage;
 $('#mobile-chat').onchange = () => {select($('#mobile-chat').value);$('#chat-actions').open=false;$('#prompt').focus();};
 $('#add-side').onclick = addChat; $('#add-chat').onclick = addChat;
@@ -1062,7 +1066,7 @@ function updateConversationMode(chat) {
   const request=conversationModeRequests.get(selected),control=$('#conversation-mode');
   control.value=request?.pending?request.mode:chat?.workMode==='work'?'work':'chat';
   control.disabled=demo||!chat||Boolean(chat.project)||active(chat)||pendingSends.has(selected)||Boolean(request?.pending)||serverUnavailable;
-  setText('#conversation-mode-note',chat?.project?'この作業の範囲は依頼時の設定に従います。':control.value==='work'?'この会話の専用フォルダにファイルを作成・編集します。':'相談ではファイルを変更しません。');
+  setText('#conversation-mode-note',chat?.project?ui('この作業の範囲は依頼時の設定に従います。', "This work follows the access chosen for its quest."):control.value==='work'?ui('この会話の専用フォルダにファイルを作成・編集します。', "Create and edit files inside this conversation's workspace."):ui('相談ではファイルを変更しません。', "Chat mode provides read-only access."));
   setText('#conversation-mode-error',request?.error||'');$('#conversation-mode-error').hidden=!request?.error;
   const retry=$('#conversation-mode-retry');retry.hidden=!request?.error;retry.disabled=control.disabled;
 }
@@ -1073,11 +1077,11 @@ async function changeConversationMode(mode) {
   const request={mode,pending:true,error:''};conversationModeRequests.set(id,request);updateComposer();
   try {
     const saved=await api('conversation-mode',{id,mode});
-    if(saved?.id!==id||(saved.workMode==='work'?'work':'chat')!==mode)throw Error('実行範囲の保存を確認できませんでした。');
+    if(saved?.id!==id||(saved.workMode==='work'?'work':'chat')!==mode)throw Error(ui('実行範囲の保存を確認できませんでした。', "Could not confirm the saved access mode."));
     const current=chats.find(chat=>chat.id===id);if(current)current.workMode=mode;
     conversationModeRequests.delete(id);
   } catch(error) {
-    request.pending=false;request.error='実行範囲を保存できませんでした。送信前に再試行してください。 '+error.message;
+    request.pending=false;request.error=ui('実行範囲を保存できませんでした。送信前に再試行してください。 ', "Could not save the access mode. Retry before sending. ")+error.message;
   } finally {updateComposer();}
 }
 $('#conversation-mode').onchange=()=>changeConversationMode($('#conversation-mode').value);
@@ -1093,8 +1097,8 @@ function startDemoResponse(chat,residentContext=null,fromMap=false) {
   const lastText=chat.messages.filter(m=>m.role==='user').at(-1)?.text||'';
   demoDelay = setTimeout(() => {
     const response = {id:crypto.randomUUID(),role:'assistant',text:''}; chat.messages.push(response);
-    const reply = resident ? residentDemoReply(chat,lastText,residentContext?.metadata) : 'これは画面確認用の応答です。\n実接続ではChatGPT認証済みのCodex App Serverが応答します。\n\n会話・下書きは各ペインで独立しています。実行中はSteerで補足を追加し、停止ボタンで処理を中断できます。';
-    const speaker=(chat.characterName||'街の人')+'：';
+    const reply = resident ? residentDemoReply(chat,lastText,residentContext?.metadata) : ui('これは画面確認用の応答です。\n実接続ではChatGPT認証済みのCodex App Serverが応答します。\n\n会話・下書きは各ペインで独立しています。実行中はSteerで補足を追加し、停止ボタンで処理を中断できます。', "This is a sample reply. In connected mode, Codex responds using your ChatGPT account.\n\nEach pane has its own conversation and draft. Use Steer to add instructions or Stop to pause.");
+    const speaker=(chat.characterName||ui('街の人', "Villager"))+'：';
     const output=fromMap&&reply.startsWith(speaker)?reply.slice(speaker.length):reply;
     let cursor = 0;
     demoStream = setInterval(() => { cursor += 7; response.text = output.slice(0,cursor); if (cursor >= output.length) { clearInterval(demoStream); chat.status = 'completed'; } renderChats(); },70);
@@ -1153,18 +1157,18 @@ async function sendConversationTurn(chat,text,{mapSquadId}={}) {
     if(demo||!dispatched)chat.status=previousStatus;
     else try {
       const response=await fetch('/api/state');
-      if(!response.ok)throw Error('状態を取得できません。');
+      if(!response.ok)throw Error(ui('状態を取得できません。', "Could not get the current state."));
       const result=await response.json();chats=result.conversations || [];state=result;
       // Both text-only and attached messages carry a durable retry identity.
       accepted=sendWasAccepted(chats,id,requestId,files);
-    } catch { state.policy={ok:false,reason:'サーバーへの接続を確認してください。'}; }
+    } catch { state.policy={ok:false,reason:ui('サーバーへの接続を確認してください。', "Check the server connection.")}; }
     if(accepted)delete sendRequests[id];
     if(!accepted){
       attachments.restore(id,files);
       drafts[id]=restoreSendDraft(sendRequests,id,text,drafts[id]);
       if(selected===id)$('#prompt').value=drafts[id] || '';
     }
-    persist();toast(accepted?'送信は受け付けられています。応答を取得できなかったため、会話を更新しました。':error.message);
+    persist();toast(accepted?ui('送信は受け付けられています。応答を取得できなかったため、会話を更新しました。', "Your message was accepted. The chat was refreshed because the reply could not be retrieved."):error.message);
     updateState();renderChats();
   } finally { pendingSends.delete(id);steerPending = false; updateComposer(); }
 }
@@ -1188,7 +1192,7 @@ async function boot() {
     state = {connected:true,account:{type:'chatgpt',email:'demo@example.com',planType:'pro'},limits:{rateLimits:{limitId:'codex',primary:{usedPercent:24,windowDurationMins:300,resetsAt:Math.floor(now/1000)+7800},secondary:{usedPercent:42,windowDurationMins:10080,resetsAt:Math.floor(now/1000)+259200}}},models:[{model:'demo-model',displayName:'CODEX · DEMO MODEL',supportedReasoningEfforts:[{reasoningEffort:'low'},{reasoningEffort:'medium'},{reasoningEffort:'high'}]}],policy:{ok:true,reason:''},updatedAt:now};
     state.todos=todoView.demoSnapshot();
     chats = nameDemoChats([
-      {id:'demo1',title:'Main',model:'CODEX · DEMO MODEL',status:'completed',messages:[{id:'demo-user',role:'user',text:'このUIをCodexの利用枠で使いたい。'},{id:'demo-assistant',role:'assistant',text:'ChatGPTアカウントを接続して、Codexの利用枠で会話を始められます。\n\n各ペインの会話は独立し、利用枠はアカウント全体で共有します。'}]},
+      {id:'demo1',title:'Main',model:'CODEX · DEMO MODEL',status:'completed',messages:[{id:'demo-user',role:'user',text:ui('このUIをCodexの利用枠で使いたい。', "I'd like to use this interface with my Codex quota.")},{id:'demo-assistant',role:'assistant',text:ui('ChatGPTアカウントを接続して、Codexの利用枠で会話を始められます。\n\n各ペインの会話は独立し、利用枠はアカウント全体で共有します。', "Connect your ChatGPT account to start chatting with your Codex quota.\n\nEach pane has its own conversation. All panes share the account quota.")}]},
       {id:'demo2',title:'Prompt 17',status:'idle',messages:[]}, {id:'demo3',title:'Prompt 18',status:'idle',messages:[]}, {id:'demo4',title:'Prompt 19',status:'idle',messages:[]},
       ...(new URLSearchParams(location.search).get('village')==='sample'?villageDemoChats():[])
     ]);
@@ -1196,7 +1200,7 @@ async function boot() {
   } else {
     subscribeEvents();
     const response = await fetch('/api/state');
-    if (!response.ok) throw Error('GUIサーバーの状態を取得できません (' + response.status + ')。');
+    if (!response.ok) throw Error(ui('GUIサーバーの状態を取得できません (', "Could not get the app server state (") + response.status + ')。');
     state = await response.json(); chats = state.conversations || []; contextBoard = state.contextBoard || []; attachments.hydrate(state.attachmentDrafts || []);
     if (!chats.length) for (const title of ['Main','Prompt 17','Prompt 18','Prompt 19']) {
       const chat = await api('conversations',{title});
@@ -1237,8 +1241,20 @@ function subscribeEvents() {
   eventStream.addEventListener('conversation',event => { const chat = JSON.parse(event.data), index = chats.findIndex(item => item.id === chat.id); if (index < 0) chats.push(chat); else chats[index] = chat; queueConversationRender(); });
   eventStream.onerror = () => {
     serverUnavailable = true;
-    state.error = 'GUIサーバーとの接続が切れました。サーバーの起動を確認して再接続してください。';
+    state.error = ui('GUIサーバーとの接続が切れました。サーバーの起動を確認して再接続してください。', "Lost connection to the app server. Check that the server is running, then reconnect.");
     state.policy = {ok:false,reason:state.error}; updateState();
   };
 }
 boot().catch(error => { connectionError = error.message;historyLoadError=error.message;history.render(); }).finally(()=>{booting=false;updateState();});
+
+export async function prepareInterfaceReload() {
+  persist();
+  village.saveView();
+  projects.saveView();
+  try {
+    await mapStorage.flush();
+    await desktopDrafts?.flush();
+  } finally {
+    mapStorage.resume();
+  }
+}

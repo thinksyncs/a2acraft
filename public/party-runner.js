@@ -1,8 +1,9 @@
+import {ui} from './interface-language.js';
 const activeStatuses=['running','stopping'];
 const stepStatuses=['pending','running','completed','blocked','failed','interrupted'];
 const maxOutput=12000;
-export const partyStatusLabels={running:'冒険中',stopping:'停止待ち',paused:'中断中',completed:'クエスト完了',cancelled:'クエスト終了'};
-export const partyStepLabels={pending:'順番待ち',running:'行動中',completed:'完了',blocked:'開始できません',failed:'失敗',interrupted:'結果未確認'};
+export const partyStatusLabels={running:ui("冒険中","On a quest"),stopping:ui("停止待ち","Stopping"),paused:ui("中断中","Paused"),completed:ui("クエスト完了","Quest complete"),cancelled:ui("クエスト終了","Quest ended")};
+export const partyStepLabels={pending:ui("順番待ち","Waiting"),running:ui("行動中","Working"),completed:ui("完了","Complete"),blocked:ui("開始できません","Cannot start"),failed:ui("失敗","Failed"),interrupted:ui("結果未確認","Result unconfirmed")};
 export function validateParty(value,chats){
   if(!value||!Array.isArray(value.members)||value.members.length<2||value.members.length>8)throw Error('リーダーを含む2〜8人の仲間を選んでください。');
   const members=value.members.map(member=>{
