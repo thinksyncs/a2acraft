@@ -1,3 +1,4 @@
+import {ui} from './interface-language.js';
 import {assertVillageInvitation} from './village-initiative.js';
 import {partyStepLabels} from './party-runner.js';
 const labels={todo:'未着手',doing:'進行中',done:'完了'},runLabels={running:'実行中',paused:'中断中',completed:'完了',cancelled:'終了'};
@@ -61,7 +62,7 @@ export function initTodos({api,demo,storeKey,getState,getChats,getParty,getMedia
   if(route==='todos/reopen'){task.status='todo';task.updatedAt=Date.now();persistDemo();return structuredClone(task);}
   if(route==='todos/start'){
    if(task.assignee.type==='manual'){task.status='doing';task.updatedAt=Date.now();persistDemo();return structuredClone(task);}
-   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error('現在のクエストを完了または終了してください。');const runId=crypto.randomUUID(),{runs,...snapshot}=task;task.runs.push({id:runId,createdAt:Date.now(),status:'running',snapshot,steps:[],output:'',error:null});task.status='doing';task.updatedAt=Date.now();persistDemo();try{await onDemoStart({text:['TODO: '+task.title,task.description,'達成条件:\n'+task.criteria].join('\n\n'),model:body.model,effort:body.effort,partyOverride:body.partyOverride,soloId:task.assignee.type==='chat'?task.assignee.conversationId:null,link:{todoId:task.id,runId}});}catch(error){task.runs.at(-1).status='cancelled';task.runs.at(-1).error=error.message;persistDemo();throw error;}return structuredClone(task);
+   if(['running','stopping','paused'].includes(getParty()?.quest?.status))throw Error('現在のクエストを完了または終了してください。');const runId=crypto.randomUUID(),{runs,...snapshot}=task;task.runs.push({id:runId,createdAt:Date.now(),status:'running',snapshot,steps:[],output:'',error:null});task.status='doing';task.updatedAt=Date.now();persistDemo();try{await onDemoStart({text:['TODO: '+task.title,task.description,ui('達成条件:\n','Success criteria:\n')+task.criteria].join('\n\n'),model:body.model,effort:body.effort,partyOverride:body.partyOverride,soloId:task.assignee.type==='chat'?task.assignee.conversationId:null,link:{todoId:task.id,runId}});}catch(error){task.runs.at(-1).status='cancelled';task.runs.at(-1).error=error.message;persistDemo();throw error;}return structuredClone(task);
   }
   if(route==='todos/action'){await onDemoAction(body.action,body.retry);return structuredClone(task);}
  }

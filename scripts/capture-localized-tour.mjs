@@ -27,7 +27,7 @@ const profile = path.join(scratch,'browser');
 const chrome = spawn(process.env.CHROME || 'google-chrome', ['--headless','--remote-debugging-port=0',
   '--user-data-dir='+profile, '--window-size=1280,720','--disable-background-networking','--disable-component-update',
   '--disable-breakpad','--no-first-run','--disable-default-apps','--no-default-browser-check','--password-store=basic',
-  '--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader',
+  '--disable-webgl','--disable-webgl2',
   '--no-proxy-server','--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost','about:blank'],
   {env:{HOME:scratch,TMPDIR:scratch,PATH:process.env.PATH,LANG:'en_US.UTF-8'},stdio:['ignore','ignore','inherit']});
 const shots = [];
@@ -103,7 +103,32 @@ async function setup(lang, call) {
   await evaluate('document.fonts.ready.then(()=>true)');
 }
 async function tour(call) {
+  async function switchLanguage(lang) {
+  console.log('Switching the interface to',lang);
+  await evaluate(`(()=>{const select=[...document.querySelectorAll('select[data-interface-language]')].find(${visibleJS});if(!select)throw Error('No visible language switch');select.value=${JSON.stringify(lang)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await poll(async()=>{
+    try{return await evaluate("document.documentElement.lang==='"+lang+"'&&document.readyState==='complete'&&location.search.includes('lang="+lang+"')&&!!document.querySelector('#village-walk-sample')");}
+    catch(error){if(/context|navigat/i.test(error.message))return false;throw error;}
+  },lang+' sample after using the visible language selector',40000);
+  language=lang;
+  }
   await setup('en',call);
+  if(await isVisible('#village-speech-close'))await click('#village-speech-close');
+  if(await isVisible('#village-enter-castle'))await click('#village-enter-castle');
+  else await click('#village-castle');
+  await poll(()=>isVisible('#village-room[open] .world-room-host'),'throne room');
+  await click('#village-room .world-room-host');
+  await capture('castle',6);
+  const roomClip=await evaluate("(()=>{const r=document.querySelector('#village-room .world-room-stage').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
+  const roomImage=(await call('Page.captureScreenshot',{format:'jpeg',quality:96,clip:roomClip})).data;
+  await click('#village-room .world-room-exit');
+  await switchLanguage('ja');
+  await click('#village-fit');
+  await click('[data-village-idea]:not([hidden])');
+  await present('quest');
+  await click('#village-quest-peek-close');
+  await switchLanguage('en');
+
   await click('#village-zoom-in');
   await capture('walk',3);
   if(!await evaluate("document.querySelector('#village-context').open"))await click('#village-context > summary');
@@ -120,8 +145,9 @@ async function tour(call) {
   await click('[data-village-idea]:not([hidden])');
   await poll(()=>isVisible('#village-idea-start'),'visible offer');
   await capture('quest',5);
-  await click('#village-idea-start');
-  await poll(()=>evaluate("!document.querySelector('#village-idea-start')?.getClientRects().length||document.querySelector('#village-idea-feedback')?.textContent"),'accepted');
+  await click('#village-quest-peek-close');
+  await click('#village-quests');
+  await click('[data-village-quest-row="todo:village-sample-work"]');
   await capture('accepted',4);
   await click('#village-quest-peek-close');
   await click('#village-zoom-in');
@@ -133,14 +159,6 @@ async function tour(call) {
   await capture('district',4);
   await click('#village-zoom-in');
   await capture('details',3);
-  if(await isVisible('#village-speech-close'))await click('#village-speech-close');
-  if(await isVisible('#village-enter-castle'))await click('#village-enter-castle');
-  else await click('#village-castle');
-  await poll(()=>isVisible('#village-room[open] .world-room-host'),'throne room');
-  await click('#village-room .world-room-host');
-  await capture('castle',6);
-  const roomClip=await evaluate("(()=>{const r=document.querySelector('#village-room .world-room-stage').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
-  const roomImage=(await call('Page.captureScreenshot',{format:'jpeg',quality:96,clip:roomClip})).data;
   const mapImage=(await readFile(path.join(out,'en-world.jpg'))).toString('base64');
   const card=`<!doctype html><html lang=en><meta charset=utf-8>
     <style>*{box-sizing:border-box}html,body{margin:0;width:1280px;height:720px;overflow:hidden}body{position:relative;background:#14261e;color:#fff2d8;font:22px/1.3 "Liberation Sans",sans-serif}
@@ -155,25 +173,15 @@ async function tour(call) {
   await poll(()=>evaluate("document.readyState==='complete' && !!document.querySelector('footer')"),'localized credits');
   await evaluate('document.fonts.ready.then(()=>true)');
   await writeFile(path.join(out,'en-end-card.jpg'),await screenshot());
-  // Start Japan's preview with the same untouched fictional quest.
-  await call('Storage.clearDataForOrigin',{origin, storageTypes:'local_storage,indexeddb'});
-  await setup('en',call);
-  console.log('Switching the interface to Japanese');
-  await evaluate(`(()=>{const select=[...document.querySelectorAll('select[data-interface-language]')].find(${visibleJS});if(!select)throw Error('No visible language switch');select.value='ja';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
-  await poll(async()=>{
-    try{return await evaluate("document.documentElement.lang==='ja'&&document.readyState==='complete'&&location.search.includes('lang=ja')&&!!document.querySelector('#village-walk-sample')");}
-    catch(error){if(/context|navigat/i.test(error.message))return false;throw error;}
-  },'Japanese sample after using the visible language selector',40000);
-  language='ja';
-  await click('#village-fit');
-  await click('[data-village-idea]:not([hidden])');
-  await present('quest');
+
 }
 function encode() {
   const ff=(...args)=>execFileSync(process.env.FFMPEG||'ffmpeg',['-hide_banner','-loglevel','error','-y',...args],{stdio:'inherit'});
   // Reuse the published English AAC stream and the original cue timings.
   const master=path.resolve('media/a2acraft-en-45s.mp4'), clips=[];
-  for(const shot of shots){
+  const timeline=['walk','greeting','conversation','island','quest','accepted','village','world','district','details','castle'];
+  for(const name of timeline){
+    const shot=shots.find(item=>item.name===name);if(!shot)throw Error('Missing scene: '+name);
     const dest=path.join(scratch,shot.name+'.mp4');
     ff('-loop','1','-framerate','24','-i',path.join(out,'en-'+shot.name+'.jpg'),'-t',String(shot.seconds),'-vf','format=yuv420p','-c:v','libx264','-preset','fast','-crf','20','-an',dest); clips.push(dest);
   }
