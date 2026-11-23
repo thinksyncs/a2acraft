@@ -1,3 +1,4 @@
+import {ui} from './interface-language.js';
 import {renderMessageMarkdown} from './message-markdown.js';
 import {conversationMessageText, mapTranscriptText} from './world-dialogue.js';
 
@@ -14,10 +15,10 @@ function readExchange(chat) {
     if (!text) continue;
     if (message.role === 'user') {
       requestIndex = i;
-      result.unshift({label:'最新の依頼', text});
+      result.unshift({label:ui('最新の依頼', "Latest request"), text});
       break;
     }
-    result.push({label:'最新の返答', text});
+    result.push({label:ui('最新の返答', "Latest reply"), text});
   }
   return {requestIndex, entries:result};
 }
@@ -43,26 +44,26 @@ export function encounterContextRows(chat, report = null) {
   const rows = [];
   const topic = mapTranscriptText(chat?.title).trim();
   if (topic && topic !== request && !/^(?:会話(?:\s*\d+)?|チャット\s*\d+|Codexから移行(?:\s.*)?)$/iu.test(topic))
-    rows.push({label:'話題', text:passage(topic, 80)});
+    rows.push({label:ui('話題', "Topic"), text:passage(topic, 80)});
   if (report?.key && !report.key.startsWith('message:') && !report.key.startsWith('introduction:'))
-    rows.push({label:report.label || '進捗', text:passage(mapTranscriptText(report.text), 160)});
+    rows.push({label:report.label || ui('進捗', "Progress"), text:passage(mapTranscriptText(report.text), 160)});
   if (continuation.test(request.trim())) {
     for (let i = requestIndex - 1; i >= 0; i--) {
       if (chat.messages[i]?.role !== 'user') continue;
       const earlier = conversationMessageText(chat.messages[i]).trim();
       if (!earlier || continuation.test(earlier)) continue;
-      if (earlier !== topic) rows.push({label:'これまでの依頼', text:passage(earlier, 120)});
+      if (earlier !== topic) rows.push({label:ui('これまでの依頼', "Earlier request"), text:passage(earlier, 120)});
       break;
     }
   }
   for (const entry of exchange) rows.push({...entry, text:passage(entry.text, 180)});
-  if (request && exchange.at(-1)?.label !== '最新の返答') rows.push({label:'返答', text:'この依頼への返答はまだありません。'});
+  if (request && exchange.at(-1)?.label !== ui('最新の返答', "Latest reply")) rows.push({label:ui('返答', "Reply"), text:ui('この依頼への返答はまだありません。', "No reply to this request yet.")});
   if (report?.key?.startsWith('message:') && !exchange.some(entry => entry.text.trim() === report.text.trim())) {
     const text = mapTranscriptText(report.text);
-    if (text) rows.push({label:'以前の' + report.label, text:passage(text, 100)});
+    if (text) rows.push({label:ui('以前の', "Previous ") + report.label, text:passage(text, 100)});
   }
-  if (!exchange.length && rows.every(row => row.label === '話題'))
-    rows.push({label:'会話', text:'表示できる依頼や返答はまだありません。'});
+  if (!exchange.length && rows.every(row => row.label === ui('話題', "Topic")))
+    rows.push({label:ui('会話', "Chat"), text:ui('表示できる依頼や返答はまだありません。', "No requests or replies yet.")});
   return rows;
 }
 
@@ -94,9 +95,9 @@ export function renderConversationDetails(element, chat) {
     section.append(heading, body);
     return section;
   });
-  if (!entries.length || entries.at(-1).label === '最新の依頼') {
+  if (!entries.length || entries.at(-1).label === ui('最新の依頼', "Latest request")) {
     const empty = document.createElement('p');
-    empty.textContent = entries.length ? 'この依頼への返答はまだありません。' : '会話はまだありません。';
+    empty.textContent = entries.length ? ui('この依頼への返答はまだありません。', "No reply to this request yet.") : ui('会話はまだありません。', "No messages yet.");
     sections.push(empty);
   }
   element.replaceChildren(...sections);

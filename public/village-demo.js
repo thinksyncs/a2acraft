@@ -70,7 +70,9 @@ const assignmentTitles={18:ui('写真一覧の画面担当', "Photo gallery inte
 const assignmentStates={pending:ui('担当の順番待ち', "Waiting for a turn"),running:ui('作業中', "Working"),completed:ui('担当分を完了', "Assignment complete"),interrupted:ui('中断中', "Paused")};
 const sampleAssignments=new Map(sampleItems.flatMap(task=>task.runs.flatMap(run=>run.steps.filter(step=>assignmentTitles[step.conversationId.replace('village-demo-','')]).map(step=>[step.conversationId,{
  title:assignmentTitles[step.conversationId.replace('village-demo-','')],
- request:ui('「','“')+task.title+ui('」で担当している「', "” and your task “")+step.role+ui('」について、進み具合を教えてください。', "”. How is it going?"),
+ request:ui(`「${task.title}」で担当している「${step.role}」について、進み具合を教えてください。`, `How is your part of the quest going?
+> Quest: ${task.title}
+> Assignment: ${step.role}`),
  text:(step.output?.replace(/^(?:【サンプル成果】|\[Sample result\] )/u,'')||step.error||(ui('現在は', "Current status: ")+assignmentStates[step.status]+ui('です。', ".")))+'\n\n'+[
   ui('依頼：', "Quest: ")+task.title,ui('役割：', "Role: ")+step.role,ui('状態：', "Status: ")+assignmentStates[step.status]+ui('（サンプル）', " (sample)"),ui('作業内容：', "Work: ")+task.description,
  ].map(line=>'> '+line).join('\n')

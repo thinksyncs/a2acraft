@@ -28,7 +28,7 @@ const chrome = spawn(process.env.CHROME || 'google-chrome', ['--headless','--rem
   '--user-data-dir='+profile, '--window-size=1280,720','--disable-background-networking','--disable-component-update',
   '--disable-breakpad','--no-first-run','--disable-default-apps','--no-default-browser-check','--password-store=basic',
   '--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader',
-  '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost','about:blank'],
+  '--no-proxy-server','--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost','about:blank'],
   {env:{HOME:scratch,TMPDIR:scratch,PATH:process.env.PATH,LANG:'en_US.UTF-8'},stdio:['ignore','ignore','inherit']});
 const shots = [];
 const notes = {};
@@ -37,6 +37,26 @@ async function poll(read, name, ms=20000) {
   const until = Date.now()+ms;
   do {const v=await read(); if(v) return v; await delay(150);} while(Date.now()<until);
   throw Error('Timed out: '+name);
+}
+// Some labels are painted on the map rather than placed in the DOM. Observe
+// the product's own drawing calls without changing their arguments or output.
+function observeMapLabels() {
+  const seen = new Map();
+  window.readFilmCanvasText = () => [...seen].filter(([,time])=>performance.now()-time<1500).map(([text])=>text);
+  for(const fn of ['fillText','strokeText']) {
+    const original=CanvasRenderingContext2D.prototype[fn];
+    CanvasRenderingContext2D.prototype[fn]=function(text,x,y,...rest) {
+      const result=original.call(this,text,x,y,...rest);
+      if(this.canvas.id==='village-canvas' && this.canvas.clientWidth && this.canvas.clientHeight) {
+        const point=new DOMPoint(x,y).matrixTransform(this.getTransform());
+        const rect=this.canvas.getBoundingClientRect();
+        const left=rect.left+point.x*rect.width/this.canvas.width, top=rect.top+point.y*rect.height/this.canvas.height;
+        if(left>=0&&left<innerWidth&&top>=0&&top<innerHeight && document.elementFromPoint(left,top)===this.canvas)
+          seen.set(String(text),performance.now());
+      }
+      return result;
+    };
+  }
 }
 const visibleJS = `node => {if(!node||node.hidden||!node.getClientRects().length)return false;const r=node.getBoundingClientRect(),s=getComputedStyle(node);return s.visibility!=='hidden'&&s.opacity!=='0'&&r.width>0&&r.height>0&&r.right>0&&r.bottom>0&&r.top<innerHeight&&r.left<innerWidth}`;
 let language='en';
@@ -47,10 +67,14 @@ async function present(name) {
       const node=walker.currentNode, label=node.textContent.trim(); if(!label||!visible(node.parentElement))continue;
       const range=new Range();range.selectNodeContents(node);
       if (![...range.getClientRects()].some(r=>r.width&&r.height&&r.top<innerHeight&&r.bottom>0&&r.left<innerWidth&&r.right>0))continue;
+      // The localized language menu intentionally lists each language in its own script.
+      if(label==='日本語'&&node.parentElement.closest('[data-interface-language]'))continue;
       text.push(label);
     }
     for(const n of document.querySelectorAll('input[placeholder],textarea[placeholder]'))if(visible(n)&&!n.value)text.push(n.placeholder);
-    return {lang:document.documentElement.lang, text:[...new Set(text)], map:document.querySelector('#village-map-3d')?.dataset.renderer};
+    for(const n of document.querySelectorAll('select'))if(visible(n))text.push(n.selectedOptions[0]?.textContent.trim()||'');
+    const canvasText=window.readFilmCanvasText?.()||[];
+    return {lang:document.documentElement.lang, text:[...new Set([...text,...canvasText])], canvasText, map:document.querySelector('#village-map-3d')?.dataset.renderer};
   })()`);
   notes[language+'-'+name]=evidence;
   await writeFile(path.join(out,'screen-text.json'),JSON.stringify(notes,null,2));
@@ -77,7 +101,8 @@ async function capture(name, seconds) {
 }
 async function setup(lang, call) {
   language=lang;
-  await call('Page.navigate',{url:origin+'/?demo=1&village=sample&walk=resident&lang='+lang});
+  const route=await call('Page.navigate',{url:origin+'/?demo=1&village=sample&walk=resident&lang='+lang});
+  if(route.errorText)throw Error('Local sample navigation failed: '+route.errorText);
   await poll(()=>evaluate("document.readyState==='complete' && document.documentElement.lang==="+JSON.stringify(lang)+" && !!document.querySelector('#village-walk-sample')"),'sample '+lang,40000);
   await poll(()=>isVisible('#village-canvas'),'village canvas');
   await evaluate('document.fonts.ready.then(()=>true)');
@@ -120,20 +145,38 @@ async function tour(call) {
   await poll(()=>isVisible('#village-room[open] .world-room-host'),'throne room');
   await click('#village-room .world-room-host');
   await capture('castle',6);
+  const roomClip=await evaluate("(()=>{const r=document.querySelector('#village-room .world-room-stage').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
+  const roomImage=(await call('Page.captureScreenshot',{format:'jpeg',quality:96,clip:roomClip})).data;
+  const mapImage=(await readFile(path.join(out,'en-world.jpg'))).toString('base64');
+  const card=`<!doctype html><html lang=en><meta charset=utf-8>
+    <style>*{box-sizing:border-box}html,body{margin:0;width:1280px;height:720px;overflow:hidden}body{position:relative;background:#14261e;color:#fff2d8;font:22px/1.3 "Liberation Sans",sans-serif}
+    .map,.room,.veil{position:absolute;inset:0;background-size:cover;background-position:center}.map{background-image:url(data:image/jpeg;base64,${mapImage});opacity:.2;filter:blur(2px)}
+    .room{left:41%;background-image:url(data:image/jpeg;base64,${roomImage});background-position:center}
+    .veil{background:linear-gradient(90deg,rgba(16,33,24,.35),#18271f 34%,rgba(22,39,31,.94) 42%,rgba(22,39,31,.12) 70%,transparent)}
+    main,footer{position:absolute;left:6%}main{top:32%}main:before{content:"";display:block;width:52px;height:2px;background:#edce8c;margin-bottom:28px}
+    h1{font:normal 98px/1.05 Georgia,"Liberation Serif",serif;margin:0 0 8px}p{font-size:30px;margin:0}footer{bottom:6%;font-size:15px;color:#ede2c7}footer div+div{margin-top:4px}</style>
+    <div class=map></div><div class=room></div><div class=veil></div><main><h1>A2ACraft</h1><p>Conversations become worlds.</p></main>
+    <footer><div>Voice　Kokoro-82M · af_heart</div><div>Music　Mystical RPG Maker Town Theme · symphony</div></footer></html>`;
+  await call('Page.navigate',{url:'data:text/html;base64,'+Buffer.from(card).toString('base64')});
+  await poll(()=>evaluate("document.readyState==='complete' && !!document.querySelector('footer')"),'localized credits');
+  await evaluate('document.fonts.ready.then(()=>true)');
+  await writeFile(path.join(out,'en-end-card.jpg'),await screenshot());
+  // Start Japan's preview with the same untouched fictional quest.
+  await call('Storage.clearDataForOrigin',{origin, storageTypes:'local_storage,indexeddb'});
   await setup('ja',call);await click('#village-fit');
   await click('[data-village-idea]:not([hidden])');
   await present('quest');
 }
 function encode() {
   const ff=(...args)=>execFileSync(process.env.FFMPEG||'ffmpeg',['-hide_banner','-loglevel','error','-y',...args],{stdio:'inherit'});
-  // The supplied English soundtrack and the credits card come from the published master.
+  // Reuse the published English AAC stream and the original cue timings.
   const master=path.resolve('media/a2acraft-en-45s.mp4'), clips=[];
   for(const shot of shots){
     const dest=path.join(scratch,shot.name+'.mp4');
     ff('-framerate','8','-i',path.join(shot.dir,'%04d.jpg'),'-vf','fps=24,format=yuv420p','-c:v','libx264','-preset','fast','-crf','20','-an',dest); clips.push(dest);
   }
   const credits=path.join(scratch,'credits.mp4');
-  ff('-ss','40','-i',master,'-t','5','-an','-vf','fps=24,format=yuv420p','-c:v','libx264','-preset','fast','-crf','20',credits);clips.push(credits);
+  ff('-loop','1','-framerate','24','-i',path.join(out,'en-end-card.jpg'),'-t','5','-an','-vf','format=yuv420p','-c:v','libx264','-preset','fast','-crf','20',credits);clips.push(credits);
   return Promise.all([
     writeFile(path.join(scratch,'clips.txt'),clips.map(p=>"file '"+p+"'").join('\n')),
     readFile('subtitles/en.srt','utf8').then(text=>writeFile(path.join(scratch,'in-film.srt'),text.split(/\r?\n\s*\r?\n/).slice(0,7).join('\n\n')))
@@ -141,7 +184,7 @@ function encode() {
     ff('-f','concat','-safe','0','-i',path.join(scratch,'clips.txt'),'-i',master,'-vf',
        "subtitles="+path.join(scratch,'in-film.srt')+":force_style='FontName=DejaVu Sans,FontSize=14,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,OutlineColour=&H80000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=13'",
        '-map','0:v:0','-map','1:a:0','-c:v','libx264','-crf','20','-preset','fast','-c:a','copy','-t','45','-metadata','title=A2ACraft','-movflags','+faststart',path.join(out,'a2acraft-en-45s.mp4'));
-    return copyFile('media/poster-en.jpg',path.join(out,'poster-en.jpg'));
+    return copyFile(path.join(out,'en-quest.jpg'),path.join(out,'poster-en.jpg'));
   });
 }
 try {
@@ -150,11 +193,17 @@ try {
   socket=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);
   await new Promise((resolve,reject)=>{socket.onopen=resolve;socket.onerror=reject;});
   let serial=0;const pending=new Map();
-  socket.onmessage=event=>{const msg=JSON.parse(event.data);if(!msg.id)return;const next=pending.get(msg.id);if(next){pending.delete(msg.id);if(msg.error)next.reject(Error(msg.error.message));else next.resolve(msg.result);}};
+  socket.onmessage=event=>{
+    const msg=JSON.parse(event.data);
+    if(msg.method==='Runtime.exceptionThrown')console.error('Renderer exception:',msg.params.exceptionDetails.exception?.description||msg.params.exceptionDetails.text);
+    if(msg.method==='Log.entryAdded' && msg.params.entry.level==='error')console.error('Renderer log:', msg.params.entry.text.slice(0,500));
+    if(!msg.id)return;
+    const next=pending.get(msg.id);if(next){pending.delete(msg.id);if(msg.error)next.reject(Error(msg.error.message));else next.resolve(msg.result);}
+  };
   const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
   evaluate=async(expression)=>{const r=await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
   screenshot=async()=>Buffer.from((await call('Page.captureScreenshot',{format:'jpeg',quality:91,fromSurface:true})).data,'base64');
-  await call('Page.enable');await call('Emulation.setDeviceMetricsOverride',{width:1280,height:720,deviceScaleFactor:1,mobile:false});
+  await call('Page.enable');await call('Runtime.enable');await call('Log.enable');await call('Page.addScriptToEvaluateOnNewDocument',{source:'('+observeMapLabels.toString()+')()'});await call('Emulation.setDeviceMetricsOverride',{width:1280,height:720,deviceScaleFactor:1,mobile:false});
   await tour(call);
   const mixed=Object.entries(notes).filter(([key,screen])=>key.startsWith('en-')&&(screen.lang!=='en'||screen.text.some(t=>/[\u3040-\u30ff\u3400-\u9fff]/u.test(t)))).map(([key])=>key);
   if(mixed.length)throw Error('Visible English sample needs translation in: '+mixed.join(', '));

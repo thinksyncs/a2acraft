@@ -635,7 +635,7 @@ function updateState() {
   $('#logout-btn').disabled = !state.account || chats.some(active);
   $('#login-btn').disabled = chats.some(active);
   const oldModel = $('#model').value, models = state.models || [];
-  $('#model').innerHTML = models.length ? models.map(model => `<option value="${esc(model.model)}">${esc(model.displayName || model.model)}</option>`).join('') : '<option value="">接続後にモデルを取得</option>';
+  $('#model').innerHTML = models.length ? models.map(model => `<option value="${esc(model.model)}">${esc(model.displayName || model.model)}</option>`).join('') : ui('<option value="">接続後にモデルを取得</option>', '<option value="">Connect to load models</option>');
   if (models.some(model => model.model === oldModel)) $('#model').value = oldModel;
   else if (models.length) $('#model').value = (models.find(model => model.isDefault) || models[0]).model;
   updateEfforts();
@@ -778,7 +778,7 @@ function renderChats() {
     $('#mobile-chat').innerHTML = groupChats.map(chat => `<option value="${esc(chat.id)}">${esc(chat.title)}</option>`).join('');
     $('#mobile-chat').value = selected;
     $('#conversation-list').innerHTML = chats.map((chat,index) => `<button class="conversation-link ${chat.id === selected ? 'selected' : ''}" data-select="${esc(chat.id)}"><small>${String(index + 1).padStart(2,'0')}</small>${esc(chat.title)}${active(chat) ? '<span class="conversation-running" aria-label="実行中"></span>' : ''}</button>`).join('');
-    if ($('#chat-tabs')) $('#chat-tabs').innerHTML = groupChats.map((chat,index) => `<button class="chat-tab ${chat.id === selected ? 'selected' : ''} ${active(chat) ? 'running' : ''}" data-select="${esc(chat.id)}" aria-pressed="${chat.id === selected}"><strong class="tab-name">${esc(chat.title)}</strong><span class="tab-index">会話 ${index + 1}</span><small class="tab-state">${chat.id === selected ? 'Active' : active(chat) ? 'Running' : 'Waiting'}</small></button>`).join('');
+    if ($('#chat-tabs')) $('#chat-tabs').innerHTML = groupChats.map((chat,index) => `<button class="chat-tab ${chat.id === selected ? 'selected' : ''} ${active(chat) ? 'running' : ''}" data-select="${esc(chat.id)}" aria-pressed="${chat.id === selected}"><strong class="tab-name">${esc(chat.title)}</strong><span class="tab-index">${ui('会話','Chat')} ${index + 1}</span><small class="tab-state">${chat.id === selected ? 'Active' : active(chat) ? 'Running' : 'Waiting'}</small></button>`).join('');
     renderedNavigation = navigation;
     if (focusedChat) $((focusedChat.tab ? '.chat-tab' : '.conversation-link') + '[data-select="' + CSS.escape(focusedChat.id) + '"]')?.focus({preventScroll:true});
   }
@@ -876,7 +876,7 @@ function updateComposer() {
   if(connectionReadiness?.busy)sendBlocked=true;
   attachments.render();
   $('#send-btn').setAttribute('aria-disabled', String(sendBlocked));
-  $('#send-btn').innerHTML = steering ? '追加 <span>↗</span>' : '送信 <span>↑</span>';
+  $('#send-btn').innerHTML = steering ? ui('追加 <span>↗</span>', 'Add <span>↗</span>') : ui('送信 <span>↑</span>', 'Send <span>↑</span>');
   $('#send-btn').setAttribute('aria-label',steering?ui('実行中の会話に指示を追加', "Add instructions to the active conversation"):ui('メッセージを送信', "Send message"));
   setText('#send-hint', state.workQuestPlanning?ui('お城でクエストを分解中です', "Splitting the quest at the castle"):boardActive()?ui('掲示板の仲間が集合・処理中です', "The quest board party is gathering or working"):partyActive()?ui('PARTY QUEST · 酒場でクエストを停止できます', "Party quest · stop the quest at the tavern"):unsupportedImage?ui('画像対応モデルを選択してください', "Choose an image-capable model"):attachments.busy(selected)?ui('添付の準備完了を待つか、エラーの添付を削除してください', "Wait for attachments to finish or remove failed attachments"):steering ? ui('STEER · 実行中の会話へ指示を追加', "Steer · add instructions while the conversation runs") : ui('Enter 送信 · Shift+Enter 改行', "Enter to send · Shift+Enter for a new line"));
   if(chat?.project){setText('#send-hint',demo?question?ui('会話内の選択肢から回答を選んでください', "Choose an answer from the conversation"):ui('作業の記録', "Work record"):question?ui('回答を送信すると、条件を確認して自動で再開します', "Reply to resume when the conditions are met"):ui('作業の記録です。必要な判断があるときだけ確認します', "A work record. You will be asked when a decision is needed."));$('#send-btn').textContent=ui('回答 ↑', "Reply ↑");$('#send-btn').setAttribute('aria-label',ui('相談への回答を送信', "Send your answer"));}
@@ -1245,9 +1245,10 @@ function subscribeEvents() {
     state.policy = {ok:false,reason:state.error}; updateState();
   };
 }
-boot().catch(error => { connectionError = error.message;historyLoadError=error.message;history.render(); }).finally(()=>{booting=false;updateState();});
+const readyForInterfaceChange = boot().catch(error => { connectionError = error.message;historyLoadError=error.message;history.render(); }).finally(()=>{booting=false;updateState();});
 
 export async function prepareInterfaceReload() {
+  await readyForInterfaceChange;
   persist();
   village.saveView();
   projects.saveView();
