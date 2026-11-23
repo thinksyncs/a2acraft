@@ -1,3 +1,4 @@
+import {ui} from '../public/interface-language.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -61,7 +62,7 @@ async function bootFixture(getUiState){
   const source=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
   const start=source.indexOf('async function boot() {'),end=source.indexOf('\nfunction subscribeEvents()',start);assert.ok(start>=0&&end>start);
   const prompt={value:''},errors=[],calls=[];
-  const context=vm.createContext({
+  const context=vm.createContext({ui, 
     desktop:{getUiState},demo:false,desktopDraftReadError:null,showDraftSaveError:error=>errors.push(error.message),
     drafts:{chat:'local buffer'},sendRequests:{},selected:'chat',layout:1,motionPreference:'system',applyMotion(){},
     subscribeEvents(){calls.push('subscribe');},fetch:async()=>{calls.push('history');return {ok:true,json:async()=>({conversations:[{id:'chat',messages:[]}],attachmentDrafts:[]})};},
@@ -89,7 +90,7 @@ test('actual read-retry preserves new typing, merges repaired drafts, and only t
   const store=createUiStateStore({read:async()=>bytes,write:async value=>{bytes=value;writes++;}});await store.load();
   const prompt={value:'new typing'},errors=[];let context;
   const writer=createDraftPersistence({write:async value=>{if(context.desktopDraftReadError)throw context.desktopDraftReadError;return store.save(value);}});
-  context=vm.createContext({
+  context=vm.createContext({ui, 
     desktopDraftReadError:Error('Protected draft file'),desktopDraftReloading:false,desktopDrafts:writer,
     desktop:{getUiState:()=>store.read()},draftSaveRetry:{},document:{body:{inert:false},activeElement:{focus(){}}},
     drafts:{chat:'new typing'},sendRequests:{},chats:[{id:'chat',messages:[]}],selected:'chat',layout:1,motionPreference:'system',

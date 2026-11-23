@@ -88,11 +88,11 @@ export async function waitForWindowLoad(window, url, {timeoutMs = 30000, canReve
 export function startupPageURL() {
   const html = `<!doctype html><html lang="ja"><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
-<title>A2ACraft · 起動中</title><style>
+<title>A2ACraft</title><style>
 html{color-scheme:dark;background:#142426;color:#f4e8c5;font:15px -apple-system,sans-serif}
 body{margin:0;min-height:240px;display:grid;place-content:center;text-align:center;gap:12px}
 h1{font-size:23px;margin:0}p{color:#bccfc7;margin:0;line-height:1.8}
-</style><h1>A2ACraft</h1><p>保存した会話と地図を読み込んでいます…</p></html>`;
+</style><h1>A2ACraft</h1><p role="status"><span lang="en">Loading your conversations and map…</span><br>保存した会話と地図を読み込んでいます…</p></html>`;
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
 }
 

@@ -1,3 +1,4 @@
+import {ui} from '../public/interface-language.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -39,7 +40,7 @@ function fixture(){
   document.createElement=()=>new Element();
   const element=new Element(),list=element.querySelector('.messages');
   const panel={element,messages:new Map()};
-  const context=vm.createContext({document,panels:new Map([['imported',panel]]),
+  const context=vm.createContext({ui, document,panels:new Map([['imported',panel]]),
     selected:'imported',demo:false,subagentSample:false,activeEncounter:null,
     active:chat=>['starting','running','stopping'].includes(chat.status),
     statusLabels:{failed:'エラー',completed:'完了'},

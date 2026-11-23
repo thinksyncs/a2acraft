@@ -1,3 +1,4 @@
+import {ui} from './interface-language.js';
 // Imported histories may store Codex's ambient UI records under a conversational
 // role. Filter recognized envelopes for map display while leaving the saved
 // transcript, user-authored XML, Markdown examples and attachments intact.
@@ -48,9 +49,9 @@ export function conversationMessageText(message) {
   const text = mapTranscriptText(message?.text);
   if (text) return text;
   const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
-  if (attachments.length) return '添付ファイル: ' + attachments.map((item,index) =>
-    String(item?.name || 'ファイル ' + (index + 1)).replace(/([\\`*_{}\[\]()#+.!|<>-])/g,'\\$1')).join('、');
-  return message?.role === 'user' && !String(message.text || '').trim() ? '本文のない依頼' : '';
+  if (attachments.length) return ui('添付ファイル: ', "Attachments: ") + attachments.map((item,index) =>
+    String(item?.name || ui('ファイル ', "File ") + (index + 1)).replace(/([\\`*_{}\[\]()#+.!|<>-])/g,'\\$1')).join('、');
+  return message?.role === 'user' && !String(message.text || '').trim() ? ui('本文のない依頼', "Request without text") : '';
 }
 const versionOf = (value) => {
   const raw = JSON.stringify(value);
@@ -100,58 +101,58 @@ export function residentReport(chat, project, baseline) {
   if (event) {
     current = add("event:" + event.id, event.id,
       [event.kind, event.question, event.options],
-      "ここで相談したいことがあるんです。" + clean(event.question), "question");
-    context = event.kind === "question" ? "現在、相談への回答を待っています。" : "現在、問題の確認が必要です。";
+      ui("ここで相談したいことがあるんです。", "There's something I'd like to discuss. ") + clean(event.question), "question");
+    context = event.kind === "question" ? ui("現在、相談への回答を待っています。", "Waiting for an answer. ") : ui("現在、問題の確認が必要です。", "An issue needs review. ");
   }
   if (job?.error) {
     const failure = add("failure:" + job.id, job.id, [job.attempt, job.error],
-      "うまくいかない箇所が見つかりました。" + clean(job.error));
+      ui("うまくいかない箇所が見つかりました。", "Something went wrong. ") + clean(job.error));
     if (!current) {
       current = failure;
-      context = "現在、うまくいかない箇所があります。" + clean(job.error) + " ";
+      context = ui("現在、うまくいかない箇所があります。", "There's still a problem. ") + clean(job.error) + " ";
     }
   }
   if (!job && (chat.error || ["failed", "cancelled"].includes(chat.status))) {
     const stopped = chat.status === "cancelled";
-    const detail = clean(chat.error) || (stopped ? "完了した結果は確認できていません。" : "前の処理は完了しませんでした。記録を確認してください。");
+    const detail = clean(chat.error) || (stopped ? ui("完了した結果は確認できていません。", "I couldn't confirm the result. ") : ui("前の処理は完了しませんでした。記録を確認してください。", "The previous task did not finish. Check its record."));
     const failure = add("chat-failure:" + chat.id, chat.id, [chat.status, chat.error, chat.activity?.id],
-      (stopped ? "処理は停止しています。" : "うまくいかない箇所が見つかりました。") + detail);
+      (stopped ? ui("処理は停止しています。", "Work has stopped. ") : ui("うまくいかない箇所が見つかりました。", "Something went wrong. ")) + detail);
     if (!current) {
       current = failure;
-      context = (stopped ? "現在、処理は停止しています。" : "現在、うまくいかない箇所があります。") + detail + " ";
+      context = (stopped ? ui("現在、処理は停止しています。", "The process is stopped. ") : ui("現在、うまくいかない箇所があります。", "There's still a problem. ")) + detail + " ";
     }
   }
   if (project?.paused) {
     const paused = add("pause:" + project.id, project.id, [true],
-      "今は作業を休止しています。続きの記録は残してあります。");
+      ui("今は作業を休止しています。続きの記録は残してあります。", "Work is paused. The record is saved."));
     if (!current) {
       current = paused;
-      context = "今は作業を休止しています。";
+      context = ui("今は作業を休止しています。", "Work is paused. ");
     }
   }
   if (job?.status === "done") {
     const pr = project?.pullRequests?.find((item) => job.url && item.url === job.url && item.repoId === job.repoId);
     add("job:" + job.id, job.id, [job.status, job.attempt, job.completedAt, job.kind, job.output, pr?.url],
-      (baseline ? "あの後、" : "") +
+      (baseline ? ui("あの後、", "Since we spoke, ") : "") +
       (job.kind === "verify"
-        ? "検証の結果が届きました。"
+        ? ui("検証の結果が届きました。", "the test results came in.")
         : job.kind === "publish" && pr
-          ? "変更をPRにまとめました。まだ公開とは別の段階です。"
-          : "この工程の報告がまとまりました。") +
+          ? ui("変更をPRにまとめました。まだ公開とは別の段階です。", "I put the changes into a pull request. They are awaiting publication.")
+          : ui("この工程の報告がまとまりました。", "the report for this step is ready.")) +
       " " +
       clean(job.output));
   } else if (baseline && ["running", "preparing", "queued"].includes(job?.status)) {
     add("job:" + job.id, job.id, [job.status, job.attempt, job.title],
-      "相談の続きは「" +
+      ui("相談の続きは「", "The next topic is “") +
       clean(job.title) +
-      "」です。" +
+      ui("」です。", "”. ") +
       (job.status === "queued"
-        ? "作業の順番を待っています。"
-        : "今、続きを進めています。"));
+        ? ui("作業の順番を待っています。", "I'm waiting for my turn.")
+        : ui("今、続きを進めています。", "I'm working on it now.")));
   }
   for (const progress of events.filter((e) => e.kind === "progress"))
     add("event:" + progress.id, progress.id, [progress.question, progress.summary],
-      "記録に報告が残っています。" + clean(progress.question) + " " + clean(progress.summary));
+      ui("記録に報告が残っています。", "A report is on file. ") + clean(progress.question) + " " + clean(progress.summary));
   const introduction = !baseline && !job ? messages.filter((m) => m.role === "user").at(-1) : null;
   const ordered = introduction ? [introduction, ...messages.filter((m) => m !== introduction)] : messages;
   for (const message of ordered) {
@@ -159,24 +160,24 @@ export function residentReport(chat, project, baseline) {
     if (message.attachments?.length) evidence.push(message.attachments);
     const report = add("message:" + message.reportSource, message.reportSource,
       evidence, conversationMessageText(message).trim());
-    report.label = message.role === "user" ? "依頼" : "返答";
+    report.label = message.role === "user" ? ui("依頼", "Request") : ui("返答", "Reply");
   }
   if (!candidates.length)
     add("introduction:" + chat.id, job?.id || chat.id, [job?.title || chat.title], job
       ? "「" +
         clean(job.title) +
-        "」を担当しています。まとまったら、ここでお知らせします。"
-      : "まだお話はこれからです。何から始めましょうか。");
+        ui("」を担当しています。まとまったら、ここでお知らせします。", "” is my task. I'll report back here when it's ready.")
+      : ui("まだお話はこれからです。何から始めましょうか。", "We haven't spoken yet. Where shall we start?"));
   const candidate = candidates.find((item) => heard[item.key] !== item.version);
-  const text = candidate?.text || "前にお話ししたところから、まだ新しい報告はありません。";
+  const text = candidate?.text || ui("前にお話ししたところから、まだ新しい報告はありません。", "No new reports since we last spoke.");
   return {
     ...candidate,
     version: candidate?.version || baseline?.version,
     source: candidate?.source || baseline?.source || chat.id,
-    text: current && candidate !== current ? context + (candidate ? "以前の記録からお伝えします。" : "") + text : text,
+    text: current && candidate !== current ? context + (candidate ? ui("以前の記録からお伝えします。", "From an earlier record: ") : "") + text : text,
     conversationId: chat.id,
     kind: candidate?.kind || "report",
-    label: candidate?.label || (candidate?.kind === "question" ? "確認事項" : "進捗"),
+    label: candidate?.label || (candidate?.kind === "question" ? ui("確認事項", "Question") : ui("進捗", "Progress")),
     previousReports,
   };
 }
@@ -199,10 +200,10 @@ export function associationSpeech(from, to) {
   return {
     kind: "association",
     text:
-      "話の種ですが、「" +
+      ui("話の種ですが、「", "I wonder if what we learned on “") +
       clean(from.name) +
-      "」で考えたことは「" +
+      ui("」で考えたことは「", "” might help with “") +
       clean(to.name) +
-      "」でも役に立つでしょうか。向こうの話も聞いてみたいですね。",
+      ui("」でも役に立つでしょうか。向こうの話も聞いてみたいですね。", "”. I'd like to hear what they think."),
   };
 }

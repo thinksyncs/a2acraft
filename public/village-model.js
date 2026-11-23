@@ -1,13 +1,14 @@
+import {ui} from './interface-language.js';
 import {mapTranscriptText} from './world-dialogue.js';
 import {villageDelegation} from './village-delegates.js';
 
 // A local, conservative reading of saved conversations. These stages describe
 // evidence in the transcript, not an inspection or certification of software.
 export const VILLAGE_STAGES=Object.freeze([
-  Object.freeze({id:'planned',label:'構想'}),
-  Object.freeze({id:'building',label:'建設中'}),
-  Object.freeze({id:'testing',label:'仕上げ・検証'}),
-  Object.freeze({id:'complete',label:'完成'})
+  Object.freeze({id:'planned',label:ui('構想', "Planned")}),
+  Object.freeze({id:'building',label:ui('建設中', "Building")}),
+  Object.freeze({id:'testing',label:ui('仕上げ・検証', "Testing")}),
+  Object.freeze({id:'complete',label:ui('完成', "Complete")})
 ]);
 
 const stageIds=new Set(VILLAGE_STAGES.map(stage=>stage.id));
@@ -144,7 +145,7 @@ function conversationInterest(title,messages){
   }
   const meaningfulTitle=title&&!genericTitle.test(title)?shortTopic(title):null;
   const withdrawn=topic=>withdrawals.some(value=>sameInterest(topic,value));
-  const selected=declaration||(request&&!withdrawn(request.interest)?request:null)||(meaningfulTitle&&!withdrawn(meaningfulTitle)?{interest:meaningfulTitle,interestSource:'title',interestEvidence:bounded(title,180)}:{interest:'この会話の続き',interestSource:'fallback',interestEvidence:''});
+  const selected=declaration||(request&&!withdrawn(request.interest)?request:null)||(meaningfulTitle&&!withdrawn(meaningfulTitle)?{interest:meaningfulTitle,interestSource:'title',interestEvidence:bounded(title,180)}:{interest:ui('この会話の続き', "Continue this conversation"),interestSource:'fallback',interestEvidence:''});
   return {...selected,interestKeywords:selected.interestSource==='fallback'?[]:topicKeywords(selected.interest),
     projectKeywords:topicKeywords([meaningfulTitle||'',request?.interest||''].join(' '))};
 }
@@ -178,11 +179,11 @@ function developmentEvidence(title,messages){
   // a new project, even when the answer contains example code or its history.
   if(users.some(message=>educational.test(message.text)))return null;
   for(const message of messages){
-    if(message.role==='assistant'&&codingFence.test(message.text)&&codeShape.test(message.text))return '会話にソフトウェアのソースコードが含まれています。';
+    if(message.role==='assistant'&&codingFence.test(message.text)&&codeShape.test(message.text))return ui('会話にソフトウェアのソースコードが含まれています。', "The conversation includes software source code.");
     const plain=narrative(message.text);
     if(thirdParty.test(plain))continue;
     if(message.role==='assistant'&&makingSoftware(plain))return bounded(plain,180);
-    if(sourcePath.test(message.text)&&making.test(plain))return bounded(plain,180)||'ソースファイルの変更についての会話です。';
+    if(sourcePath.test(message.text)&&making.test(plain))return bounded(plain,180)||ui('ソースファイルの変更についての会話です。', "The conversation discusses source file changes.");
     if(softwareDomain.test(plain)&&progressEvent(plain)?.stage==='complete')return bounded(plain,180);
   }
   return null;
@@ -226,7 +227,7 @@ function estimatedProgress(messages){
   for(const message of messages){
     // An actual code artifact is implementation evidence, never proof of release.
     if(message.role==='assistant'&&codingFence.test(message.text)&&codeShape.test(message.text)){
-      stage='building';implemented=true;evidence.push({kind:'implementation',text:'会話にソースコードが作成されています。'});
+      stage='building';implemented=true;evidence.push({kind:'implementation',text:ui('会話にソースコードが作成されています。', "Source code was written in this conversation.")});
     }
     const sentences=narrative(message.text,{quotes:true}).split(/(?<=[。！？])\s*|(?<=[.!?])\s+|[\n;；]+|\s+(?:but|however)\s+|(?:ただし|しかし)[、,]?/u);
     for(const sentence of sentences){
@@ -261,7 +262,7 @@ export function projectVillage(chats,overrides=[]){
     const messages=(Array.isArray(chat.messages)?chat.messages:[]).filter(message=>['user','assistant'].includes(message?.role));
     if(!messages.length&&override?.kind!=='software'&&!manualStage)continue;
     seen.add(chat.id);
-    const title=bounded(mapTranscriptText(chat.title),120)||'会話',name=bounded(mapTranscriptText(chat.characterName),80)||title;
+    const title=bounded(mapTranscriptText(chat.title),120)||ui('会話', "Conversation"),name=bounded(mapTranscriptText(chat.characterName),80)||title;
     const status=string(chat.status)||'idle',activity=activities.has(status)?'working':status==='failed'?'attention':'resting';
     const times=[timestamp(chat.updatedAt),...messages.map(message=>timestamp(message.createdAt))].filter(value=>value!==null);
     const seed=hash(chat.id),resident={id:chat.id,conversationId:chat.id,name,title,status,activity,seed,appearance:appearances[seed%appearances.length],messageCount:messages.length,updatedAt:times.reduce((latest,time)=>latest===null||time>latest?time:latest,null),projectId:null,delegation:villageDelegation(chat)};
@@ -270,7 +271,7 @@ export function projectVillage(chats,overrides=[]){
     if(override?.kind!=='resident'&&(override?.kind==='software'||manualStage||development)){
       const estimated=estimatedProgress(inspected),stage=manualStage||estimated.stage;
       const stageLabel=VILLAGE_STAGES.find(value=>value.id===stage).label;
-      const evidence=manualStage?[{kind:'manual',text:'建物の進み具合を手動で設定しています。'}]:estimated.evidence.length?estimated.evidence:[{kind:'planning',text:development||'進み具合を示す記述がないため、構想として表示しています。'}];
+      const evidence=manualStage?[{kind:'manual',text:ui('建物の進み具合を手動で設定しています。', "Building progress was set manually.")}]:estimated.evidence.length?estimated.evidence:[{kind:'planning',text:development||ui('進み具合を示す記述がないため、構想として表示しています。', "Shown as planned until the conversation records progress.")}];
       resident.projectId='project:'+chat.id;
       projects.push({id:resident.projectId,conversationId:chat.id,title,stage,stageLabel,source:manualStage?'manual':'estimated',evidence,seed,activity,topicKeywords:projectKeywords});
       stats.stages[stage]++;

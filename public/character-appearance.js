@@ -1,8 +1,9 @@
+import {ui} from './interface-language.js';
 const appearances={
-  hero:{id:'hero',label:'冒険者',icon:'hero'},
-  priest:{id:'priest',label:'僧侶',icon:'priest'},
-  mage:{id:'mage',label:'魔法使い',icon:'mage'},
-  martialArtist:{id:'martial-artist',label:'武道家',icon:'martial-artist'}
+  hero:{id:'hero',label:ui('冒険者', 'Adventurer'),icon:'hero'},
+  priest:{id:'priest',label:ui('僧侶', 'Cleric'),icon:'priest'},
+  mage:{id:'mage',label:ui('魔法使い', 'Mage'),icon:'mage'},
+  martialArtist:{id:'martial-artist',label:ui('武道家', 'Martial artist'),icon:'martial-artist'}
 };
 
 // Appearance follows the saved role; it never changes skills or permissions.

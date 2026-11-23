@@ -1,0 +1,39 @@
+name: Build bilingual Mac preview
+on:
+  push:
+    branches: [feats/verify-bilingual-mac]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      GIT_ALLOW_PROTOCOL: https:file
+      GIT_SSH_COMMAND: /usr/bin/false
+      CARGO_NET_GIT_FETCH_WITH_CLI: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm test
+      - run: npm run prepare:distribution
+      - run: npm run tauri:test
+      - run: npm run tauri:build
+      - run: npm run tauri:verify:mac
+      - name: Package the verified app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent src-tauri/target/release/bundle/macos/A2ACraft.app "$RUNNER_TEMP/A2ACraft-EN-JA-Mac-arm64.zip"
+          unzip -tq "$RUNNER_TEMP/A2ACraft-EN-JA-Mac-arm64.zip"
+          shasum -a 256 "$RUNNER_TEMP/A2ACraft-EN-JA-Mac-arm64.zip"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: A2ACraft-EN-JA-Mac-arm64
+          path: ${{ runner.temp }}/A2ACraft-EN-JA-Mac-arm64.zip
+          retention-days: 30
+          compression-level: 0

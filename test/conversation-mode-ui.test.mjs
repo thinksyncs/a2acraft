@@ -1,3 +1,4 @@
+import {ui} from '../public/interface-language.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -12,7 +13,7 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{reso
 function fixture(values={}){
   const elements=new Map(),calls=[],pending=deferred();let context;
   const node=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);};
-  context=vm.createContext({
+  context=vm.createContext({ui, 
     chats:[{id:'one',status:'idle',messages:[]}],selected:'one',demo:false,serverUnavailable:false,
     drafts:{one:'Do not alter this draft'},pendingSends:new Set(),conversationModeRequests:new Map(),...values,
     $:node,setText:(id,text)=>{node(id).textContent=text;},

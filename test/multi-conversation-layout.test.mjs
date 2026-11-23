@@ -1,3 +1,4 @@
+import {ui} from '../public/interface-language.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -22,7 +23,7 @@ function fixture({layout=4,encounter=true}={}){
   const chats=Array.from({length:8},(_,index)=>({id:'chat-'+index,title:'Conversation '+index,status:'idle',messages:[]}));
   const groups=[{id:'first',conversationIds:chats.slice(0,4).map(chat=>chat.id)},{id:'second',conversationIds:chats.slice(4).map(chat=>chat.id)}];
   const quiet={render(){}};
-  const context=vm.createContext({chats,selected:'chat-0',layout,activeEncounter:encounter?{conversationId:'chat-0'}:null,
+  const context=vm.createContext({ui, chats,selected:'chat-0',layout,activeEncounter:encounter?{conversationId:'chat-0'}:null,
     view:'chat',pendingView:null,drafts:{'chat-1':'Second saved draft'},groupSelections:new Map(),panels,renderedNavigation:'',
     conversationRenderTimer:0,clearTimeout(){},document:{activeElement:null},CSS:{escape:value=>value},esc:value=>value,
     $:node,$$:()=>buttons,active:()=>false,setText(){},equipment:quiet,contextSharing:quiet,workspaceTabs:quiet,town:quiet,history:quiet,village:quiet,

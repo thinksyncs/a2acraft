@@ -11,6 +11,7 @@ if (location.protocol === 'http:' && location.hostname === '127.0.0.1') contextB
   close: () => ipcRenderer.invoke('window:close'),
   openExternal: url => ipcRenderer.invoke('app:open-external', url),
   getSettings: () => ipcRenderer.invoke('settings:read'),
+  setInterfaceLanguage: language => ipcRenderer.invoke('settings:set-interface-language', language),
   getUiState: () => ipcRenderer.invoke('ui:read'),
   saveUiState: state => ipcRenderer.invoke('ui:save', state),
   getMapState: mode => ipcRenderer.invoke('map:read', mode),

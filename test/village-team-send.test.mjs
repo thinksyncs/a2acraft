@@ -1,3 +1,4 @@
+import {ui} from '../public/interface-language.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -22,7 +23,7 @@ test('a map message uses normal send for its recipient, preserving the other com
   const squadId = 'todo:waiting-team';
   const sendRequests = {};
   let deliverySequence = 0;
-  const context = vm.createContext({
+  const context = vm.createContext({ui, 
     $:selector=>fields[selector], chats:[chat, other], selected:'other', state, drafts, demo:false,
     serverUnavailable:false, steerPending:false, pendingSends, conversationModeRequests:new Map(),
     boardActive:()=>false, partyActive:()=>false, connectionReadiness:{busy:false},

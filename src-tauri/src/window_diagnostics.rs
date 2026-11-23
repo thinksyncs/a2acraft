@@ -200,24 +200,27 @@ pub(crate) fn show(window: WebviewWindow) {
             crate::write_private_json(&file, &report)?;
             Ok(file)
         })();
+        let language = crate::desktop_language::Language::current(&app);
         let saved = saved
-            .map(|file| format!("保存先　{}", file.display()))
-            .unwrap_or_else(|_| "診断結果を保存できませんでした。".into());
+            .map(|file| format!("{} {}", language.text("保存先", "Saved to"), file.display()))
+            .unwrap_or_else(|_| language.text("診断結果を保存できませんでした。", "The diagnostics could not be saved.").into());
         let yes_no = |v: Option<bool>| match v {
-            Some(true) => "はい",
-            Some(false) => "いいえ",
-            None => "不明",
+            Some(true) => language.text("はい", "Yes"),
+            Some(false) => language.text("いいえ", "No"),
+            None => language.text("不明", "Unknown"),
         };
         let rendering = match responding {
-            "complete" => "読込完了・応答あり",
-            "interactive" | "loading" => "読込中・応答あり",
-            "no-response" => "2秒以内に応答なし",
-            _ => "不明",
+            "complete" => language.text("読込完了・応答あり", "Loaded and responding"),
+            "interactive" | "loading" => language.text("読込中・応答あり", "Loading and responding"),
+            "no-response" => language.text("2秒以内に応答なし", "No response within two seconds"),
+            _ => language.text("不明", "Unknown"),
         };
-        let text = format!("A2ACraft {version}\n表示　{}　最小化　{}　フォーカス　{}\n画面の状態　{rendering}\n{saved}",
-            yes_no(visible),yes_no(minimized),yes_no(focused));
+        let text = format!("A2ACraft {version}\n{}: {}   {}: {}   {}: {}\n{}: {rendering}\n{saved}",
+            language.text("表示", "Visible"), yes_no(visible), language.text("最小化", "Minimized"),
+            yes_no(minimized), language.text("フォーカス", "Focused"), yes_no(focused),
+            language.text("画面の状態", "Window state"));
         let _ = reveal(&window);
-        let dialog = app.dialog().message(text).title("表示の診断");
+        let dialog = app.dialog().message(text).title(language.text("表示の診断", "Window Diagnostics"));
         dialog.show(move |_| {
             app.state::<History>()
                 .showing

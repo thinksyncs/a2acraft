@@ -1,3 +1,4 @@
+import {ui} from './interface-language.js';
 import {PartyRunner,partyStatusLabels,partyStepLabels} from './party-runner.js';
 import {equipmentIcon} from './equipment.js';
 import {equipmentSlots} from './equipment-catalog.js';
@@ -8,13 +9,13 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
   const $=selector=>document.querySelector(selector),rows=new Map();
   let draft=null,savedKey='',awaitingChats=false,busy=false,error='',notice='',demoRunner,demoLoading,demoTurn;
   let sceneKey='',dismissedQuest=null,editorFocus=null;
-  function current(){return getState()||{party:{name:'旅の仲間',leaderId:null,members:[]},quest:null};}
+  function current(){return getState()||{party:{name:ui('旅の仲間', "Traveling companions"),leaderId:null,members:[]},quest:null};}
   function syncDraft(){
     const saved=current().party,key=JSON.stringify(saved);
     if(draft&&key===savedKey&&(!awaitingChats||!getChats().length))return;savedKey=key;
     awaitingChats=!saved.members?.length&&($('#tavern-view').hidden||!getChats().length);
-    const members=saved.members?.length?structuredClone(saved.members):getChats().slice(0,4).map((chat,index)=>({conversationId:chat.id,role:['全体整理','調査','執筆','レビュー'][index]||'補助'}));
-    draft={name:saved.name||'旅の仲間',leaderId:saved.leaderId||members[0]?.conversationId||null,members};
+    const members=saved.members?.length?structuredClone(saved.members):getChats().slice(0,4).map((chat,index)=>({conversationId:chat.id,role:[ui('全体整理', "Coordination"),ui('調査', "Research"),ui('執筆', "Writing"),ui('レビュー', "Review")][index]||ui('補助', "Support")}));
+    draft={name:saved.name||ui('旅の仲間', "Traveling companions"),leaderId:saved.leaderId||members[0]?.conversationId||null,members};
   }
   function updateOrder(){
     const order=$('#party-order');order.replaceChildren();if(!draft)return;
@@ -22,9 +23,9 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     for(const [index,member] of members.entries()){
       if(index)order.append(text('span','→'));
       const chat=getChats().find(c=>c.id===member.conversationId),leader=member.conversationId===draft.leaderId;
-      order.append(text('span',(leader?'リーダーのまとめ':member.role||'役割未入力')+' / '+(chat?.title||'会話不明'),leader?'party-leader-label':''));
+      order.append(text('span',(leader?ui('リーダーのまとめ', "Leader's summary"):member.role||ui('役割未入力', "Role missing"))+' / '+(chat?.title||ui('会話不明', "Unknown conversation")),leader?'party-leader-label':''));
     }
-    if(!members.length)order.append(text('span','仲間を選んでください。'));
+    if(!members.length)order.append(text('span',ui('仲間を選んでください。', "Choose a companion.")));
   }
   function openEditor(id){
     const dialog=$('#party-edit-dialog');if(!dialog)return;
@@ -36,15 +37,15 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     const scene=$('#party-scene-roster');if(!scene)return;
     const configured=formation.members||[],members=[...configured.filter(member=>member.conversationId!==formation.leaderId),...configured.filter(member=>member.conversationId===formation.leaderId)];
     const key=JSON.stringify([formation,showingProgress,quest?.steps?.map(step=>[step.conversationId,step.status]),members.map(member=>{const chat=getChats().find(item=>item.id===member.conversationId);return [chat?.title,chat?.characterName];})]);
-    $('#party-scene-name').textContent=formation.name||'旅の仲間';
-    $('#party-scene-hint').textContent=showingProgress?'仲間を選ぶと、その会話を確認できます。':'仲間を選ぶと、役割を変えられます。';
+    $('#party-scene-name').textContent=formation.name||ui('旅の仲間', "Traveling companions");
+    $('#party-scene-hint').textContent=showingProgress?ui('仲間を選ぶと、その会話を確認できます。', "Choose a companion to view their conversation."):ui('仲間を選ぶと、役割を変えられます。', "Choose a companion to change their role.");
     if(key===sceneKey)return;sceneKey=key;scene.replaceChildren();
     for(const [index,member] of members.entries()){
       const chat=getChats().find(item=>item.id===member.conversationId);if(!chat)continue;
-      const leader=member.conversationId===formation.leaderId,role=leader?'リーダー':member.role||'補助',name=chat.characterName||chat.title;
+      const leader=member.conversationId===formation.leaderId,role=leader?ui('リーダー', "Leader"):member.role||ui('補助', "Support"),name=chat.characterName||chat.title;
       const step=showingProgress?quest?.steps?.find(item=>item.conversationId===chat.id):null;
       const actor=text('button','','party-scene-actor');actor.type='button';actor.dataset.partyActor=chat.id;actor.dataset.appearance=characterAppearance(member.role).id;actor.dataset.status=step?.status||'ready';actor.classList.toggle('is-leader',leader);
-      actor.setAttribute('aria-label',name+' · '+role+' · '+(showingProgress?'会話を開く':'役割を変更'));actor.title=chat.title;
+      actor.setAttribute('aria-label',name+' · '+role+' · '+(showingProgress?ui('会話を開く', "Open chat"):ui('役割を変更', "Change role")));actor.title=chat.title;
       actor.onclick=()=>showingProgress?onSelect(chat.id):openEditor(chat.id);
       const portrait=text('span','','party-scene-portrait');portrait.setAttribute('aria-hidden','true');
       const position=text('span',leader?'★':String(index+1),'party-scene-position');position.setAttribute('aria-hidden','true');
@@ -52,21 +53,21 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
       if(step&&step.status!=='pending')actor.append(text('span',partyStepLabels[step.status]||step.status,'party-scene-state'));
       scene.append(actor);
     }
-    if(!scene.children.length){const empty=text('button','仲間を迎える','party-scene-empty');empty.type='button';empty.onclick=()=>openEditor();scene.append(empty);}
+    if(!scene.children.length){const empty=text('button',ui('仲間を迎える', "Recruit companions"),'party-scene-empty');empty.type='button';empty.onclick=()=>openEditor();scene.append(empty);}
   }
   function memberRow(chat){
     if(rows.has(chat.id))return rows.get(chat.id);
     const row=text('div','','party-member');row.dataset.memberId=chat.id;
-    const top=text('div','','party-member-top'),avatar=text('span','','party-avatar'),title=text('strong',chat.title,'party-member-title'),open=text('button','会話を見る','text-btn');open.type='button';open.onclick=()=>{$('#party-edit-dialog')?.close();onSelect(chat.id);};
+    const top=text('div','','party-member-top'),avatar=text('span','','party-avatar'),title=text('strong',chat.title,'party-member-title'),open=text('button',ui('会話を見る', "View chat"),'text-btn');open.type='button';open.onclick=()=>{$('#party-edit-dialog')?.close();onSelect(chat.id);};
     avatar.append(characterIcon(''));top.append(avatar,title,open);
     const gear=text('div','','party-member-gear'),controls=text('div','','party-member-controls');
-    const chosenLabel=document.createElement('label'),chosen=document.createElement('input');chosen.type='checkbox';chosen.dataset.partyMember=chat.id;chosenLabel.append(chosen,document.createTextNode('仲間にする'));
-    const leaderLabel=document.createElement('label'),leader=document.createElement('input');leader.type='radio';leader.name='party-leader';leader.value=chat.id;leader.dataset.partyLeader=chat.id;leaderLabel.append(leader,document.createTextNode('リーダー'));
+    const chosenLabel=document.createElement('label'),chosen=document.createElement('input');chosen.type='checkbox';chosen.dataset.partyMember=chat.id;chosenLabel.append(chosen,document.createTextNode(ui('仲間にする', "Add to party")));
+    const leaderLabel=document.createElement('label'),leader=document.createElement('input');leader.type='radio';leader.name='party-leader';leader.value=chat.id;leader.dataset.partyLeader=chat.id;leaderLabel.append(leader,document.createTextNode(ui('リーダー', "Leader")));
     const position=text('span','','party-position');controls.append(chosenLabel,leaderLabel,position);
-    const roleLine=text('div','','party-role-line'),label=text('label','役割'),role=document.createElement('input');role.maxLength=120;role.id='party-role-'+chat.id;role.dataset.partyRole=chat.id;label.htmlFor=role.id;
-    const up=text('button','↑','outline'),down=text('button','↓','outline');up.type=down.type='button';up.setAttribute('aria-label',chat.title+'の順番を上へ');down.setAttribute('aria-label',chat.title+'の順番を下へ');roleLine.append(label,role,up,down);
+    const roleLine=text('div','','party-role-line'),label=text('label',ui('役割', "Role")),role=document.createElement('input');role.maxLength=120;role.id='party-role-'+chat.id;role.dataset.partyRole=chat.id;label.htmlFor=role.id;
+    const up=text('button','↑','outline'),down=text('button','↓','outline');up.type=down.type='button';up.setAttribute('aria-label',chat.title+ui('の順番を上へ', " · move up"));down.setAttribute('aria-label',chat.title+ui('の順番を下へ', " · move down"));roleLine.append(label,role,up,down);
     chosen.onchange=()=>{
-      if(chosen.checked){if(draft.members.length>=8){chosen.checked=false;error='仲間はリーダーを含む8人までです。';render();return;}draft.members.push({conversationId:chat.id,role:'補助'});if(!draft.leaderId)draft.leaderId=chat.id;}
+      if(chosen.checked){if(draft.members.length>=8){chosen.checked=false;error=ui('仲間はリーダーを含む8人までです。', "A party can have up to eight members, including the leader.");render();return;}draft.members.push({conversationId:chat.id,role:ui('補助', "Support")});if(!draft.leaderId)draft.leaderId=chat.id;}
       else{draft.members=draft.members.filter(m=>m.conversationId!==chat.id);if(draft.leaderId===chat.id)draft.leaderId=draft.members[0]?.conversationId||null;}
       render();
     };
@@ -81,7 +82,7 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     if(ui.gear.dataset.key===gearKey)return;
     ui.gear.dataset.key=gearKey;ui.gear.replaceChildren();if(leader)ui.gear.append(equipmentIcon('crown'));
     for(const slot of equipmentSlots)if(chat.equipment?.[slot])ui.gear.append(equipmentIcon(chat.equipment[slot]));
-    if(!ui.gear.children.length)ui.gear.append(document.createTextNode('装備なし'));
+    if(!ui.gear.children.length)ui.gear.append(document.createTextNode(ui('装備なし', "No equipment")));
     ui.avatar.dataset.appearance=appearance.id;ui.avatar.setAttribute('role','img');ui.avatar.setAttribute('aria-label',appearance.label);
     ui.avatar.replaceChildren(characterIcon(member?.role));if(chat.equipment?.weapon)ui.avatar.append(equipmentIcon(chat.equipment.weapon,'equipment-icon party-held'));
   }
@@ -91,7 +92,7 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     $('#tavern-view').dataset.partyState=quest?.status||'ready';
     const layout=$('#tavern-view .party-layout');layout.dataset.progress=String(showingProgress);
     const editError=$('#party-edit-error');if(editError){editError.hidden=!error;editError.textContent=error;}
-    const editorHint=$('#party-edit-dialog .party-edit-heading p');if(editorHint)editorHint.textContent=unfinished?'クエスト中は編成を変更できません。':'役割の順に進め、最後はリーダーがまとめます。';
+    const editorHint=$('#party-edit-dialog .party-edit-heading p');if(editorHint)editorHint.textContent=unfinished?ui('クエスト中は編成を変更できません。', "Finish or stop the quest before changing the party."):ui('役割の順に進め、最後はリーダーがまとめます。', "Members work in order, then the leader summarizes their results.");
     if(document.activeElement!==$('#party-name'))$('#party-name').value=draft.name;
     $('#party-configuration').disabled=busy||unfinished;
     const roster=$('#party-members'),order=[...draft.members.map(m=>getChats().find(c=>c.id===m.conversationId)).filter(Boolean),...getChats().filter(c=>!draft.members.some(m=>m.conversationId===c.id))];
@@ -99,8 +100,8 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
       const ui=memberRow(chat),member=draft.members.find(m=>m.conversationId===chat.id),leader=Boolean(member&&draft.leaderId===chat.id),workers=draft.members.filter(m=>m.conversationId!==draft.leaderId),position=workers.findIndex(m=>m.conversationId===chat.id);
       ui.title.textContent=chat.title;ui.title.title=chat.title;ui.chosen.checked=Boolean(member);ui.leader.checked=leader;ui.leader.disabled=!member;
       ui.row.classList.toggle('is-member',Boolean(member));ui.row.classList.toggle('is-leader',leader);
-      if(document.activeElement!==ui.role)ui.role.value=leader?'最後に成果をまとめる':member?.role||'';ui.role.disabled=!member||leader;
-      ui.position.textContent=leader?'最後に行動':member?'順番 '+(position+1):'';
+      if(document.activeElement!==ui.role)ui.role.value=leader?ui('最後に成果をまとめる', "Summarize the results last"):member?.role||'';ui.role.disabled=!member||leader;
+      ui.position.textContent=leader?ui('最後に行動', "Acts last"):member?ui('順番 ', "Turn ")+(position+1):'';
       ui.up.disabled=!member||leader||position<=0;ui.down.disabled=!member||leader||position===workers.length-1;
       renderAvatar(ui,chat,member,leader);
       if(roster.children[index]!==ui.row)roster.insertBefore(ui.row,roster.children[index]||null);
@@ -108,15 +109,15 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     for(const [id,ui] of rows)if(!getChats().some(chat=>chat.id===id)){ui.row.remove();rows.delete(id);}
     updateOrder();renderScene(showingProgress&&quest.party?quest.party:draft,quest,showingProgress);
     $('#party-error').hidden=!error;$('#party-error').textContent=error;$('#party-notice').textContent=notice;
-    $('#party-mode').textContent=notice||(demo?'体験モード':'仲間と進める');
-    const model=getModel();$('#party-model-caption').textContent=unfinished?'このクエスト: '+quest.model+' / '+quest.effort:'MODEL: '+(model.model||'未選択')+' / '+(model.effort||'medium');
+    $('#party-mode').textContent=notice||(demo?ui('体験モード', "Sample mode"):ui('仲間と進める', "Work with your party"));
+    const model=getModel();$('#party-model-caption').textContent=unfinished?ui('このクエスト: ', "This quest: ")+quest.model+' / '+quest.effort:'MODEL: '+(model.model||ui('未選択', "None selected"))+' / '+(model.effort||'medium');
     $('#party-quest').readOnly=unfinished;$('#party-start').disabled=busy||unfinished||!model.model||!canConnect();
     $('#party-pause').hidden=!active(quest);$('#party-pause').disabled=busy||quest?.status==='stopping';
     $('#party-resume').hidden=quest?.status!=='paused';$('#party-resume').disabled=busy||!canConnect();
-    const next=quest?.steps.find(step=>step.status!=='completed');$('#party-resume').textContent=next?.needsRetry?'この役割を再実行して続ける':'続きから再開';
+    const next=quest?.steps.find(step=>step.status!=='completed');$('#party-resume').textContent=next?.needsRetry?ui('この役割を再実行して続ける', "Retry this role and continue"):ui('続きから再開', "Resume here");
     $('#party-cancel').hidden=!unfinished;$('#party-cancel').disabled=busy||quest?.status==='stopping';
-    $('#party-status').textContent=partyStatusLabels[quest?.status]||'出発前';$('#party-quest-summary').textContent=quest?.text||'クエストを渡すと、仲間が順番に行動します。';
-    const runError=[quest?.error,next?.needsRetry?'この役割は実行済みの操作がある可能性があります。再実行前に会話の結果を確認できます。':''].filter(Boolean).join('\n');
+    $('#party-status').textContent=partyStatusLabels[quest?.status]||ui('出発前', "Before departure");$('#party-quest-summary').textContent=quest?.text||ui('クエストを渡すと、仲間が順番に行動します。', "Give the party a quest and each member will work in turn.");
+    const runError=[quest?.error,next?.needsRetry?ui('この役割は実行済みの操作がある可能性があります。再実行前に会話の結果を確認できます。', "This role may already have performed actions. Check its record before retrying."):''].filter(Boolean).join('\n');
     $('#party-run-error').hidden=!runError;$('#party-run-error').textContent=runError;
     const steps=$('#party-steps'),key=JSON.stringify(quest?.steps||[]);
     if(steps.dataset.key!==key){
@@ -125,12 +126,12 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
         const row=text('li','','party-step is-'+step.status),heading=text('div','','party-step-heading');row.dataset.partyStep=step.id;row.dataset.status=step.status;
         heading.append(text('span',String(index+1)),text('strong',step.role),text('span',step.title),text('span',partyStepLabels[step.status]||step.status,'party-step-state'));row.append(heading);
         if(step.error)row.append(text('p',step.error));
-        if(step.output){const details=document.createElement('details');details.append(text('summary',step.truncated?'成果を読む（先頭12,000文字・省略あり）':'成果を読む'),text('pre',step.output));row.append(details);}
-        const open=text('button','会話を確認 →','outline');open.type='button';open.onclick=()=>onSelect(step.conversationId);row.append(open);steps.append(row);
+        if(step.output){const details=document.createElement('details');details.append(text('summary',step.truncated?ui('成果を読む（先頭12,000文字・省略あり）', "Read result (first 12,000 characters; truncated)"):ui('成果を読む', "Read result")),text('pre',step.output));row.append(details);}
+        const open=text('button',ui('会話を確認 →', "View conversation →"),'outline');open.type='button';open.onclick=()=>onSelect(step.conversationId);row.append(open);steps.append(row);
       }
     }
-    const summary=quest?.status==='completed'?quest.steps.at(-1):null;$('#party-final').hidden=!summary;$('#party-final-text').textContent=summary?.output||'';$('#party-final h3').textContent=quest?.mode==='chat'?'担当チャットの成果':'リーダーのまとめ';$('#party-final-chat').textContent=quest?.mode==='chat'?'担当チャットの会話を開く →':'リーダーの会話を開く →';
-    const newQuest=$('#party-new-quest');if(newQuest){newQuest.hidden=!quest||unfinished;newQuest.textContent=quest?.status==='completed'?'次の依頼へ':'依頼を見直す';}
+    const summary=quest?.status==='completed'?quest.steps.at(-1):null;$('#party-final').hidden=!summary;$('#party-final-text').textContent=summary?.output||'';$('#party-final h3').textContent=quest?.mode==='chat'?ui('担当チャットの成果', "Worker's result"):ui('リーダーのまとめ', "Leader's summary");$('#party-final-chat').textContent=quest?.mode==='chat'?ui('担当チャットの会話を開く →', "Open worker's conversation →"):ui('リーダーの会話を開く →', "Open leader's conversation →");
+    const newQuest=$('#party-new-quest');if(newQuest){newQuest.hidden=!quest||unfinished;newQuest.textContent=quest?.status==='completed'?ui('次の依頼へ', "Next quest"):ui('依頼を見直す', "Review quest");}
     const viewRecord=$('#party-view-record');if(viewRecord)viewRecord.hidden=!quest||showingProgress;
   }
   async function ensureDemo(){
@@ -139,12 +140,12 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     demoLoading=(async()=>{
       demoRunner=await new PartyRunner({getConversations:getChats,read:async()=>{try{return JSON.parse(localStorage.getItem(storeKey+'-party')||'null');}catch{return null;}},write:async value=>{localStorage.setItem(storeKey+'-party',JSON.stringify(value));await onPersistQuest(value.quest);},onChange:onState,
         interrupt:async()=>demoTurn?.stop(),execute:async({quest,step,prompt,onAccepted})=>{
-          const chat=getChats().find(chat=>chat.id===step.conversationId);if(!chat)throw Error('仲間が見つかりません。');
+          const chat=getChats().find(chat=>chat.id===step.conversationId);if(!chat)throw Error(ui('仲間が見つかりません。', "Companion not found."));
           const turnId=crypto.randomUUID();chat.status='running';chat.turnId=turnId;chat.messages.push({id:crypto.randomUUID(),role:'user',text:prompt,partyQuestId:quest.id,partyStepId:step.id,partyRole:step.role,skills:onDemoTurn(chat)});onChat(chat);
           let done,timer;const result=new Promise(resolve=>{done=resolve;});
-          const turn={stop(){clearTimeout(timer);chat.status='cancelled';chat.turnId=null;onChat(chat);done({error:'デモの役割を停止しました。',needsRetry:true});}};demoTurn=turn;
+          const turn={stop(){clearTimeout(timer);chat.status='cancelled';chat.turnId=null;onChat(chat);done({error:ui('デモの役割を停止しました。', "Sample role stopped."),needsRetry:true});}};demoTurn=turn;
           await onAccepted(turnId);
-          if(demoRunner.stopRequested)turn.stop();else timer=setTimeout(()=>{const output=step.kind==='summary'?'【デモのまとめ】\n'+quest.text+'\n\n仲間の成果を集め、未解決の点を整理したサンプルです。':'【デモの成果：'+step.role+'】\n'+quest.text+'\n\n次の仲間へ渡すサンプル成果です。';chat.messages.push({id:crypto.randomUUID(),role:'assistant',text:output});chat.status='completed';chat.turnId=null;onChat(chat);done({output});},1000);
+          if(demoRunner.stopRequested)turn.stop();else timer=setTimeout(()=>{const output=step.kind==='summary'?ui('【デモのまとめ】\n', "[Sample summary]\n")+quest.text+ui('\n\n仲間の成果を集め、未解決の点を整理したサンプルです。', "\n\nThese sample results bring together the party's work and list open questions."):ui('【デモの成果：', "[Sample result: ")+step.role+'】\n'+quest.text+ui('\n\n次の仲間へ渡すサンプル成果です。', "\n\nA sample result to pass to the next companion.");chat.messages.push({id:crypto.randomUUID(),role:'assistant',text:output});chat.status='completed';chat.turnId=null;onChat(chat);done({output});},1000);
           const value=await result;if(demoTurn===turn)demoTurn=null;if(value.error)throw Object.assign(Error(value.error),{needsRetry:true});return value;
         }}).load();onState(demoRunner.public());
     })();return demoLoading;
@@ -154,9 +155,9 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
     try{
       await ensureDemo();
       if(action==='save'||action==='start'){
-        const value=demo?await demoRunner.configure(configuration||draft):await api('party/configure',{party:configuration||draft});onState(value);notice='編成を保存しました。';
+        const value=demo?await demoRunner.configure(configuration||draft):await api('party/configure',{party:configuration||draft});onState(value);notice=ui('編成を保存しました。', "Party saved.");
       }
-      if(action==='start'){const params={text:questText??$('#party-quest').value,...getModel()};onState(demo?await demoRunner.start(params):await api('party/start',params));notice='パーティにクエストを渡しました。';}
+      if(action==='start'){const params={text:questText??$('#party-quest').value,...getModel()};onState(demo?await demoRunner.start(params):await api('party/start',params));notice=ui('パーティにクエストを渡しました。', "Quest assigned to the party.");}
       if(action==='pause')onState(demo?await demoRunner.pause():await api('party/pause'));
       if(action==='cancel')onState(demo?await demoRunner.cancel():await api('party/cancel'));
       if(action==='resume'){const params={retry:Boolean(current().quest?.steps.find(step=>step.status!=='completed')?.needsRetry)};onState(demo?await demoRunner.resume(params):await api('party/resume',params));}
@@ -189,16 +190,16 @@ export function initParty({api,demo,storeKey,getChats,getState,getModel,canConne
   try{$('#party-quest').value=localStorage.getItem(storeKey+'-quest-draft')||'';}catch{}
   function renderPane(element,chat){
     let badge=element.querySelector('.party-pane-badge');if(!badge){badge=text('span','','party-pane-badge');element.querySelector('.panel-foot').append(badge);}
-    const quest=current().quest,step=quest?.steps.find(step=>step.conversationId===chat.id);badge.textContent=step&&active(quest)?(step.kind==='summary'?'リーダー':step.role)+' · '+partyStepLabels[step.status]:'';
+    const quest=current().quest,step=quest?.steps.find(step=>step.conversationId===chat.id);badge.textContent=step&&active(quest)?(step.kind==='summary'?ui('リーダー', "Leader"):step.role)+' · '+partyStepLabels[step.status]:'';
   }
   return {render,renderPane,openRecord,getQuestDraft:()=>$('#party-quest').value,setQuestDraft:saveQuestDraft,startQuest:async value=>{
-    if(busy)throw Error('前の操作が完了するまでお待ちください。');
-    if(active(current().quest)||current().quest?.status==='paused')throw Error('現在のクエストを再開または終了してから出発してください。');
-    if(!canConnect())throw Error('Codexに接続してから出発してください。');
-    if(!getModel().model)throw Error('クエストに使うモデルを選択してください。');
-    const questText=String(value??'');if(!questText.trim()||questText.length>8000)throw Error('クエストを1〜8,000文字で入力してください。');
+    if(busy)throw Error(ui('前の操作が完了するまでお待ちください。', "Wait for the previous operation to finish."));
+    if(active(current().quest)||current().quest?.status==='paused')throw Error(ui('現在のクエストを再開または終了してから出発してください。', "Resume or finish the current quest before starting another."));
+    if(!canConnect())throw Error(ui('Codexに接続してから出発してください。', "Connect to Codex before departing."));
+    if(!getModel().model)throw Error(ui('クエストに使うモデルを選択してください。', "Choose a model for this quest."));
+    const questText=String(value??'');if(!questText.trim()||questText.length>8000)throw Error(ui('クエストを1〜8,000文字で入力してください。', "Enter a quest of 1–8,000 characters."));
     const configuration=structuredClone(current().party);saveQuestDraft(questText);
-    if(!await request('start',{configuration,questText}))throw Error(error||'出発できませんでした。');
+    if(!await request('start',{configuration,questText}))throw Error(error||ui('出発できませんでした。', "Could not start the quest."));
     return current();
   },open:async()=>{try{await ensureDemo();render();}catch(e){error=e.message;render();}},startTodo:async params=>{await ensureDemo();const value=await demoRunner.start(params);onState(value);return value;},todoAction:async(action,retry)=>{await ensureDemo();const value=action==='pause'?await demoRunner.pause():action==='cancel'?await demoRunner.cancel():await demoRunner.resume({retry});onState(value);return value;},active:()=>active(current().quest)};
 }

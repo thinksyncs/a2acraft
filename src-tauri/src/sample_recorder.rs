@@ -301,10 +301,10 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let mut nonce = [0u8; 8];
         getrandom::fill(&mut nonce).unwrap();
-        let parent = std::env::current_dir()
+        let parent = std::env::temp_dir()
+            .canonicalize()
             .unwrap()
-            .join("target")
-            .join(format!("recorder-test-{:016x}", u64::from_be_bytes(nonce)));
+            .join(format!("a2acraft-recorder-test-{:016x}", u64::from_be_bytes(nonce)));
         fs::create_dir(&parent).unwrap();
         let profile = parent.join("sample");
         let mut supplied = args(&["--record-sample-walk", "--demo"]);
