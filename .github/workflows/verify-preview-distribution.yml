@@ -1,0 +1,37 @@
+name: Verify Apple Silicon distribution
+on:
+  push:
+    branches: [feats/validate-mac-distribution]
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-15
+    timeout-minutes: 35
+    env:
+      GIT_ALLOW_PROTOCOL: https:file
+      GIT_SSH_COMMAND: /usr/bin/false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm test
+      - run: npm run prepare:distribution
+      - run: npm run dist:mac:arm64
+      - name: Verify the DMG, ZIP and app signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          image=$(find dist -name '*.dmg' -type f -print -quit)
+          zip=$(find dist -name '*.zip' -type f -print -quit)
+          app=$(find dist -maxdepth 3 -name '*.app' -type d -print -quit)
+          test -n "$image" && test -n "$zip" && test -n "$app"
+          hdiutil verify "$image"
+          unzip -tq "$zip"
+          codesign --verify --deep --strict "$app"
+          shasum -a 256 "$image" "$zip"
