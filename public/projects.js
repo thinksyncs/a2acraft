@@ -1,3 +1,5 @@
+import {getLocale} from './i18n.js';
+import {projectText, projectLabel, writeProjectLabel} from './i18n-projects.js';
 import { createProjectWorld } from "./project-world.js";
 import { createWorldRoom } from "./world-room.js";
 import { createArtifactView } from "./world-artifact-view.js";
@@ -10,7 +12,7 @@ import { projectDemoJourneys } from "./project-demo.js";
 import { facilities, jobLabel } from "./project-buildings.js";
 const node = (tag, text, className) => {
   const n = document.createElement(tag);
-  if (text !== undefined) n.textContent = text;
+  writeProjectLabel(n, text);
   if (className) n.className = className;
   return n;
 };
@@ -39,13 +41,13 @@ export function initProjects({
     heading = node("div");
   heading.append(
     node("small", "DEVELOPMENT WORLD"),
-    node("h2", "育っていく街"),
+    node("h2", projectLabel("育っていく街")),
   );
-  const add = button("＋ 新しい地区", () => create.showModal(), "primary");
+  const add = button(projectLabel("＋ 新しい地区"), () => create.showModal(), "primary");
   add.id = "project-add";
-  const back = button("冒険者の村へ", onLegacy);
+  const back = button(projectLabel("冒険者の村へ"), onLegacy);
   const agentBoard = createAgentBoard({api, demo, getState, getProjects: () => projects(), getChats, onChat});
-  const boardButton = button("隊の掲示板", () => agentBoard.open());
+  const boardButton = button(projectLabel("隊の掲示板"), () => agentBoard.open());
   boardButton.id = "agent-board-open";
   toolbar.append(heading, back, boardButton, add);
   root.append(toolbar);
@@ -59,40 +61,40 @@ export function initProjects({
   canvas.tabIndex = 0;
   canvas.setAttribute(
     "aria-label",
-    "開発の全体マップ。矢印キーで移動、Homeで全体へ。地区と相談は下の一覧からも開けます。",
+    projectText("開発の全体マップ。矢印キーで移動、Homeで全体へ。地区と相談は下の一覧からも開けます。"),
   );
   frame.append(canvas, overlay);
   root.append(frame);
   const controls = node("nav", undefined, "project-map-controls");
-  controls.setAttribute("aria-label", "地図の操作");
+  controls.setAttribute("aria-label", projectText("地図の操作"));
   let paused = false;
-  const motion = button("動きを止める", () => {
+  const motion = button(projectLabel("動きを止める"), () => {
     paused = !paused;
     world.pause(paused);
-    motion.textContent = paused ? "動きを再開" : "動きを止める";
+    motion.textContent = paused ? projectText("動きを再開") : projectText("動きを止める");
     motion.setAttribute("aria-pressed", String(paused));
   });
   motion.setAttribute("aria-pressed", "false");
   controls.append(
     button("−", () => world.zoom(1 / 1.3)),
-    button("全体へ", () => world.fit()),
+    button(projectLabel("全体へ"), () => world.fit()),
     button("＋", () => world.zoom(1.3)),
     motion,
   );
   root.append(controls);
   const list = node("details", undefined, "project-directory");
-  list.append(node("summary", "地区と隊の一覧"));
+  list.append(node("summary", projectLabel("地区と隊の一覧")));
   const entries = node("div");
   list.append(entries);
   root.append(list);
   const residentsMenu = node("details", undefined, "project-residents-menu");
-  residentsMenu.append(node("summary", "住民を探す"));
+  residentsMenu.append(node("summary", projectLabel("住民を探す")));
   const residentSelect = node("select");
   residentSelect.id = "project-resident-select";
-  residentSelect.setAttribute("aria-label", "話しかける住民");
-  const residentTalk = button("話しかける", () => {
+  residentSelect.setAttribute("aria-label", projectText("話しかける住民"));
+  const residentTalk = button(projectLabel("話しかける"), () => {
     if (world.talkTo(residentSelect.value)) residentsMenu.open = false;
-    else notify("今はこの住民を見つけられません。別の住民を選んでください。");
+    else notify(projectText("今はこの住民を見つけられません。別の住民を選んでください。"));
   });
   residentsMenu.append(residentSelect, residentTalk);
   controls.after(residentsMenu);
@@ -105,7 +107,7 @@ export function initProjects({
     const selected = residentSelect.value;
     residentSelect.replaceChildren();
     for (const person of people) {
-      const option = node("option", (person.name || person.title) + " · " + (getChats().find(c => c.id === person.conversationId)?.title || "会話"));
+      const option = node("option", (person.name || person.title) + " · " + (getChats().find(c => c.id === person.conversationId)?.title || projectText("会話")));
       option.value = person.conversationId;residentSelect.append(option);
     }
     if (people.some(p => p.conversationId === selected)) residentSelect.value = selected;
@@ -121,7 +123,7 @@ export function initProjects({
   const create = node("dialog", undefined, "project-dialog");
   create.id = "project-create";
   const form = node("form");
-  const title = node("h2", "新しい地区をつくる");
+  const title = node("h2", projectLabel("新しい地区をつくる"));
   title.id = "project-create-title";
   create.setAttribute("aria-labelledby", title.id);
   const field = (label, id, tag, max) => {
@@ -138,13 +140,13 @@ export function initProjects({
     title,
     node(
       "p",
-      "目的を渡すと、調査から編成・実装・検証・PR作成まで隊が進めます。判断が必要になったら、街に「!」が届きます。",
+      projectLabel("目的を渡すと、調査から編成・実装・検証・PR作成まで隊が進めます。判断が必要になったら、街に「!」が届きます。"),
     ),
   );
-  const name = field("地区の名前", "project-name", "input", 80),
-    goal = field("何をできるようにしたい？", "project-goal", "textarea", 2400),
+  const name = field(projectText("地区の名前"), "project-name", "input", 80),
+    goal = field(projectText("何をできるようにしたい？"), "project-goal", "textarea", 2400),
     repo = field(
-      "GitHub repoのURL またはローカルの絶対パス（1行に1件・最大4件）",
+      projectText("GitHub repoのURL またはローカルの絶対パス（1行に1件・最大4件）"),
       "project-repository",
       "textarea",
       8200,
@@ -152,14 +154,14 @@ export function initProjects({
   repo.placeholder = "https://github.com/owner/repository";
   const note = node(
     "p",
-    "専用の作業場所とブランチで進めます。PRのマージと本番公開は含みません。Git・GitHub CLIの認証とCodex接続を使います。",
+    projectLabel("専用の作業場所とブランチで進めます。PRのマージと本番公開は含みません。Git・GitHub CLIの認証とCodex接続を使います。"),
     "project-form-note",
   );
   const error = node("p", undefined, "error");
   error.setAttribute("role", "alert");
-  const submit = node("button", "地区をつくって任せる", "primary");
+  const submit = node("button", projectLabel("地区をつくって任せる"), "primary");
   submit.type = "submit";
-  const cancel = button("閉じる", () => create.close());
+  const cancel = button(projectLabel("閉じる"), () => create.close());
   form.append(note, error, submit, cancel);
   create.append(form);
   document.body.append(create);
@@ -173,7 +175,7 @@ export function initProjects({
     if (creating) return;
     if (demo) {
       error.textContent =
-        "画面確認用のデモです。実接続画面で地区を追加できます。";
+        projectText("画面確認用のデモです。実接続画面で地区を追加できます。");
       return;
     }
     const input = {
@@ -282,15 +284,15 @@ export function initProjects({
       if (visit !== speechVisit) return;
       const reportBody = node("div");
       renderEncounterContext(reportBody, chat, report);
-      speech.replaceChildren(node("h2", mapTranscriptText(chat.characterName) || mapTranscriptText(chat.title) || "村人"), reportBody);
+      speech.replaceChildren(node("h2", mapTranscriptText(chat.characterName) || mapTranscriptText(chat.title) || projectText("村人")), reportBody);
       if (journey) {
         const from = projects().find((p) => p.id === journey.from),
           to = projects().find((p) => p.id === journey.to);
         if (from && to)
           speech.append(
-            node("small", "道中の話の種"),
+            node("small", projectLabel("道中の話の種")),
             node("p", associationSpeech(from, to).text),
-            button(to.name + "の記録を見る", () => {
+            button(projectText("{name}の記録を見る",{name:to.name}), () => {
               speech.close();
               openDistrict(to.id);
             }),
@@ -299,11 +301,11 @@ export function initProjects({
       const source = node("details");
       const exchange = node("div");
       renderConversationDetails(exchange, chat);
-      source.append(node("summary", "依頼と最新の返答を読む"), exchange);
+      source.append(node("summary", projectLabel("依頼と最新の返答を読む")), exchange);
       speech.append(
         source,
         button(
-          chat.project ? "作業の記録・相談を見る" : "話す",
+          chat.project ? projectText("作業の記録・相談を見る") : projectText("話す"),
           () => {
             const snapshot = world.getEncounter() || encounter;
             handedOffVisit = visit;
@@ -312,7 +314,7 @@ export function initProjects({
           },
           "primary",
         ),
-        button("またね", () => speech.close()),
+        button(projectLabel("またね"), () => speech.close()),
       );
       shownSpeechVisit = visit;
       if (!speech.open) speech.show();
@@ -347,7 +349,7 @@ export function initProjects({
       if (facility.id === "weapon")
         content.append(
           button(
-            "武器を選んで試着する",
+            projectLabel("武器を選んで試着する"),
             () => {
               close();
               onNavigate?.("weapon");
@@ -358,14 +360,14 @@ export function initProjects({
       if (facility.id === "castle")
         content.append(
           button(
-            "新しい地区を任せる",
+            projectLabel("新しい地区を任せる"),
             () => {
               close();
               create.showModal();
             },
             "primary",
           ),
-          button("依頼を書く", () => {
+          button(projectLabel("依頼を書く"), () => {
             close();
             onNavigate?.("castle");
           }),
@@ -373,14 +375,14 @@ export function initProjects({
       if (facility.id === "tavern")
         content.append(
           button(
-            "仲間と役割を編成する",
+            projectLabel("仲間と役割を編成する"),
             () => {
               close();
               onNavigate?.("tavern");
             },
             "primary",
           ),
-          button("主人公を操作する", () => {
+          button(projectLabel("主人公を操作する"), () => {
             close();
             world.control();
           }),
@@ -388,7 +390,7 @@ export function initProjects({
       if (facility.id !== "weapon")
         for (const p of projects())
           content.append(
-            button(p.name + "の隊と報告", () => {
+            button(projectText("{name}の隊と報告",{name:p.name}), () => {
               close();
               openDistrict(p.id);
             }),
@@ -435,24 +437,24 @@ export function initProjects({
     detail.render();
   }
   const travelMenu = node("details", undefined, "world-travel-menu");
-  travelMenu.append(node("summary", "行き先と地図の設定"));
+  travelMenu.append(node("summary", projectLabel("行き先と地図の設定")));
   for (const facility of facilities)
     travelMenu.append(
-      button(facility.name + "へ歩く", () => world.visit(facility)),
+      button(projectText("{name}へ歩く",{name:facility.name}), () => world.visit(facility)),
     );
   travelMenu.append(
-    button("移動を取り消す", () => world.cancel()),
-    button("主人公を操作", () => world.control()),
+    button(projectLabel("移動を取り消す"), () => world.cancel()),
+    button(projectLabel("主人公を操作"), () => world.control()),
   );
   travelMenu.append(
-    button("話題に沿った配置を確認", async () => {
+    button(projectLabel("話題に沿った配置を確認"), async () => {
       if (demo) {
-        notify("デモは話題に沿った配置を表示しています。");
+        notify(projectText("デモは話題に沿った配置を表示しています。"));
         return;
       }
       try {
         const preview = await api("world/layout-preview", {});
-        speech.replaceChildren(node("h2", "地区の再配置を確認"));
+        speech.replaceChildren(node("h2", projectLabel("地区の再配置を確認")));
         for (const p of projects()) {
           const old = preview.previous[p.id],
             next = preview.places[p.id];
@@ -474,7 +476,7 @@ export function initProjects({
         }
         speech.append(
           button(
-            "この配置にする",
+            projectLabel("この配置にする"),
             async () => {
               try {
                 updateWorld(
@@ -491,7 +493,7 @@ export function initProjects({
             },
             "primary",
           ),
-          button("閉じる", () => speech.close()),
+          button(projectLabel("閉じる"), () => speech.close()),
         );
         if (speech.open) speech.close();
         speech.showModal();
@@ -502,7 +504,7 @@ export function initProjects({
   );
   controls.after(travelMenu);
   const legacy = document.querySelector("#history-village");
-  const access = button("開発の全体マップ →", onMap, "project-world-access");
+  const access = button(projectLabel("開発の全体マップ →"), onMap, "project-world-access");
   access.id = "project-world-access";
   legacy.prepend(access);
   const chatBanner = node("section", undefined, "project-chat-context");
@@ -518,18 +520,18 @@ export function initProjects({
       );
     chatBanner.hidden = !p;
     if (!p) return;
-    const sig = JSON.stringify([p.id, p.paused, p.automatic, job, event]);
+    const sig = JSON.stringify([getLocale(), p.id, p.paused, p.automatic, job, event]);
     if (sig === chatSignature) return;
     chatSignature = sig;
     chatBanner.replaceChildren(
       node("strong", p.name + " · " + (job ? jobLabel(job) : "")),
-      button("街へ戻る", onMap),
+      button(projectLabel("街へ戻る"), onMap),
     );
     if (event) {
       chatBanner.append(node("p", event.question));
       const context = node("details");
       context.append(
-        node("summary", "調べたこと・試したこと"),
+        node("summary", projectLabel("調べたこと・試したこと")),
         node("p", event.summary),
       );
       chatBanner.append(context);
@@ -539,26 +541,26 @@ export function initProjects({
         chatBanner.append(
           node(
             "small",
-            "回答は保存されます。作業の再開は地区の記録から行えます。",
+            projectLabel("回答は保存されます。作業の再開は地区の記録から行えます。"),
           ),
         );
     } else
       chatBanner.append(
         node(
           "p",
-          job?.status === "done" ? "この工程は完了しました。"
-            : p.paused || job?.status === "paused" ? "休止中です。"
-            : !p.automatic ? "自動進行を停止しています。"
-            : job?.status === "queued" ? "順番が来ると自動で進めます。"
-            : job?.status === "blocked" ? "必要な情報を確認しています。"
-            : "おまかせで進行中。追加の回答は不要です。",
+          job?.status === "done" ? projectText("この工程は完了しました。")
+            : p.paused || job?.status === "paused" ? projectText("休止中です。")
+            : !p.automatic ? projectText("自動進行を停止しています。")
+            : job?.status === "queued" ? projectText("順番が来ると自動で進めます。")
+            : job?.status === "blocked" ? projectText("必要な情報を確認しています。")
+            : projectText("おまかせで進行中。追加の回答は不要です。"),
         ),
       );
     const decisions = Array.isArray(job?.decisions)
       ? job.decisions.filter(value => typeof value === "string").slice(0, 8) : [];
     if (decisions.length) {
       const detail = node("details"), list = node("ul");
-      detail.append(node("summary", "今回の判断 · " + decisions.length + "件"));
+      detail.append(node("summary", projectText("今回の判断 · {n}件",{n:decisions.length})));
       for (const decision of decisions) list.append(node("li", decision));
       detail.append(list);chatBanner.append(detail);
     }
@@ -571,15 +573,12 @@ export function initProjects({
     banner.textContent = demo
       ? ""
       : state.runtimeError
-        ? "記録の保存を確認してください: " + state.runtimeError
+        ? projectText("記録の保存を確認してください: ") + state.runtimeError
         : state.waitingReason ||
           (!items.length
-            ? "新しい地区に目的とrepoを渡して、街の開発を始めましょう。"
-            : (state.activeCount || 0) +
-              "隊が作業中 · 同時に" +
-              (state.concurrency || 2) +
-              "隊まで");
-    const next = JSON.stringify(
+            ? projectText("新しい地区に目的とrepoを渡して、街の開発を始めましょう。")
+            : projectText("{active}隊が作業中 · 同時に{max}隊まで", {active:state.activeCount || 0, max:state.concurrency || 2}));
+    const next = getLocale() + JSON.stringify(
       items.map((p) => [
         p.id,
         p.name,

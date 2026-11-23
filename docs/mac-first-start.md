@@ -1,6 +1,10 @@
 # Mac版の初回起動
 
+[English](mac-first-start.en.md)
+
 [A2ACraft の公式リリース](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.24-tauri)で配布している Mac 用 ZIP は **Tauri 版 0.4.24** です。地図と会話の操作は Electron 版と共通です。保存先は版ごとに異なり、過去の会話や下書きを引き継ぐため、保存フォルダの名前には旧名の `chatui` や `chat-ui` が残っています。
+
+0.4.25以降は、初回のConnect画面か「設定 → 言語」で **English** と **日本語** を選べます。選択は次回の起動にも引き継がれます。会話や下書き、取り込んだ履歴は元の言語で表示します。
 
 ## アプリを入れる
 

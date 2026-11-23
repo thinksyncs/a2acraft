@@ -1,8 +1,9 @@
+import {worldText} from './i18n-world.js';
 const appearances={
-  hero:{id:'hero',label:'冒険者',icon:'hero'},
-  priest:{id:'priest',label:'僧侶',icon:'priest'},
-  mage:{id:'mage',label:'魔法使い',icon:'mage'},
-  martialArtist:{id:'martial-artist',label:'武道家',icon:'martial-artist'}
+  hero:{id:'hero',get label(){return worldText('冒険者');},icon:'hero'},
+  priest:{id:'priest',get label(){return worldText('僧侶');},icon:'priest'},
+  mage:{id:'mage',get label(){return worldText('魔法使い');},icon:'mage'},
+  martialArtist:{id:'martial-artist',get label(){return worldText('武道家');},icon:'martial-artist'}
 };
 
 // Appearance follows the saved role; it never changes skills or permissions.

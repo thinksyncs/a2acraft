@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 // Describe only a saved assignment. Viewing its marker never schedules work.
 export function villageInvitation(task, party) {
   if (!task?.id || !task.title || task.status !== 'todo') return null;
@@ -14,7 +15,7 @@ export function villageInvitation(task, party) {
 
 export function assertVillageInvitation(task, party, version) {
   const current = villageInvitation(task, party);
-  if (!current || current.version !== version) throw Error('依頼か担当が変わりました。地図で新しい提案を確認してください。');
+  if (!current || current.version !== version) throw Error(worldText('依頼か担当が変わりました。地図で新しい提案を確認してください。'));
 }
 
 export function invitationsForVillage(state, squads, dismissed) {

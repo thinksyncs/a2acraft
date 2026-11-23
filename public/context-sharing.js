@@ -1,3 +1,6 @@
+import {getLocale} from './i18n.js';
+import {chatText} from './i18n-chat.js';
+
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[character]));
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -42,24 +45,24 @@ export function initContextSharing({getChats,getBoard,onBoard,api,demo,available
     const source = getChats().find(chat => chat.id === sourceId), target = getChats().find(chat => chat.id === targetId);
     if (!source || !target) return;
     const id = crypto.randomUUID(), arrow = addArrow(id,sourceId,targetId);
-    arrow.node.classList.add('is-sending'); arrow.label.textContent = '送信中';
-    $('#context-transfer-status').hidden = false; $('#context-transfer-status').textContent = source.title + ' → ' + target.title + ' · 共有中';
+    arrow.node.classList.add('is-sending'); arrow.label.textContent = chatText('送信中');
+    $('#context-transfer-status').hidden = false; $('#context-transfer-status').textContent = source.title + ' → ' + target.title + chatText(' · 共有中');
     try {
       let entry;
       if (demo) {
         const messages = source.messages.filter(message => ['user','assistant'].includes(message.role) && message.text?.trim());
-        if (!messages.length) throw Error('共有できる会話内容がありません。');
+        if (!messages.length) throw Error(chatText('共有できる会話内容がありません。'));
         const text = messages.map(message => message.role.toUpperCase() + ':\n' + message.text).join('\n\n');
         entry = {id,sourceId,targetId,sourceTitle:source.title,targetTitle:target.title,status:'pending',createdAt:Date.now(),characters:Math.min(text.length,16000),preview:text.slice(-300),truncated:text.length > 16000};
       } else entry = await api('context/transfer',{sourceId,targetId});
       if (!getBoard().some(record => record.id === entry.id)) onBoard([...getBoard(),entry]);
-      arrow.label.textContent = '共有済み';
-      $('#context-transfer-status').textContent = source.title + ' → ' + target.title + ' · 次の指示に添付します';
+      arrow.label.textContent = chatText('共有済み');
+      $('#context-transfer-status').textContent = source.title + ' → ' + target.title + chatText(' · 次の指示に添付します');
       // Give the transfer a visible arrival beat even for a fast local save.
       setTimeout(() => arrow.node.classList.remove('is-sending'),650);
     } catch (error) {
-      arrow.node.classList.remove('is-sending'); arrow.label.textContent = '共有失敗'; notify(error.message);
-      $('#context-transfer-status').textContent = '共有失敗: ' + error.message;
+      arrow.node.classList.remove('is-sending'); arrow.label.textContent = chatText('共有失敗'); notify(error.message);
+      $('#context-transfer-status').textContent = chatText('共有失敗: ') + error.message;
     } finally {
       setTimeout(() => { removeArrow(id); if (!arrows.size) $('#context-transfer-status').hidden = true; },1600);
       render();
@@ -70,11 +73,11 @@ export function initContextSharing({getChats,getBoard,onBoard,api,demo,available
     $('#context-pending').textContent = pending.length;
     for (const element of document.querySelectorAll('.chat-panel')) {
       const count = pending.filter(entry => entry.targetId === element.dataset.select).length, badge = element.querySelector('.context-count');
-      badge.hidden = count === 0; badge.textContent = '共有 ' + count + '件 · 次の指示に添付';
+      badge.hidden = count === 0; badge.textContent = chatText('共有 {count}件 · 次の指示に添付', {count});
     }
-    const signature = JSON.stringify(entries);
+    const signature = JSON.stringify([getLocale(),entries]);
     if (signature !== renderedBoard) {
-      $('#context-board-list').innerHTML = entries.length ? [...entries].reverse().map(entry => `<article class="context-record"><div><strong>${esc(entry.sourceTitle)} → ${esc(entry.targetTitle)}</strong><span>${entry.status === 'pending' ? '次の指示待ち' : '指示に添付済み'} · ${entry.characters}文字${entry.truncated ? ' · 長い履歴の末尾を共有' : ''}</span><details><summary>内容の末尾を確認</summary><pre>${esc(entry.preview)}</pre></details></div>${entry.status === 'pending' ? `<button class="text-btn" data-context-cancel="${esc(entry.id)}">取消</button>` : ''}</article>`).join('') : '<p class="muted">共有されたコンテキストはありません。</p>';
+      $('#context-board-list').innerHTML = entries.length ? [...entries].reverse().map(entry => `<article class="context-record"><div><strong>${esc(entry.sourceTitle)} → ${esc(entry.targetTitle)}</strong><span>${entry.status === 'pending' ? chatText('次の指示待ち') : chatText('指示に添付済み')} · ${chatText('{count}文字', {count:entry.characters})}${entry.truncated ? chatText(' · 長い履歴の末尾を共有') : ''}</span><details><summary>${chatText('内容の末尾を確認')}</summary><pre>${esc(entry.preview)}</pre></details></div>${entry.status === 'pending' ? `<button class="text-btn" data-context-cancel="${esc(entry.id)}">${chatText('取消')}</button>` : ''}</article>`).join('') : `<p class="muted">${chatText('共有されたコンテキストはありません。')}</p>`;
       renderedBoard = signature;
     }
     overlay.toggleAttribute('hidden',!arrows.size || !available());
@@ -95,7 +98,7 @@ export function initContextSharing({getChats,getBoard,onBoard,api,demo,available
     drag.targetId = target?.dataset.select !== drag.sourceId ? target?.dataset.select : null;
     document.querySelectorAll('.context-drop-target').forEach(node => node.classList.remove('context-drop-target'));
     if (drag.targetId) target.classList.add('context-drop-target');
-    const arrow = arrows.get('drag'); arrow.targetId = drag.targetId; arrow.pointer = drag.targetId ? null : {x:event.clientX,y:event.clientY}; arrow.label.textContent = 'コンテキスト共有'; draw(arrow);
+    const arrow = arrows.get('drag'); arrow.targetId = drag.targetId; arrow.pointer = drag.targetId ? null : {x:event.clientX,y:event.clientY}; arrow.label.textContent = chatText('コンテキスト共有'); draw(arrow);
   });
   document.addEventListener('pointerup', event => {
     if (!drag || event.pointerId !== drag.pointerId) return;
@@ -109,7 +112,7 @@ export function initContextSharing({getChats,getBoard,onBoard,api,demo,available
     const button = event.target.closest('.context-share'); if (!button) return;
     shareSource = button.closest('.chat-panel').dataset.select;
     const source = getChats().find(chat => chat.id === shareSource);
-    $('#context-share-source').textContent = '共有元: ' + source.title;
+    $('#context-share-source').textContent = chatText('共有元: ') + source.title;
     $('#context-share-target').innerHTML = getChats().filter(chat => chat.id !== shareSource).map(chat => `<option value="${esc(chat.id)}">${esc(chat.title)}</option>`).join('');
     $('#context-share-confirm').disabled = getChats().length < 2; dialog.showModal();
   });

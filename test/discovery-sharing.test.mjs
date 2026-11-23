@@ -4,7 +4,9 @@ import {initDiscoverySharing} from '../public/discovery-sharing.js';
 import {decodeDiscovery,encodeDiscovery,emptyDiscoveryState} from '../public/discovery-code.js';
 
 class Element{
-  constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.attributes={};this.textContent='';this.value='';}
+  constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.attributes={};this.content='';this.value='';}
+  get textContent(){return this.content + this.children.map(node=>node.textContent).join('');}
+  set textContent(value){this.content=String(value);this.children=[];}
   append(...nodes){this.children.push(...nodes);}
   setAttribute(key,value){this.attributes[key]=value;}
   showModal(){this.open=true;}

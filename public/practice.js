@@ -5,3 +5,13 @@ export const practiceBusiness = Object.freeze({
 });
 
 export const practiceRoles = Object.freeze(['リーダー', '調査・分析', '検証・レビュー', '支援・相談']);
+
+const englishPractice = Object.freeze({
+  marker: 'Expense check:4827',
+  request: 'Expense check:4827. Prepare a short review memo for a fictitious expense claim. The budget is 120G. Two journeys cost 15G each, and supplies cost 20G. Use only these figures to calculate total spending and the remaining balance. Split the assignment into exactly two quests: first establish and check the calculation, then review the first result and compile the final memo. Each party member should respond only for their role, in at most three lines. Include “Expense check:4827” unchanged in every response. Work in the chat only. Do not use tools, files, commands, search, network access or external delivery. Do not claim to have saved or submitted anything.',
+  expectedArtifact: 'An expense memo of at most three lines containing “Expense check:4827”, “Spent <number>G”, and “Remaining <number>G”. Include the calculation check and state that actual receipts and submission have not been verified.'
+});
+
+export function practiceBusinessFor(locale) {
+  return locale === 'en' ? englishPractice : practiceBusiness;
+}

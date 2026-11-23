@@ -1,19 +1,20 @@
+import {worldText} from './i18n-world.js';
 export const jobLabel = (job) =>
   (({
-    prepare: "準備",
-    plan: "調査",
-    implement: "建築",
-    verify: "検証",
-    publish: "PR作成",
-  })[job.kind] || "作業") +
+    prepare: worldText("準備"),
+    plan: worldText("調査"),
+    implement: worldText("建築"),
+    verify: worldText("検証"),
+    publish: worldText("PR作成"),
+  })[job.kind] || worldText("作業")) +
   " · " +
   ({
-    queued: "順番待ち",
-    preparing: "準備中",
-    running: job.retries ? "修理中" : "作業中",
-    blocked: "相談待ち",
-    paused: "休止中",
-    done: "完了",
+    queued: worldText("順番待ち"),
+    preparing: worldText("準備中"),
+    running: job.retries ? worldText("修理中") : worldText("作業中"),
+    blocked: worldText("相談待ち"),
+    paused: worldText("休止中"),
+    done: worldText("完了"),
   }[job.status] || job.status);
 export function projectBuildings(project) {
   const repos = project.repositories.map((repo, index) => {
@@ -86,12 +87,12 @@ export function sceneBuildingObstacles(scene, clearance = 12) {
   }));
 }
 export const facilities = [
-  { id: "tavern", name: "旅立ちの酒場", host: "酒場の主人", x: -420, y: 340 },
-  { id: "castle", name: "王城", host: "王様", x: 500, y: -620 },
+  { id: "tavern", get name(){return worldText("旅立ちの酒場");}, get host(){return worldText("酒場の主人");}, x: -420, y: 340 },
+  { id: "castle", get name(){return worldText("王城");}, get host(){return worldText("王様");}, x: 500, y: -620 },
   {
     id: "weapon",
-    name: "スキルの武器屋",
-    host: "武器屋の店主",
+    get name(){return worldText("スキルの武器屋");},
+    get host(){return worldText("武器屋の店主");},
     x: -420,
     y: -240,
   },

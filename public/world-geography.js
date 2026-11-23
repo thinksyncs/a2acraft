@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 import { placeDistrictsByTopic } from "./world-layout.js";
 import { meanderRoad } from "./world-road-shape.js";
 
@@ -11,11 +12,11 @@ const vocabulary = {
   life: /暮らし|生活|料理|旅行|家族|健康|旅|life|travel/gi,
 };
 export const topicNames = {
-  development: "開発",
-  work: "仕事",
-  research: "研究",
-  folklore: "怪談・民俗",
-  life: "暮らし",
+  get development(){return worldText("開発");},
+  get work(){return worldText("仕事");},
+  get research(){return worldText("研究");},
+  get folklore(){return worldText("怪談・民俗");},
+  get life(){return worldText("暮らし");},
 };
 export function topicEvidence(project, chats = [], override) {
   if (Array.isArray(override))

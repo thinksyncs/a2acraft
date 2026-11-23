@@ -1,3 +1,5 @@
+import {questText} from './i18n-quests.js';
+import {getLocale, onLocaleChange} from './i18n.js';
 import {equipmentSlots,slotLabels,demoEquipmentSkills,equipmentIconNames,equipmentPresentation,skillTokenEstimate} from './equipment-catalog.js';
 export {equipmentPresentation} from './equipment-catalog.js';
 
@@ -29,18 +31,18 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
   const current=()=>getChats().find(chat=>chat.id===getSelected());
   const canFit=()=>Boolean(current())&&!running(current())&&!mutating&&!loading&&!isLocked()&&isVisible();
   const equipmentKey=chat=>JSON.stringify(chat?.equipment||{});
-  const character=$('.equipment-character'),fittingStatus=text('p','','equipment-fitting-status'),cancelFitting=text('button','試着をやめる','text-btn');
+  const character=$('.equipment-character'),fittingStatus=text('p','','equipment-fitting-status'),cancelFitting=text('button',questText('試着をやめる'),'text-btn');
   fittingStatus.id='equipment-fitting-status';fittingStatus.setAttribute('role','status');fittingStatus.setAttribute('aria-live','polite');
   cancelFitting.id='equipment-cancel-preview';cancelFitting.type='button';cancelFitting.hidden=true;
   $('.equipment-profile').append(fittingStatus,cancelFitting);
-  const fittingHint=text('p','商品をクリック、またはキャラ・対応する装備欄へドラッグして試着できます。','equipment-fitting-hint');
+  const fittingHint=text('p',questText('商品をクリック、またはキャラ・対応する装備欄へドラッグして試着できます。'),'equipment-fitting-hint');
   $('.equipment-party').after(fittingHint);
   function endDrag(){
     dragging=null;
     $('#equipment-view').classList.remove('equipment-dragging');
     document.querySelectorAll('.equipment-drag-source,.equipment-drop-ready,.equipment-drop-available').forEach(node=>node.classList.remove('equipment-drag-source','equipment-drop-ready','equipment-drop-available'));
   }
-  function cancelPreview(message='試着をやめました。装備は変更していません。'){
+  function cancelPreview(message=questText('試着をやめました。装備は変更していません。')){
     const changed=Boolean(fitting);fitting=null;endDrag();if(changed)status=message;signature='';render();
   }
   function tryOn(skill){
@@ -85,7 +87,7 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
   async function load(){
     if(demo||loading)return;
     fitting=null;endDrag();loading=true;error='';status='';render();
-    try{const result=await api('skills');if(!Array.isArray(result.skills))throw Error('品ぞろえを取得できませんでした。');catalog=result.skills;warnings=result.warnings||[];loaded=true;}
+    try{const result=await api('skills');if(!Array.isArray(result.skills))throw Error(questText('品ぞろえを取得できませんでした。'));catalog=result.skills;warnings=result.warnings||[];loaded=true;}
     catch(e){error=e.message;loaded=false;}
     finally{loading=false;signature='';render();}
   }
@@ -100,7 +102,7 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
         chat.equipment={...chat.equipment,[slot]:skill||null};if(arm)chat.armedSkillId=skill.id;
         persist();onChat(chat);
       }else onChat(await api('equipment',{id:chat.id,slot,skillId,...(arm!==undefined?{arm}:{})}));
-      status=arm?'矢をつがえた。次の送信で一度だけ使います。':arm===false?'矢を外しました。弓は装備に残ります。':skillId?'装備しました。チャットに指示を入力できます。':'装備を外しました。';
+      status=arm?questText('矢をつがえた。次の送信で一度だけ使います。'):arm===false?questText('矢を外しました。弓は装備に残ります。'):skillId?questText('装備しました。チャットに指示を入力できます。'):questText('装備を外しました。');
     }catch(e){error=e.message;}
     finally{mutating=false;signature='';render();}
   }
@@ -109,7 +111,7 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
     if(fitting&&(fitting.chatId!==chat?.id||fitting.slot!==shop||fitting.before!==equipmentKey(chat)||!canChange||!isVisible()||!catalog.some(skill=>skill.id===fitting.skillId&&skill.slot===fitting.slot)))fitting=null;
     if(dragging&&(!canFit()||dragging.chatId!==chat?.id||dragging.slot!==shop))endDrag();
     const trial=fitting?catalog.find(skill=>skill.id===fitting.skillId):null,displayEquipment=trial?{...chat.equipment,[trial.slot]:trial}:chat?.equipment;
-    const nextSignature=JSON.stringify([getSelected(),getChats().map(chat=>[chat.id,chat.title,chat.characterName]),chat?.equipment,chat?.armedSkillId,chat?.status,isLocked(),shop,selected,fitting,catalog,loading,mutating,error,warnings,status]);
+    const nextSignature=JSON.stringify([getLocale(),getSelected(),getChats().map(chat=>[chat.id,chat.title,chat.characterName]),chat?.equipment,chat?.armedSkillId,chat?.status,isLocked(),shop,selected,fitting,catalog,loading,mutating,error,warnings,status]);
     if(signature===nextSignature)return;signature=nextSignature;
     const picker=$('#equipment-chat'),oldOptions=JSON.stringify(getChats().map(chat=>[chat.id,chat.title,chat.characterName]));
     if(picker.dataset.options!==oldOptions){picker.replaceChildren(...getChats().map(chat=>{const option=text('option',chat.title);option.value=chat.id;return option;}));picker.dataset.options=oldOptions;}
@@ -117,18 +119,18 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
     const slots=$('#equipment-slots');slots.replaceChildren();
     for(const slot of equipmentSlots){
       const skill=equipmentPresentation(displayEquipment?.[slot]),row=text('div','','equipment-slot'),detail=document.createElement('div'),isTrial=trial?.slot===slot;
-      makeDropTarget(row,slot);row.classList.toggle('equipment-slot-preview',isTrial);row.setAttribute('aria-label',slotLabels[slot]+'の装備欄'+(isTrial?' · 試着中':''));
+      makeDropTarget(row,slot);row.classList.toggle('equipment-slot-preview',isTrial);row.setAttribute('aria-label',slotLabels[slot]+questText('の装備欄')+(isTrial?questText(' · 試着中'):''));
       if(skill)row.append(equipmentIcon(skill));
-      detail.append(text('small',slotLabels[slot]),text('strong',skill?skill.itemName:'なし'));
-      if(isTrial)detail.append(text('small','試着中 · 未確定','equipment-trial-badge'));
-      if(skill){detail.title=skill.displayName;const remove=text('button','×','text-btn');remove.type='button';remove.disabled=!canChange;remove.setAttribute('aria-label',isTrial?'試着をやめる':slotLabels[slot]+'の装備を外す');if(!isTrial)remove.dataset.removeSlot=slot;remove.onclick=()=>isTrial?cancelPreview():change(slot,null);row.append(detail,remove);}else row.append(detail);
+      detail.append(text('small',slotLabels[slot]),text('strong',skill?skill.itemName:questText('なし')));
+      if(isTrial)detail.append(text('small',questText('試着中 · 未確定'),'equipment-trial-badge'));
+      if(skill){detail.title=skill.displayName;const remove=text('button','×','text-btn');remove.type='button';remove.disabled=!canChange;remove.setAttribute('aria-label',isTrial?questText('試着をやめる'):questText('{slot}の装備を外す',{slot:slotLabels[slot]}));if(!isTrial)remove.dataset.removeSlot=slot;remove.onclick=()=>isTrial?cancelPreview():change(slot,null);row.append(detail,remove);}else row.append(detail);
       slots.append(row);
     }
     const weapon=equipmentPresentation(displayEquipment?.weapon),magic=equipmentPresentation(displayEquipment?.spell);
     $('#equipment-hand').replaceChildren(...(weapon?[equipmentIcon(weapon)]:[]));$('#equipment-magic').replaceChildren(...(magic?[equipmentIcon(magic)]:[]));
     character.classList.toggle('has-equipment',Boolean(weapon));character.classList.toggle('equipment-fitting',Boolean(trial));character.dataset.previewSkill=trial?.id||'';character.setAttribute('aria-disabled',String(!canChange));
-    character.setAttribute('aria-label',(chat?.title||'未選択')+'のキャラ'+(trial?' · 試着中':'')+(weapon?' · 手持ち: '+weapon.itemName:'')+(magic?' · 呪文: '+magic.itemName:''));
-    fittingStatus.textContent=trial?equipmentPresentation(trial).itemName+'を試着中。まだ装備していません。「装備する」で確定します。':'';fittingStatus.hidden=!trial;cancelFitting.hidden=!trial;
+    character.setAttribute('aria-label',(chat?.title||questText('未選択'))+questText('のキャラ')+(trial?questText(' · 試着中'):'')+(weapon?questText(' · 手持ち: ')+weapon.itemName:'')+(magic?questText(' · 呪文: ')+magic.itemName:''));
+    fittingStatus.textContent=trial?equipmentPresentation(trial).itemName+questText('を試着中。まだ装備していません。「装備する」で確定します。'):'';fittingStatus.hidden=!trial;cancelFitting.hidden=!trial;
     document.querySelectorAll('[data-shop]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.shop===shop)));
     $('#equipment-title').textContent={weapon:'Armory',tool:'Supplies',spell:'Spell Shop'}[shop];
     const stock=$('#equipment-stock');
@@ -138,10 +140,10 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
     for(const skill of inShop){
       const button=text('button','','equipment-item');button.type='button';button.dataset.skillId=skill.id;button.setAttribute('aria-pressed',String(skill.id===selected));
       const label=text('span','','equipment-item-copy');label.append(text('strong',skill.itemName),text('small',skill.displayName));
-      const estimate=skillTokenEstimate(skill),price=text('span','','equipment-token-estimate');price.dataset.tokenEstimate=estimate.label;price.dataset.estimateBasis=estimate.basis;price.append(text('small',estimate.basis==='unknown'?'未見積もり':'消費目安 / 1回'),text('b',estimate.label));
+      const estimate=skillTokenEstimate(skill),price=text('span','','equipment-token-estimate');price.dataset.tokenEstimate=estimate.label;price.dataset.estimateBasis=estimate.basis;price.append(text('small',estimate.basis==='unknown'?questText('未見積もり'):questText('消費目安 / 1回')),text('b',estimate.label));
       button.dataset.tokenEstimate=estimate.label;button.append(equipmentIcon(skill),label,price);
-      if(chat?.equipment?.[shop]?.id===skill.id)button.append(text('span','装備中','equipment-owned'));
-      button.draggable=canChange;button.setAttribute('aria-label',skill.itemName+' · '+skill.displayName+' · '+(estimate.basis==='unknown'?'消費量は未見積もり':'1回の消費目安 '+estimate.label)+'を試着');
+      if(chat?.equipment?.[shop]?.id===skill.id)button.append(text('span',questText('装備中'),'equipment-owned'));
+      button.draggable=canChange;button.setAttribute('aria-label',skill.itemName+' · '+skill.displayName+' · '+(estimate.basis==='unknown'?questText('消費量は未見積もり'):questText('1回の消費目安 ')+estimate.label)+questText('を試着'));
       button.onclick=()=>{
         selected=skill.id;status='';if(canFit())tryOn(skill);else{signature='';render();}
         if(matchMedia('(max-width:650px)').matches&&isVisible()){
@@ -153,27 +155,27 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
       button.ondragend=endDrag;stock.append(button);
     }
     if(focused)stock.querySelector('[data-skill-id="'+CSS.escape(focused)+'"]')?.focus({preventScroll:true});
-    if(!inShop.length)stock.append(text('p',loading?'品ぞろえを確認しています…':error?'取得できませんでした。「品ぞろえを更新」で再試行できます。':loaded?'この店にはまだスキルがありません。':'「品ぞろえを更新」でスキルを読み込めます。','equipment-empty'));
+    if(!inShop.length)stock.append(text('p',loading?questText('品ぞろえを確認しています…'):error?questText('取得できませんでした。「品ぞろえを更新」で再試行できます。'):loaded?questText('この店にはまだスキルがありません。'):questText('「品ぞろえを更新」でスキルを読み込めます。'),'equipment-empty'));
     const skill=equipmentPresentation(selectedSkill()),equipped=Boolean(skill&&chat?.equipment?.[shop]?.id===skill.id),armed=equipped&&chat.armedSkillId===skill.id;
     $('#equipment-preview').replaceChildren(...(skill?[equipmentIcon(skill)]:[]));
-    $('#equipment-kind').textContent=skill?(skill.singleUse?'飛び道具 · 一回の指示':slotLabels[skill.slot]+' · SKILL'):'SKILL';
-    $('#equipment-name').textContent=skill?.itemName||'装備を選ぶ';$('#equipment-source').textContent=skill?(skill.displayName===skill.name?skill.name:skill.displayName+' · '+skill.name):'';
+    $('#equipment-kind').textContent=skill?(skill.singleUse?questText('飛び道具 · 一回の指示'):slotLabels[skill.slot]+' · SKILL'):'SKILL';
+    $('#equipment-name').textContent=skill?.itemName||questText('装備を選ぶ');$('#equipment-source').textContent=skill?(skill.displayName===skill.name?skill.name:skill.displayName+' · '+skill.name):'';
     $('#equipment-description').textContent=skill?.description||'';
     const estimate=skill?skillTokenEstimate(skill):null;
     $('#equipment-estimate-box').hidden=!skill;
     $('#equipment-token-estimate').textContent=estimate?.label||'';$('#equipment-token-estimate').dataset.estimateBasis=estimate?.basis||'unknown';
-    $('#equipment-token-caption').textContent=estimate?.basis==='unknown'?'消費目安 · 未見積もり':'消費目安 / 1回';
+    $('#equipment-token-caption').textContent=estimate?.basis==='unknown'?questText('消費目安 · 未見積もり'):questText('消費目安 / 1回');
     $('#equipment-token-scope').textContent=estimate?.scope||'';$('#equipment-token-scope').hidden=!estimate?.scope;
-    $('#equipment-token-note').textContent=estimate?[estimate.detail,'1 k token = 1,000 tokens。入力・出力・ツール利用で変動します。'].filter(Boolean).join(' '):'';$('#equipment-token-note').hidden=!skill;
-    $('#equipment-use-hint').textContent=skill?(skill.singleUse?'矢をつがえると、次の送信で一度だけこの技を使います。弓は装備したままです。':'装備している間は、この会話でメッセージや追加の指示を送るたびに、この技を使います。'):'';
-    $('#equipment-equip').disabled=!canChange||!skill||equipped||Boolean(error);$('#equipment-equip').textContent=equipped?'装備中':'装備する';
-    $('#equipment-arm').hidden=!equipped||!skill.singleUse;$('#equipment-arm').disabled=!canChange||Boolean(error);$('#equipment-arm').textContent=armed?'矢を外す':'矢をつがえる';
+    $('#equipment-token-note').textContent=estimate?[estimate.detail,questText('1 k token = 1,000 tokens。入力・出力・ツール利用で変動します。')].filter(Boolean).join(' '):'';$('#equipment-token-note').hidden=!skill;
+    $('#equipment-use-hint').textContent=skill?(skill.singleUse?questText('矢をつがえると、次の送信で一度だけこの技を使います。弓は装備したままです。'):questText('装備している間は、この会話でメッセージや追加の指示を送るたびに、この技を使います。')):'';
+    $('#equipment-equip').disabled=!canChange||!skill||equipped||Boolean(error);$('#equipment-equip').textContent=equipped?questText('装備中'):questText('装備する');
+    $('#equipment-arm').hidden=!equipped||!skill.singleUse;$('#equipment-arm').disabled=!canChange||Boolean(error);$('#equipment-arm').textContent=armed?questText('矢を外す'):questText('矢をつがえる');
     $('#equipment-use').hidden=!equipped||Boolean(skill.singleUse&&!armed);$('#equipment-use').disabled=mutating;
-    $('#equipment-status').textContent=isLocked()?'パーティのクエスト中です。酒場で停止してから装備を変更できます。':running(chat)?'この会話の処理中です。装備は完了後に変更できます。':status;
+    $('#equipment-status').textContent=isLocked()?questText('パーティのクエスト中です。酒場で停止してから装備を変更できます。'):running(chat)?questText('この会話の処理中です。装備は完了後に変更できます。'):status;
     $('#equipment-loading').hidden=!loading;$('#equipment-error').hidden=!error;$('#equipment-error').textContent=error;
     $('#equipment-warnings').hidden=!warnings.length;$('#equipment-warnings').textContent=warnings.join('\n');
     $('#equipment-refresh').disabled=demo||loading||mutating;
-    $('#equipment-refresh').title=demo?'品ぞろえの更新にはCodexへの接続が必要です。':'';
+    $('#equipment-refresh').title=demo?questText('品ぞろえの更新にはCodexへの接続が必要です。'):'';
   }
   $('#equipment-chat').onchange=()=>{fitting=null;endDrag();status='';onSelect($('#equipment-chat').value);signature='';render();};
   function chooseShop(value){if(!equipmentSlots.includes(value))return;fitting=null;endDrag();shop=value;selected=null;status='';signature='';render();onShopChange(shop);}
@@ -185,12 +187,17 @@ export function initEquipment({api,demo,storeKey,getChats,getSelected,onSelect,o
     let button=element.querySelector('.panel-equipment');
     if(!button){button=text('button','','panel-equipment');button.type='button';button.onclick=event=>{event.stopPropagation();onSelect(chat.id);};element.querySelector('.panel-foot').prepend(button);}
     const keys=JSON.stringify(chat.equipment||{});if(button.dataset.equipment!==keys){button.replaceChildren(equipmentIcon('hero','equipment-icon equipment-mini-hero'),...equipmentSlots.filter(slot=>chat.equipment?.[slot]).map(slot=>equipmentIcon(chat.equipment[slot])));button.dataset.equipment=keys;}
-    button.setAttribute('aria-label',chat.title+'の装備とお店を開く');
+    button.setAttribute('aria-label',questText('{name}の装備とお店を開く',{name:chat.title}));
   }
   function renderMessage(node,skills=[]){
     let list=node.querySelector('.equipment-message');if(!list){list=text('div','','equipment-message');node.querySelector('.msg-label').after(list);}
-    const key=JSON.stringify(skills);if(list.dataset.skills===key)return;list.dataset.skills=key;list.replaceChildren(...skills.map(saved=>{const skill=equipmentPresentation(saved),row=text('span',skill.itemName||skill.displayName);row.prepend(equipmentIcon(skill));row.title=skill.displayName||skill.name;return row;}));
+    const key=JSON.stringify([getLocale(),skills]);if(list.dataset.skills===key)return;list.dataset.skills=key;list.replaceChildren(...skills.map(saved=>{const skill=equipmentPresentation(saved),row=text('span',skill.itemName||skill.displayName);row.prepend(equipmentIcon(skill));row.title=skill.displayName||skill.name;return row;}));
   }
   function demoTurn(chat){const skills=equipmentSlots.map(slot=>chat.equipment?.[slot]).filter(skill=>skill&&(!skill.singleUse||chat.armedSkillId===skill.id));if(skills.some(skill=>skill.singleUse)){chat.armedSkillId=null;persist();}return skills;}
+  onLocaleChange(() => {
+    cancelFitting.textContent=questText('試着をやめる');
+    fittingHint.textContent=questText('商品をクリック、またはキャラ・対応する装備欄へドラッグして試着できます。');
+    render();
+  });
   return {render,renderPane,renderMessage,demoTurn,open:value=>{if(value)chooseShop(value);else render();if(!loaded)load();},invalidate:()=>{loaded=demo;if(isVisible())load();}};
 }

@@ -1,3 +1,6 @@
+import {getLocale} from './i18n.js';
+import {chatText} from './i18n-chat.js';
+
 const statusLabels = {
   pendingInit: '準備中', running: '作業中', waiting: '待機中', completed: '完了',
   interrupted: '中断', errored: 'エラー', shutdown: '終了', notFound: '見つかりません', unknown: '状態未確認',
@@ -8,18 +11,18 @@ const tokenFields = [
 ];
 const knownCount = value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 const words = value => typeof value === 'string' && value.trim() ? value : null;
-const count = value => value.toLocaleString('ja-JP');
+const count = value => value.toLocaleString(getLocale());
 
 // Missing provider measurements stay missing; no summing subtotals or estimating savings.
 export function delegationUsageRows(usage) {
   if (!usage || typeof usage !== 'object') return [];
   const rows = [];
-  for (const [key, label] of [['total', '累計トークン'], ['last', '直近のトークン']]) {
+  for (const [key, label] of [['total', chatText('累計トークン')], ['last', chatText('直近のトークン')]]) {
     const values = tokenFields.filter(([field]) => knownCount(usage[key]?.[field]))
-      .map(([field, title]) => `${title} ${count(usage[key][field])}`);
+      .map(([field, title]) => `${chatText(title)} ${count(usage[key][field])}`);
     if (values.length) rows.push({label, value: values.join(' / ') + ' tokens'});
   }
-  if (knownCount(usage.modelContextWindow)) rows.push({label: 'コンテキスト上限', value: count(usage.modelContextWindow) + ' tokens'});
+  if (knownCount(usage.modelContextWindow)) rows.push({label: chatText('コンテキスト上限'), value: count(usage.modelContextWindow) + ' tokens'});
   return rows;
 }
 
@@ -45,12 +48,12 @@ export function delegationViewModel(chat) {
   if (!ordered.length) return null;
   const agents = ordered.map(({agent, depth}, index) => ({
     id: agent.threadId,
-    name: words(agent.name) || `補助エージェント ${index + 1}`,
-    role: words(agent.role) || '役割未取得',
+    name: words(agent.name) || chatText('補助エージェント {n}', {n:index+1}),
+    role: words(agent.role) || chatText('役割未取得'),
     status: Object.hasOwn(statusLabels, agent.status) ? agent.status : 'unknown',
-    statusLabel: Object.hasOwn(statusLabels, agent.status) ? statusLabels[agent.status] : statusLabels.unknown,
-    parentLabel: unique.has(agent.parentThreadId) ? words(unique.get(agent.parentThreadId).name) || '別の補助エージェント' :
-      agent.parentThreadId === source.rootThreadId ? 'この会話' : '親スレッド未取得',
+    statusLabel: chatText(Object.hasOwn(statusLabels, agent.status) ? statusLabels[agent.status] : statusLabels.unknown),
+    parentLabel: unique.has(agent.parentThreadId) ? words(unique.get(agent.parentThreadId).name) || chatText('別の補助エージェント') :
+      agent.parentThreadId === source.rootThreadId ? chatText('この会話') : chatText('親スレッド未取得'),
     depth,
     result: words(agent.returnedText),
     resultTruncated: agent.returnedTextTruncated === true,
@@ -58,7 +61,7 @@ export function delegationViewModel(chat) {
     usage: delegationUsageRows(agent.usage),
   }));
   const truncated = source.truncated === true || source.agents.length > 100;
-  return {agents, truncated, title: `補助エージェント ${agents.length}人${truncated ? 'を表示 · 一部省略' : ''}`};
+  return {agents, truncated, title: chatText('補助エージェント {n}人', {n:agents.length}) + (truncated ? chatText('を表示 · 一部省略') : '')};
 }
 
 const panels = new WeakMap();
@@ -96,7 +99,7 @@ export function renderAgentDelegation(host, chat, {sample = false} = {}) {
   panel.snapshot = snapshot;
   panel.summary.textContent = model.title;
   const content = document.createDocumentFragment();
-  content.append(element('p', 'agent-delegation-note', 'この会話を手伝うエージェントと、その結果です。'));
+  content.append(element('p', 'agent-delegation-note', chatText('この会話を手伝うエージェントと、その結果です。')));
   const list = element('ol', 'agent-delegation-list');
   for (const agent of model.agents) {
     const item = element('li', 'agent-delegation-agent');
@@ -107,23 +110,23 @@ export function renderAgentDelegation(host, chat, {sample = false} = {}) {
     const status = element('span', 'agent-delegation-status', agent.statusLabel);
     status.dataset.status = agent.status; heading.append(status);
     item.append(heading, element('p', 'agent-delegation-role', agent.role),
-      element('p', 'agent-delegation-parent', '委任元：' + agent.parentLabel));
-    item.append(element('h4', '', agent.resultTruncated ? '結果（一部表示）' : '結果'), element('p', 'agent-delegation-result', agent.result || '結果はまだ取得していません。'));
-    if (agent.returnedCharacters !== null) item.append(element('p', 'agent-delegation-characters', `結果本文 ${count(agent.returnedCharacters)}文字`));
+      element('p', 'agent-delegation-parent', chatText('委任元：') + agent.parentLabel));
+    item.append(element('h4', '', agent.resultTruncated ? chatText('結果（一部表示）') : chatText('結果')), element('p', 'agent-delegation-result', agent.result || chatText('結果はまだ取得していません。')));
+    if (agent.returnedCharacters !== null) item.append(element('p', 'agent-delegation-characters', chatText('結果本文 {count}文字', {count:count(agent.returnedCharacters)})));
     const usage = element('dl', 'agent-delegation-usage');
-    if (!agent.usage.some(row => row.label !== 'コンテキスト上限')) usage.append(element('dt', '', '使用量'), element('dd', '', '未取得'));
+    if (!agent.usage.some(row => row.label !== chatText('コンテキスト上限'))) usage.append(element('dt', '', chatText('使用量')), element('dd', '', chatText('未取得')));
     for (const row of agent.usage) usage.append(element('dt', '', row.label), element('dd', '', row.value));
     item.append(usage); list.append(item);
   }
   const help = element('details', 'agent-delegation-help');
   help.open = panel.body.querySelector('.agent-delegation-help')?.open || false;
-  help.append(element('summary', '', '結果と使用量について'),
-    element('p', 'agent-delegation-note', '子の結果を表示しています。親が受け取ったことまでは示しません。'),
-    element('p', 'agent-delegation-note', '使用量は取得できた項目だけを表示します。キャッシュ入力・推論出力は内訳です。「直近」は提供元から最後に取得した内訳で、1ターン分とは限りません。'),
-    element('p', 'agent-delegation-note', '結果の文字数とトークン数は別の値です。文字数から使用量や節約率は推定しません。'));
+  help.append(element('summary', '', chatText('結果と使用量について')),
+    element('p', 'agent-delegation-note', chatText('子の結果を表示しています。親が受け取ったことまでは示しません。')),
+    element('p', 'agent-delegation-note', chatText('使用量は取得できた項目だけを表示します。キャッシュ入力・推論出力は内訳です。「直近」は提供元から最後に取得した内訳で、1ターン分とは限りません。')),
+    element('p', 'agent-delegation-note', chatText('結果の文字数とトークン数は別の値です。文字数から使用量や節約率は推定しません。')));
   content.append(list);
   if (!sample) content.append(help);
-  if (model.truncated) content.append(element('p', 'agent-delegation-note', '保持上限のため、一部の補助エージェントの記録は表示されていません。'));
+  if (model.truncated) content.append(element('p', 'agent-delegation-note', chatText('保持上限のため、一部の補助エージェントの記録は表示されていません。')));
   panel.body.replaceChildren(content);
   if (nearBottom) messages.scrollTop = messages.scrollHeight;
 }

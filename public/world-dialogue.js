@@ -1,3 +1,4 @@
+import {worldText} from './i18n-world.js';
 // Imported histories may store Codex's ambient UI records under a conversational
 // role. Filter recognized envelopes for map display while leaving the saved
 // transcript, user-authored XML, Markdown examples and attachments intact.
@@ -48,9 +49,9 @@ export function conversationMessageText(message) {
   const text = mapTranscriptText(message?.text);
   if (text) return text;
   const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
-  if (attachments.length) return '添付ファイル: ' + attachments.map((item,index) =>
-    String(item?.name || 'ファイル ' + (index + 1)).replace(/([\\`*_{}\[\]()#+.!|<>-])/g,'\\$1')).join('、');
-  return message?.role === 'user' && !String(message.text || '').trim() ? '本文のない依頼' : '';
+  if (attachments.length) return worldText('添付ファイル: ') + attachments.map((item,index) =>
+    String(item?.name || worldText('ファイル ') + (index + 1)).replace(/([\\`*_{}\[\]()#+.!|<>-])/g,'\\$1')).join('、');
+  return message?.role === 'user' && !String(message.text || '').trim() ? worldText('本文のない依頼') : '';
 }
 const versionOf = (value) => {
   const raw = JSON.stringify(value);
@@ -100,58 +101,56 @@ export function residentReport(chat, project, baseline) {
   if (event) {
     current = add("event:" + event.id, event.id,
       [event.kind, event.question, event.options],
-      "ここで相談したいことがあるんです。" + clean(event.question), "question");
-    context = event.kind === "question" ? "現在、相談への回答を待っています。" : "現在、問題の確認が必要です。";
+      worldText("ここで相談したいことがあるんです。") + clean(event.question), "question");
+    context = event.kind === "question" ? worldText("現在、相談への回答を待っています。") : worldText("現在、問題の確認が必要です。");
   }
   if (job?.error) {
     const failure = add("failure:" + job.id, job.id, [job.attempt, job.error],
-      "うまくいかない箇所が見つかりました。" + clean(job.error));
+      worldText("うまくいかない箇所が見つかりました。") + clean(job.error));
     if (!current) {
       current = failure;
-      context = "現在、うまくいかない箇所があります。" + clean(job.error) + " ";
+      context = worldText("現在、うまくいかない箇所があります。") + clean(job.error) + " ";
     }
   }
   if (!job && (chat.error || ["failed", "cancelled"].includes(chat.status))) {
     const stopped = chat.status === "cancelled";
-    const detail = clean(chat.error) || (stopped ? "完了した結果は確認できていません。" : "前の処理は完了しませんでした。記録を確認してください。");
+    const detail = clean(chat.error) || (stopped ? worldText("完了した結果は確認できていません。") : worldText("前の処理は完了しませんでした。記録を確認してください。"));
     const failure = add("chat-failure:" + chat.id, chat.id, [chat.status, chat.error, chat.activity?.id],
-      (stopped ? "処理は停止しています。" : "うまくいかない箇所が見つかりました。") + detail);
+      (stopped ? worldText("処理は停止しています。") : worldText("うまくいかない箇所が見つかりました。")) + detail);
     if (!current) {
       current = failure;
-      context = (stopped ? "現在、処理は停止しています。" : "現在、うまくいかない箇所があります。") + detail + " ";
+      context = (stopped ? worldText("現在、処理は停止しています。") : worldText("現在、うまくいかない箇所があります。")) + detail + " ";
     }
   }
   if (project?.paused) {
     const paused = add("pause:" + project.id, project.id, [true],
-      "今は作業を休止しています。続きの記録は残してあります。");
+      worldText("今は作業を休止しています。続きの記録は残してあります。"));
     if (!current) {
       current = paused;
-      context = "今は作業を休止しています。";
+      context = worldText("今は作業を休止しています。");
     }
   }
   if (job?.status === "done") {
     const pr = project?.pullRequests?.find((item) => job.url && item.url === job.url && item.repoId === job.repoId);
     add("job:" + job.id, job.id, [job.status, job.attempt, job.completedAt, job.kind, job.output, pr?.url],
-      (baseline ? "あの後、" : "") +
+      (baseline ? worldText("あの後、") : "") +
       (job.kind === "verify"
-        ? "検証の結果が届きました。"
+        ? worldText("検証の結果が届きました。")
         : job.kind === "publish" && pr
-          ? "変更をPRにまとめました。まだ公開とは別の段階です。"
-          : "この工程の報告がまとまりました。") +
+          ? worldText("変更をPRにまとめました。まだ公開とは別の段階です。")
+          : worldText("この工程の報告がまとまりました。")) +
       " " +
       clean(job.output));
   } else if (baseline && ["running", "preparing", "queued"].includes(job?.status)) {
     add("job:" + job.id, job.id, [job.status, job.attempt, job.title],
-      "相談の続きは「" +
-      clean(job.title) +
-      "」です。" +
+      worldText("相談の続きは「{name}」です。", {name:clean(job.title)}) +
       (job.status === "queued"
-        ? "作業の順番を待っています。"
-        : "今、続きを進めています。"));
+        ? worldText("作業の順番を待っています。")
+        : worldText("今、続きを進めています。")));
   }
   for (const progress of events.filter((e) => e.kind === "progress"))
     add("event:" + progress.id, progress.id, [progress.question, progress.summary],
-      "記録に報告が残っています。" + clean(progress.question) + " " + clean(progress.summary));
+      worldText("記録に報告が残っています。") + clean(progress.question) + " " + clean(progress.summary));
   const introduction = !baseline && !job ? messages.filter((m) => m.role === "user").at(-1) : null;
   const ordered = introduction ? [introduction, ...messages.filter((m) => m !== introduction)] : messages;
   for (const message of ordered) {
@@ -159,24 +158,22 @@ export function residentReport(chat, project, baseline) {
     if (message.attachments?.length) evidence.push(message.attachments);
     const report = add("message:" + message.reportSource, message.reportSource,
       evidence, conversationMessageText(message).trim());
-    report.label = message.role === "user" ? "依頼" : "返答";
+    report.label = message.role === "user" ? worldText("依頼") : worldText("返答");
   }
   if (!candidates.length)
     add("introduction:" + chat.id, job?.id || chat.id, [job?.title || chat.title], job
-      ? "「" +
-        clean(job.title) +
-        "」を担当しています。まとまったら、ここでお知らせします。"
-      : "まだお話はこれからです。何から始めましょうか。");
+      ? worldText("「{name}」を担当しています。まとまったら、ここでお知らせします。", {name:clean(job.title)})
+      : worldText("まだお話はこれからです。何から始めましょうか。"));
   const candidate = candidates.find((item) => heard[item.key] !== item.version);
-  const text = candidate?.text || "前にお話ししたところから、まだ新しい報告はありません。";
+  const text = candidate?.text || worldText("前にお話ししたところから、まだ新しい報告はありません。");
   return {
     ...candidate,
     version: candidate?.version || baseline?.version,
     source: candidate?.source || baseline?.source || chat.id,
-    text: current && candidate !== current ? context + (candidate ? "以前の記録からお伝えします。" : "") + text : text,
+    text: current && candidate !== current ? context + (candidate ? worldText("以前の記録からお伝えします。") : "") + text : text,
     conversationId: chat.id,
     kind: candidate?.kind || "report",
-    label: candidate?.label || (candidate?.kind === "question" ? "確認事項" : "進捗"),
+    label: candidate?.label || (candidate?.kind === "question" ? worldText("確認事項") : worldText("進捗")),
     previousReports,
   };
 }
@@ -199,10 +196,6 @@ export function associationSpeech(from, to) {
   return {
     kind: "association",
     text:
-      "話の種ですが、「" +
-      clean(from.name) +
-      "」で考えたことは「" +
-      clean(to.name) +
-      "」でも役に立つでしょうか。向こうの話も聞いてみたいですね。",
+      worldText("話の種ですが、「{from}」で考えたことは「{to}」でも役に立つでしょうか。向こうの話も聞いてみたいですね。", {from:clean(from.name),to:clean(to.name)}),
   };
 }
