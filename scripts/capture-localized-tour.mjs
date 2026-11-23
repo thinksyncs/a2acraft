@@ -85,6 +85,7 @@ async function present(name) {
 const sel = s=>`document.querySelector(${JSON.stringify(s)})`;
 async function isVisible(s) {return evaluate(`(${visibleJS})(${sel(s)})`);}
 async function click(s, ms=20000) {
+  console.log('Opening',s);
   await poll(()=>isVisible(s),s,ms);
   await evaluate(`(() => {const n=${sel(s)};if(n.disabled)throw Error('Disabled control');n.click();})()`);
 }
@@ -109,13 +110,10 @@ async function tour(call) {
   await click('.village-context-row');
   await poll(()=>isVisible('#village-speech-chat'),'nearby resident arrival',15000);
   await capture('greeting',2);
-  await click('#village-speech-chat');
-  await poll(()=>isVisible('#prompt'),'resident chat');
-  await evaluate(`(()=>{const p=document.querySelector('#prompt');p.focus();p.value='What should we build together next?';p.dispatchEvent(new Event('input',{bubbles:true}));})()`);
-  await click('#send-btn');
-  await poll(()=>evaluate("!!document.querySelector('#chat-view .chat-panel.selected .assistant:last-child .msg-text')?.innerText"),'sample reply');
+  await click('#village-speech-close');
+  if(!await evaluate("document.querySelector('#village-context').open"))await click('#village-context > summary');
   await capture('conversation',4);
-  await click('#resident-conversation > button');
+  await click('#village-context > summary');
   if(await isVisible('#village-leader-close'))await click('#village-leader-close');
   await click('#village-fit');
   await capture('island',3);
@@ -159,7 +157,15 @@ async function tour(call) {
   await writeFile(path.join(out,'en-end-card.jpg'),await screenshot());
   // Start Japan's preview with the same untouched fictional quest.
   await call('Storage.clearDataForOrigin',{origin, storageTypes:'local_storage,indexeddb'});
-  await setup('ja',call);await click('#village-fit');
+  await setup('en',call);
+  console.log('Switching the interface to Japanese');
+  await evaluate(`(()=>{const select=[...document.querySelectorAll('select[data-interface-language]')].find(${visibleJS});if(!select)throw Error('No visible language switch');select.value='ja';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await poll(async()=>{
+    try{return await evaluate("document.documentElement.lang==='ja'&&document.readyState==='complete'&&location.search.includes('lang=ja')&&!!document.querySelector('#village-walk-sample')");}
+    catch(error){if(/context|navigat/i.test(error.message))return false;throw error;}
+  },'Japanese sample after using the visible language selector',40000);
+  language='ja';
+  await click('#village-fit');
   await click('[data-village-idea]:not([hidden])');
   await present('quest');
 }

@@ -1,3 +1,5 @@
+import {ui} from './interface-language.js';
+
 const kinds={
  message:'会話', 'todo-created':'TODO登録', 'todo-completed':'TODO完了',
  'todo-run-started':'TODOの処理開始', 'todo-run-completed':'TODOの処理完了', 'todo-run-failed':'TODOの処理失敗・中断',
@@ -97,15 +99,15 @@ export function buildDailyReport({date,timeZone='Asia/Tokyo',conversations=[],to
 const markdownText=value=>text(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\\`*_{}\[\]()#+.!|~-]/g,'\\$&').replace(/\r?\n/g,' ');
 export function dailyReportMarkdown(report){
  const clock=new Intl.DateTimeFormat('ja-JP',{timeZone:report.timeZone,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
- const lines=['# 日報 '+report.date,'','タイムゾーン: '+report.timeZone,'','## 記録された活動','',
+ const lines=[ui('# 日報 ','# Daily report ')+report.date,'','タイムゾーン: '+report.timeZone,'',ui('## 記録された活動','## Recorded activity'),'',
   '会話 '+report.counts.messages+'件（送信 '+report.counts.userMessages+' / 応答 '+report.counts.assistantMessages+'）、TODO完了 '+report.counts.todosCompleted+'件、クエスト完了 '+report.counts.questsCompleted+'件。',''];
  if(!report.activities.length)lines.push('この日の日時付き記録はありません。');
  for(const event of report.activities){lines.push('- '+clock.format(event.timestamp)+' '+markdownText(kinds[event.kind]||event.kind)+': '+markdownText(event.title)+(event.role?'（'+(event.role==='user'?'送信':'応答')+'）':'')+' ['+markdownText(event.status)+']');if(event.detail)lines.push('  '+markdownText(event.detail));}
- lines.push('','## 現在の状態（選択日の実績とは別）','');
+ lines.push('',ui('## 現在の状態（選択日の実績とは別）','## Current status (outside the selected day’s totals)'),'');
  if(!report.current.length)lines.push('進行中・要確認の記録はありません。');
  for(const item of report.current)lines.push('- '+markdownText(item.title)+' ['+markdownText(item.status)+']'+(item.detail?' '+markdownText(item.detail):''));
- lines.push('','## 日時不明の記録','',String(report.undated.length)+'件。選択日の活動件数には含めていません。');
+ lines.push('',ui('## 日時不明の記録','## Undated records'),'',String(report.undated.length)+'件。選択日の活動件数には含めていません。');
  for(const item of report.undated)lines.push('- '+markdownText(kinds[item.kind]||item.kind)+': '+markdownText(item.title)+' ['+markdownText(item.status)+']');
- lines.push('','## 集計範囲','',...report.limitations.map(value=>'- '+value));
+ lines.push('',ui('## 集計範囲','## Report coverage'),'',...report.limitations.map(value=>'- '+value));
  return lines.join('\n')+'\n';
 }
