@@ -1,0 +1,38 @@
+name: Capture the localized film
+on:
+  push:
+    branches: [feats/record-released-ui]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  film:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GIT_SSH_COMMAND: /bin/false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare the video encoder
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+      - name: Record the fictional village and encode the tour
+        run: node scripts/capture-localized-tour.mjs "$RUNNER_TEMP/film"
+      - name: Save film and matching language samples
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: localized-tour
+          path: |
+            ${{ runner.temp }}/film/*.jpg
+            ${{ runner.temp }}/film/*.mp4
+            ${{ runner.temp }}/film/*.json
+          if-no-files-found: error
+          retention-days: 3
