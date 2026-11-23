@@ -4,7 +4,7 @@
     {
       "path": "node_modules/electron/package.json",
       "name": "electron",
-      "version": "44.5.1"
+      "version": "44.9.1"
     },
     {
       "path": "node_modules/@xberg-io/xberg/package.json",
@@ -242,13 +242,13 @@
       "input": "node_modules/electron/dist/LICENSE",
       "output": "electron-LICENSE.txt",
       "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d",
-      "source": "https://github.com/electron/electron/blob/v44.5.1/LICENSE"
+      "source": "https://github.com/electron/electron/blob/v44.9.1/LICENSE"
     },
     {
       "input": "node_modules/electron/dist/LICENSES.chromium.html",
       "output": "electron-LICENSES.chromium.html",
-      "sha256": "a62dabd1c6ef1327365b2a3fdffb806222684a746dcb8f4afd1c1f690eba5535",
-      "source": "https://github.com/electron/electron/releases/tag/v44.5.1"
+      "sha256": "3375e2a9bd7bc631738fde10be6548a76efe8cf5e4b8826b8140ba8b0c4d6353",
+      "source": "https://github.com/electron/electron/releases/tag/v44.9.1"
     },
     {
       "input": "node_modules/@xberg-io/xberg/LICENSE",
