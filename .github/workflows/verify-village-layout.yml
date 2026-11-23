@@ -1,0 +1,22 @@
+name: Check village controls at two widths
+on:
+  push:
+    branches: [feats/verify-village-layout]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      GIT_SSH_COMMAND: /bin/false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: node scripts/check-village-hud.mjs "$RUNNER_TEMP/hud"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: bilingual-village-layout
+          path: ${{ runner.temp }}/hud
