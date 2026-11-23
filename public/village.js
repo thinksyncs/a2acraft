@@ -44,7 +44,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let demoOverrides=[],demoRevision=0;
  try{const stored=JSON.parse(mapStorage.getItem(DEMO_KEY)||'null');if(demo&&Array.isArray(stored?.overrides)){demoOverrides=stored.overrides;demoRevision=Number.isSafeInteger(stored.revision)?stored.revision:0;}}catch{}
  const heading=make('header',undefined,'village-heading'),headingCopy=make('div');
- const title=make('h2','Village');title.lang='en';title.id='village-title';title.tabIndex=-1;
+ const title=make('h2',worldBinding('村'));title.id='village-title';title.tabIndex=-1;
  const intro=make('p',worldBinding('会話が村人に。ソフトづくりが建物に。'),'village-intro');headingCopy.append(title,intro);
  const headerActions=make('div',undefined,'village-header-actions');
  const find=iconButton(button('village-find',undefined,()=>{closeQuestPeek(false);directory.open=true;questDrawer.hidden=true;search.focus();}), 'find','村人を探す');find.setAttribute('aria-expanded','false');
