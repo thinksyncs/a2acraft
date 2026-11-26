@@ -37,7 +37,7 @@ async function fixture({running = false} = {}) {
     buildResidentContext, deliverSend, projectVillageActivities, villageControlTarget, teamChatRecipient, randomUUID, conversations, parties, todos, boardPublic: () => ({}), c: recipient,
     historyImportIds: new Set(), conversationWorkspaces: {snapshot: () => ({turn: {sandboxPolicy: {type: 'readOnly'}}})},
     projects: {active: new Map()}, assertBoardAvailable() {}, hasScheduledRun: () => false,
-    scheduledStarting: null, workQuestWaiter: null, teamsWaiter: null, startingTodo: false,
+    scheduledStarting: null, generationWaiter: null, teamsWaiter: null, startingTodo: false,
     state: {account: {}, limits: {}, connected: true, login: null, models: [{model: 'model'}]},
     changed: async chat => {saves.push(plain(chat));}, emit() {}, refresh: async () => {},
     checkPlan: () => ({ok: true}), rememberScheduledQuotaStop() {}, prepareImportedHistoryInput: async () => [],

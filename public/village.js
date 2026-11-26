@@ -9,6 +9,7 @@ import {buildResidentPatrols,residentPatrolPosition} from './village-resident-mo
 import {createVillageContext} from './village-context.js';
 import {invitationsForVillage} from './village-initiative.js';
 import {createAmbientNotice} from './village-ambient.js';
+import {createVillageEncounters} from './village-encounters.js';
 import {projectVillage,VILLAGE_STAGES} from './village-model.js';
 import {drawVillageWorld,drawVillageIslandBackground,drawVillageConversationFocus,worldPersonColor} from './village-art.js';
 import {delegationCacheKey,delegationSummary,villageDelegateActors} from './village-delegates.js';
@@ -37,7 +38,7 @@ const shortLabels={get planned(){return worldText('構想');},get building(){ret
 const iconPaths={find:'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',history:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',quests:'M5 21V3m0 1h14l-3 5 3 5H5',shop:'m4 4 16 16M7 3 3 7m14 10 4 4M5 19l14-14m-4-2 6 6',tavern:'M4 9h13v11H4zm13 2h3v6h-3M6 3v3m5-3v3m5-3v3',castle:'M3 21V5h4v4h3V3h4v6h3V5h4v16H3m7 0v-6h4v6',board:'M3 4h18v13H3zm4 13v4m10-4v4M7 8h10M7 12h7'};
 function iconButton(node,key,label){setWorldLabel(node,label,'title');setWorldLabel(node,label,'aria-label');node.replaceChildren();const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',iconPaths[key]);icon.append(path);node.append(icon);return node;}
 
-export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest,teamMessaging,initiative}){
+export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat,onOpenHistory,onNavigate,onOpenBoard,onOpenQuest,teamMessaging,initiative,encounterActions}){
  const root=document.querySelector('#history-village');if(!root)return {render(){},setVisible(){},focus(){},openSquadRecord(){},getEncounter(){return null;},endEncounter(){},setControlledSquad(){return false;},getControlledSquadId(){return 'protagonist';},getControlledParty(){return null;}};
  root.classList.add('history-village');root.setAttribute('aria-labelledby','village-title');
  let visible=false,disposed=false,projection=projectVillage([],[]),signature='',district=0,selected=null,busy=false;
@@ -218,6 +219,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  let encounter=null,latestScene=null;const residentPauses=new Map();
  try{const rows=JSON.parse(mapStorage.getItem(layoutKey)||'[]'),used=new Set();if(Array.isArray(rows))for(const row of rows.slice(0,20000)){if(Array.isArray(row)&&typeof row[0]==='string'&&row[0].length<=512&&Number.isSafeInteger(row[1])&&row[1]>=0&&row[1]<20000&&!used.has(row[1])){assignments.set(row[0],row[1]);used.add(row[1]);}}}catch{}
  const chatCache=new Map();
+ const meetings=!demo&&encounterActions?createVillageEncounters({host:neighborhoodContext.element,frame,api,getState,getChats,actions:encounterActions}):null;
  const ambientKey=demo?'chat-ui-demo-village-ambient':'chat-ui-village-ambient';
  const updateAmbient=createAmbientNotice({frame,controls:neighborhoodContext.element,
   getChat:id=>chatCache.get(id)?.chat,
@@ -729,6 +731,8 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   if(projection.residents.length>RESIDENT_LIMIT&&residentCameraCell!==Math.floor(camera.x/320)+':'+Math.floor(camera.y/320))refreshNearbyResidents();
   positions=shownResidents.map(residentPosition);updateSquadScenes();
   const actors=villageEncounterActors({residents:positions,hero:heroScene,squads:squadScenes,heading:leaderHeading,encounter});positions=actors.residents.map(person=>({...person,kind:'agent',identityFocused:person.conversationId===(speechId||selected)}));heroScene=actors.hero;squadScenes=actors.squads;leaderHeading=actors.heading;
+  if(!document.hidden&&!encounter)meetings?.observe(performance.now(),()=>[...positions,...(heroScene?.members||[]),...squadScenes.flatMap(squad=>squad.members)],viewport);
+  else meetings?.reset();
   updateAmbient({time:elapsed,party:heroScene,residents:positions,viewport,
    blocked:Boolean(travel||encounter||speechId||document.hidden||!motionEnabled()||detail.open||directory.open||!questDrawer.hidden||!questPeek.hidden)});
   const delegateOwners=new Map(projection.residents.map(resident=>[resident.conversationId,resident]));
@@ -816,14 +820,15 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  speech.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();closeSpeech();}});
  const observer=new ResizeObserver(resize);observer.observe(frame);const insetObserver=new ResizeObserver(resizeInset);insetObserver.observe(canvas3D);
  const modalObserver=new MutationObserver(syncAnimation);modalObserver.observe(document.body,{subtree:true,attributes:true,attributeFilter:['open']});
- const motionChanged=()=>{world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(visible&&!document.hidden&&reducedMotion()&&!locallyPaused)travel?.engine.advance(Infinity);syncAnimation();};media.addEventListener('change',motionChanged);addEventListener('chat-ui-motion',motionChanged);document.addEventListener('visibilitychange',motionChanged);
+ const motionChanged=()=>{meetings?.setActive(visible&&!document.hidden);world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(visible&&!document.hidden&&reducedMotion()&&!locallyPaused)travel?.engine.advance(Infinity);syncAnimation();};media.addEventListener('change',motionChanged);addEventListener('chat-ui-motion',motionChanged);document.addEventListener('visibilitychange',motionChanged);
  function render(){
   if(!visible||disposed)return;
+  meetings?.render();
   if(!questPeek.hidden){teamChat.render();renderIdea();}
   if(performance.now()-lastProjection>220){clearTimeout(projectionTimer);projectionTimer=0;updateProjection();}
   else if(!projectionTimer)projectionTimer=setTimeout(()=>{projectionTimer=0;if(visible)updateProjection();},230);
  }
- function setVisible(value,{preserveEncounter=false}={}){const next=Boolean(value);root.hidden=!next;if(next===visible){if(next)render();else if(!preserveEncounter)endEncounter({redraw:false});return;}visible=next;world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(!visible){saveView();cancelTravel();clearTimeout(projectionTimer);projectionTimer=0;if(detail.open)detail.close();closeSpeech(false,{preserveEncounter});syncAnimation();return;}updateProjection();if(!insetInitialized)setInsetVisible(insetVisible);resize();syncAnimation();}
+ function setVisible(value,{preserveEncounter=false}={}){const next=Boolean(value);root.hidden=!next;if(next===visible){if(next)render();else if(!preserveEncounter)endEncounter({redraw:false});return;}visible=next;meetings?.setActive(visible&&!document.hidden);world3D?.setVisible(visible&&insetVisible&&!document.hidden);if(!visible){saveView();cancelTravel();clearTimeout(projectionTimer);projectionTimer=0;if(detail.open)detail.close();closeSpeech(false,{preserveEncounter});syncAnimation();return;}updateProjection();if(!insetInitialized)setInsetVisible(insetVisible);resize();syncAnimation();}
  function focus(){title.focus({preventScroll:true});root.scrollIntoView({block:'start'});}
  // Optional sample itinerary. Each leg uses the same travel controller and
  // encounter as selecting ground or a resident on the map.
@@ -851,7 +856,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
  }
  const unsubscribeLanguage=onLocaleChange(()=>{
   // Refresh derived labels without interrupting a walk or clearing a chat draft.
-  chatCache.clear();signature='';
+  chatCache.clear();signature='';meetings?.render(true);
   for(const place of VILLAGE_PLACES){
    const entry=places.querySelector('#village-enter-'+place.id),guide=wayfinding.querySelector('#village-travel-'+place.id);
    entry.textContent=worldText('{name}に入る →',{name:place.shortName});
@@ -860,7 +865,7 @@ export function initVillage({api,demo=false,getChats,getState,onState,onOpenChat
   }
   if(visible){updateProjection(true);syncAnimation();}
  });
- function dispose(){unsubscribeLanguage();saveView();disposed=true;visible=false;inputFrame.cancel();endEncounter({redraw:false});clearTimeout(projectionTimer);if(frameId)cancelAnimationFrame(frameId);world3D?.destroy();observer.disconnect();insetObserver.disconnect();modalObserver.disconnect();media.removeEventListener('change',motionChanged);removeEventListener('chat-ui-motion',motionChanged);document.removeEventListener('visibilitychange',motionChanged);detail.remove();}
+ function dispose(){meetings?.setActive(false);unsubscribeLanguage();saveView();disposed=true;visible=false;inputFrame.cancel();endEncounter({redraw:false});clearTimeout(projectionTimer);if(frameId)cancelAnimationFrame(frameId);world3D?.destroy();observer.disconnect();insetObserver.disconnect();modalObserver.disconnect();media.removeEventListener('change',motionChanged);removeEventListener('chat-ui-motion',motionChanged);document.removeEventListener('visibilitychange',motionChanged);detail.remove();}
  addEventListener('pagehide',dispose,{once:true});
  return {render,setVisible,focus,openSquadRecord,dispose,getEncounter,endEncounter,saveView,setControlledSquad,getControlledSquadId,getControlledParty};
 }

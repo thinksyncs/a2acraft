@@ -210,7 +210,11 @@ async function acceptVillageIdea(invite){
  const sampleItem=villageSample&&source.todos.items.find(task=>task.id===invite.id);
  return todoView.startInvitation(invite,{party,sampleItem});
 }
-const village=initVillage({api,demo,initiative:{blocked:villageIdeaBlock,start:acceptVillageIdea},getState:villageState,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard(),
+function receiveEncounters(value){state.encounters=value;village.render();}
+const village=initVillage({api,demo,encounterActions:{
+  connected:()=>!serverUnavailable&&state.connected&&state.account?.type==='chatgpt'&&!state.login&&state.policy?.ok,
+  model:()=>$('#model').value,receive:receiveEncounters,openTodo:id=>switchView('todos',()=>todoView.open(id)),
+},initiative:{blocked:villageIdeaBlock,start:acceptVillageIdea},getState:villageState,getChats:()=>chats,onState:applyVillageState,onOpenChat:openResidentChat,onOpenQuest:openVillageQuest,onOpenHistory:()=>history.open(),onNavigate:visitVillageFacility,onOpenBoard:()=>projects.openBoard(),
   teamMessaging:{
     read:id=>({draft:drafts[id]||'',...teamSendStatus(id)}),
     refreshQuota:refreshUsage,
@@ -1241,6 +1245,7 @@ function subscribeEvents() {
   eventStream.addEventListener('teams-drafts',event=>{state.teamsDrafts=JSON.parse(event.data);pluginView.teamsDraftsChanged(state.teamsDrafts);town.render();});
   eventStream.addEventListener('plugins',event=>{state.plugins=JSON.parse(event.data);pluginView.hydrate(state.plugins);town.render();});
   eventStream.addEventListener('board-dispatch',event=>{state.boardDispatch=JSON.parse(event.data);updateState();town.render();});
+  eventStream.addEventListener('encounters',event=>receiveEncounters(JSON.parse(event.data)));
   eventStream.addEventListener('todos',event=>{state.todos=JSON.parse(event.data);todoView.hydrate();castle.render();town.render();village.render();pluginView.render();});
   eventStream.addEventListener('media',event=>{state.media=JSON.parse(event.data);mediaView.render();todoView.hydrate();});
   for(const kind of ['inbox','schedules','reports'])eventStream.addEventListener(kind,event=>{state[kind]=JSON.parse(event.data);activityView.render();});

@@ -28,7 +28,7 @@ jobs:
           grep -Fq 'Never interrupt Proton VPN' "$HOME/.codex/AGENTS.md"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: fbf10e8c82f635bc6fe720810260ccd071358ace
+          ref: b6f46bc4afe719634f8b963ca65c8a60d6b0e9d4
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
@@ -48,6 +48,26 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent src-tauri/target/release/bundle/macos/A2ACraft.app "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip"
           unzip -tq "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip"
           shasum -a 256 "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip"
+      - name: Verify encounter sources and default-on behavior from the extracted ZIP
+        shell: bash
+        run: |
+          extracted="$RUNNER_TEMP/verified-mac"
+          mkdir "$extracted"
+          ditto -x -k "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip" "$extracted"
+          app="$extracted/A2ACraft.app"
+          /usr/bin/codesign --verify --strict --deep "$app"
+          test "$(plutil -extract CFBundleVersion raw "$app/Contents/Info.plist")" = "0.4.27"
+          backend="$app/Contents/Resources/backend"
+          for file in encounter-runner.mjs server.mjs todos.mjs public-assets.mjs public/app.js public/village.js public/village-encounters.js public/todos.js public/village.css public/i18n-world.js public/i18n-quests.js; do
+            cmp "$file" "$backend/$file"
+          done
+          probe="$RUNNER_TEMP/encounter-package-test"
+          mkdir -p "$probe"
+          cp -R "$backend/." "$probe/"
+          mkdir -p "$probe/test"
+          cp test/connect.test.mjs test/fake-codex.mjs "$probe/test/"
+          ln "$probe/runtime/chat-ui-node" "$probe/runtime/node"
+          "$probe/runtime/node" --test --test-name-pattern='Village contact carries' "$probe/test/connect.test.mjs"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: A2ACraft-0.4.27-Tauri-mac-arm64

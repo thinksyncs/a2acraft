@@ -78,6 +78,40 @@ export class TodoStore extends LocalStore{
    const final=quest.steps.at(-1);if(quest.status==='completed'&&quest.steps.every(step=>step.status==='completed')&&final?.output?.trim()){run.output=final.output;run.completedAt=quest.completedAt;if(current&&!alreadyCompleted){item.status='done';item.completedAt=quest.completedAt;}}else if(current&&item.status!=='done')item.status='doing';item.updatedAt=Date.now();
   });
  }
+ encounterSource(link,conversationId){
+  if(!link)return null;
+  const item=this.value.items.find(todo=>todo.id===link.todoId);
+  const snapshot=item?.runs.find(run=>run.id===link.runId)?.snapshot;
+  const source=snapshot?.source;
+  if(!link.autoEncounterId&&source?.provider!=='encounter'&&item?.source?.provider!=='encounter')return null;
+  if(source?.provider!=='encounter'||source.encounterId!==link.todoId||
+     (link.autoEncounterId&&link.autoEncounterId!==source.encounterId)||!source.participants?.includes(conversationId))
+   throw Error('出会いと担当者を確認できません。');
+  return source;
+ }
+ async fromEncounter({encounterId,participants,assigneeId,title,description,turns},chats,check){
+  if(!encounterId||participants.length!==2||new Set(participants).size!==2||!participants.includes(assigneeId))throw Error('出会いの担当者を確認できません。');
+  const fields=this.validate({title,description,assignee:{type:'chat',conversationId:assigneeId}},chats,[]);
+  if(!Array.isArray(turns)||turns.length!==3||turns.some((turn,i)=>turn.conversationId!==participants[i%2]||typeof turn.text!=='string'||!turn.text.trim()||turn.text.length>1200))throw Error('出会いの会話記録を確認できません。');
+  const participantNames=Object.fromEntries(participants.map(id=>{
+   const chat=chats.find(item=>item.id===id);if(!chat)throw Error('出会いの参加者が見つかりません。');
+   return [id,(chat.characterName||chat.title).slice(0,80)];
+  }));
+  const source={provider:'encounter',encounterId,participants:[...participants],participantNames,turns:turns.map(({conversationId,text})=>({conversationId,text}))};
+  return this.mutate(value=>{
+   check();
+   const existing=value.items.find(item=>item.id===encounterId);
+   if(existing){
+    if(existing.source?.encounterId!==encounterId)throw Error('別のTODOが同じIDを使っています。');
+    return {id:encounterId,created:false};
+   }
+   if(value.items.length>=200)throw Error('TODOは200件まで保存できます。');
+   const now=Date.now();
+   value.items.push({...fields,id:encounterId,source,
+    status:'todo',runs:[],createdAt:now,updatedAt:now});
+   return {id:encounterId,created:true};
+  });
+ }
  async importBacklog(issue,space,chats,media,beforeSave=()=>{}){
   const source={provider:'backlog',space,issueId:issue.id,issueKey:issue.issueKey,projectId:issue.projectId,url:space+'/view/'+encodeURIComponent(issue.issueKey),status:issue.status,updated:issue.updated,importedAt:Date.now(),truncated:issue.description.length>3600||('['+issue.issueKey+'] '+issue.summary).length>120};
   const title='['+issue.issueKey+'] '+issue.summary;
