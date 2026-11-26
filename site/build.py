@@ -10,22 +10,24 @@ from string import Template
 SITE = Path(__file__).resolve().parent
 ROOT = SITE.parent
 REPO = "https://github.com/thinksyncs/a2acraft"
+MAC_VERSION = "0.4.27"
+MAC_DOWNLOAD = f"{REPO}/releases/download/v{MAC_VERSION}-tauri/A2ACraft-{MAC_VERSION}-Tauri-mac-arm64.zip"
 COPY = {
     "ja": {
         "title": "ゲームプレイ映像",
         "summary": "村で交わす会話から、新しい出会いや発明のヒントが生まれます。依頼では、一人が調べたことを次の仲間が自動で引き継ぎます。45秒の映像で、村から王城までを巡ります。",
         "language": "日本語", "navigation": "ナビゲーション", "video_label": "A2ACraft 紹介動画（日本語、45秒）",
         "language_choice": "表示言語",
-        "download": "動画を保存（MP4）", "captions": "字幕を保存（VTT）", "try_mac": "Mac版を試す",
-        "guide": REPO + "/blob/main/README.ja.md#macで試す",
+        "download": "動画を保存（MP4）", "captions": "字幕を保存（VTT）", "download_mac": "Mac版をダウンロード（Apple Silicon）",
+        "guide": REPO + "/blob/main/docs/mac-first-start.md", "guide_label": "初回起動ガイド",
     },
     "en": {
         "title": "Gameplay film",
         "summary": "A village conversation can lead to a new friendship or spark an invention. On a quest, each companion’s findings pass automatically to the next. Follow the party from village to castle in this 45-second film.",
         "language": "English", "navigation": "Navigation", "video_label": "A2ACraft gameplay film in English, 45 seconds",
         "language_choice": "Display language",
-        "download": "Download film (MP4)", "captions": "Download captions (VTT)", "try_mac": "Try it on Mac",
-        "guide": REPO + "/blob/main/README.md#try-a2acraft-on-mac",
+        "download": "Download film (MP4)", "captions": "Download captions (VTT)", "download_mac": "Download for Mac (Apple Silicon)",
+        "guide": REPO + "/blob/main/docs/mac-first-start.en.md", "guide_label": "First-launch guide",
     },
 }
 
@@ -39,7 +41,7 @@ def build(output):
     for lang, strings in COPY.items():
         page = output if lang == "ja" else output / lang
         page.mkdir(exist_ok=True)
-        html = template.substitute(lang=lang, prefix="./" if lang == "ja" else "../",
+        html = template.substitute(lang=lang, mac_download=MAC_DOWNLOAD, prefix="./" if lang == "ja" else "../",
                                    en_current=' aria-current="page"' if lang == "en" else "",
                                    ja_current=' aria-current="page"' if lang == "ja" else "",
                                    **{key: escape(value) for key, value in strings.items()})

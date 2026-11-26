@@ -2,7 +2,7 @@
 
 [日本語](mac-first-start.md)
 
-Download the Apple Silicon ZIP linked in the [README](../README.md). Compare its SHA-256 with the value shown there. In Finder, double-click the ZIP, drag **A2ACraft.app** to **Applications**, and open it. The tester build is ad-hoc signed. See the README for supported macOS versions and Apple's first-launch instructions.
+Download the Apple Silicon ZIP linked in the [README](../README.md). Compare its SHA-256 with the one in the linked release notes. In Finder, double-click the ZIP, drag **A2ACraft.app** to **Applications**, and open it. Official Mac releases require Developer ID signing and Apple notarization. See the README for supported macOS versions and Apple’s first-launch instructions.
 
 ## Choose your language
 
