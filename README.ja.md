@@ -14,18 +14,16 @@ A2ACraft（エーツーエークラフト）は、あなたとの会話と、仲
 
 ## Macで試す
 
-0.4.25以降は、起動時の **Connect** か **設定 → 言語** で **English / 日本語** を切り替えられます。[英語の初回起動ガイド](docs/mac-first-start.en.md)にも、Codexへの接続と専用フォルダへのファイル作成の手順を載せています。
+0.4.25以降は、起動時の **Connect** か **設定 → 言語** で **English / 日本語** を切り替えられます。Codexへの接続と専用フォルダへのファイル作成は、[初回起動ガイド](docs/mac-first-start.md)で説明しています。
 
-[Apple Silicon用のTauri版0.4.26をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.26-tauri/A2ACraft-0.4.26-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.26-tauri)
+[Apple Silicon用のTauri版0.4.27をダウンロード（ZIP）](https://github.com/thinksyncs/a2acraft/releases/download/v0.4.27-tauri/A2ACraft-0.4.27-Tauri-mac-arm64.zip) · [リリース情報とSHA-256](https://github.com/thinksyncs/a2acraft/releases/tag/v0.4.27-tauri)
 
 アプリ本体はmacOS 13.5以降のApple Silicon Mac（Mシリーズ）向けです。同梱の文書読み取り・音声用の一部部品はmacOS 14以降を必要とします。CodexとNodeはアプリに含まれます。
 
 1. FinderでZIPをダブルクリックし、展開されたフォルダから `A2ACraft.app` を「アプリケーション」に移します。
-2. 「アプリケーション」から **A2ACraft** を開きます。テスター向けのアドホック署名版で、Appleの公証は未取得です。「開発元を確認できない」と表示された場合は、ZIPのSHA-256を下記と照合し、配布元を信頼できる場合に限り、Appleの案内に沿ってこのアプリの起動を許可してください。[Appleの手順](https://support.apple.com/ja-jp/102445)
+2. 「アプリケーション」から **A2ACraft** を開きます。ZIPのSHA-256はリリース情報の値と照合できます。macOSが検証エラーを表示した場合は、[Appleの案内](https://support.apple.com/ja-jp/102445)を確認してください。
 3. **Connect** を選び、案内に従ってChatGPTにログインします。A2ACraftに戻り、会話を開いてメッセージを送ると、Codexの返信が表示されます。
 4. ファイル作成を試すには、新しい会話で入力欄の **＋** を開き、実行範囲を **作業（専用フォルダ内）** にします。「`hello.txt` に `Hello from A2ACraft` と書いて、保存場所を教えて」と送ります。Finderでそのファイルを開き、本文を確認します。
-
-ZIPのSHA-256は `80d48e7a718106a28f59cc2a406eae25c2ceea946dbc2308de77f8b036853c79` です。
 
 ## 目指す体験
 
@@ -45,13 +43,13 @@ A2ACraftは開発中のMVPです。街を歩き、マップを残したまま住
 
 この画像は架空のサンプルデータを使ったフロントエンドです。A2ACraftのMacアプリのソースも掲載しています。
 
-### Mac確認版
+### Mac版
 
 Apple Silicon向けにCodex 0.169.0を同梱し、アプリ専用のChatGPTログインを用意しました。接続せず保存済み会話を開く、下書きと地図位置を再起動後に復元する、読み取り専用の相談と会話専用フォルダ内の作業を切り替えることができます。専用Codex設定では外部ツール連携と既存シェルの起動設定を無効にしています。
 
 取り込んだCodexの会話を開き、継続に必要な内容を準備できます。接続設定では、AIへの送信をせずに会話・ファイル作業の実行範囲を確認できます。
 
-現在はテスター向けの確認版です。Developer ID署名とAppleの公証は未取得です。Apple Silicon MacでTauri版0.4.23を起動し、会話画面から送ったメッセージに実際のCodexが返信したことをテスターが確認しました。ファイル作業は今回の確認対象外です。Electron版では履歴の取り込みとChatGPTへの再接続を確認しています。[Electron版の検証状況](docs/preview-status.md)
+Apple Silicon MacでTauri版0.4.23を起動し、会話画面から送ったメッセージに実際のCodexが返信したことをテスターが確認しました。ファイル作業は今回の確認対象外です。Electron版では履歴の取り込みとChatGPTへの再接続を確認しています。[Electron版の検証状況](docs/preview-status.md)
 
 Tauri 0.4.24では、⌘Rで下書きを保存して画面を再読み込みできます。「ウィンドウ」メニューから表示の復帰・診断ができ、バックエンドが異常終了すると再起動を選べます。
 
