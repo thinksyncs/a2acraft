@@ -28,6 +28,77 @@ async function fixture(t,initial={},missingCli=false,selectedWorkspace=false){
  return {update,state,post,until,cli,dir,log:async()=> (await readFile(logFile,'utf8')).trim().split('\n').map(JSON.parse)};
 }
 
+test('Village contact carries one resident’s words to the other and completes one traceable TODO', async t => {
+ const opening = 'The garden was still damp this morning.';
+ const taskTitle = 'Draft a watering chart';
+ const proposal = {title:taskTitle, description:'Draft a table comparing wet and dry days.', assignee:'self'};
+ const chart = 'Wet day | Check the soil before watering.\nDry day | Water if the soil is dry.';
+ const f = await fixture(t, {autoComplete:true, turnDelay:20, encounterTask:{title:taskTitle, result:chart}, encounterReplies:{
+  OPENING:opening,
+  REPLY:JSON.stringify({message:'I can draft a chart using that observation.', task:proposal}),
+  DECISION:JSON.stringify({message:'Yes, please draft the chart.', accept:true}),
+ }});
+ assert.equal((await f.post('connect')).status, 200);
+ const makeResident = async (title, observation) => {
+  const response = await f.post('conversations', {title});
+  assert.equal(response.status, 200);
+  const id = response.body.id;
+  assert.equal((await f.post('send', {id, text:observation, model:'fixture-model'})).status, 200);
+  await f.until(state => state.conversations.some(chat => chat.id === id && chat.status === 'completed'));
+  return id;
+ };
+ const gardenNote = 'The blue garden gauge reads five millimetres.';
+ const planNote = 'The planning board has six empty rows.';
+ const gardener = await makeResident('Garden observations', gardenNote);
+ const planner = await makeResident('Watering plans', planNote);
+ const baseline = (await f.log()).filter(call => call.method === 'turn/start').length;
+ const contact = {conversationIds:[gardener,planner], model:'fixture-model', locale:'en'};
+ assert.equal((await f.post('encounters/state')).body.enabled, true);
+ const started = await f.post('encounters/contact', contact);
+ assert.ok(started.status < 300, JSON.stringify(started.body));
+ const finished = await f.until(state => state.todos.items.some(item => item.status === 'done' && item.title === taskTitle));
+ const items = finished.todos.items.filter(item => item.source?.provider === 'encounter');
+ assert.equal(items.length, 1);
+ const item = items[0];
+ assert.equal(item.source.encounterId, item.id);
+ assert.ok(contact.conversationIds.includes(item.assignee.conversationId));
+ assert.equal(item.runs.length, 1);
+ assert.equal(item.runs[0].output, chart);
+ assert.deepEqual(item.source.turns.map(turn => turn.conversationId), [gardener,planner,gardener]);
+ const calls = (await f.log()).filter(call => call.method === 'turn/start').slice(baseline);
+ assert.equal(calls.length, 4);
+ const inputs = calls.map(call => call.params.input.map(chunk => chunk.text || '').join('\n'));
+ assert.ok(inputs[0].includes(gardenNote) && !inputs[0].includes(planNote));
+ assert.ok(inputs[1].includes(planNote) && !inputs[1].includes(gardenNote));
+ assert.ok(inputs[1].includes(opening), 'the second resident sees the first resident’s actual words');
+ assert.ok(inputs[2].includes(proposal.title), 'the first resident reviews the proposed work');
+ assert.ok(inputs[3].includes(proposal.description), 'the assignee receives the agreed TODO');
+ await f.post('encounters/contact', {...contact, conversationIds:[planner,gardener]});
+ const repeated = await f.state();
+ assert.equal(repeated.todos.items.filter(todo => todo.source?.provider === 'encounter').length, 1);
+ assert.equal((await f.log()).filter(call => call.method === 'turn/start').length, baseline + 4);
+
+ // Explicitly rerunning a saved TODO uses its original conversation even after the feature is off.
+ await f.post('encounters/settings', {enabled:false});
+ assert.equal((await f.post('todos/reopen', {id:item.id})).status, 200);
+ await f.update({turnDelay:600});
+ assert.equal((await f.post('todos/start', {id:item.id, model:'fixture-model'})).status, 200);
+ await f.until(state => state.party.quest?.steps[0]?.turnId);
+ assert.equal((await f.post('party/pause')).status, 200);
+ await f.until(state => state.party.quest?.status === 'paused');
+ await f.update({turnDelay:20});
+ assert.equal((await f.post('party/resume', {retry:true})).status, 200);
+ const resumed = await f.until(state => state.todos.items.find(todo => todo.id === item.id)?.status === 'done');
+ assert.equal(resumed.todos.items.find(todo => todo.id === item.id).runs.length, 2);
+ assert.deepEqual(resumed.conversations.map(c => c.messages), repeated.conversations.map(c => c.messages));
+ const log = await f.log();
+ const taskThreads = log.filter(call => call.method === 'thread/start').slice(-2);
+ assert.equal(taskThreads.length, 2);
+ assert.ok(taskThreads.every(call => call.params.ephemeral === true && call.params.sandbox === 'read-only'));
+ const retries = log.filter(call => call.method === 'turn/start').slice(-2);
+ assert.ok(retries.every(call => call.params.input.some(input => input.text?.includes(opening))));
+});
+
 test('Selected workspace is shared by CLI and conversation scopes while history stays in app data',async t=>{
  const f=await fixture(t,{localWork:true},false,true),workspace=path.join(await realpath(f.dir),'selected','workspace');
  assert.equal((await f.post('connect')).status,200);

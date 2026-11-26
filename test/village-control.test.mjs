@@ -15,7 +15,7 @@ import { villageDemoActivityState, villageDemoChats } from "../public/village-de
 // Run the actual controller, animation and canvas drawing, without a browser,
 // external services or WebGL. Character ground shadows locate the rendered
 // party; real canvas transforms keep viewport culling meaningful in the fixture.
-function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [], withTeams = false, teamMessaging, initiative } = {}) {
+function fixture(t, { saved, demo = false, sampleWalk = false, building = false, visible = true, extraChats = [], withTeams = false, teamMessaging, initiative, meetingOptions } = {}) {
   const frames = new Map(), storage = new Map(), navigations = [], openedChats = [];
   const documentListeners = new Map();
   let nextFrame = 0, now = 0, view, root;
@@ -90,7 +90,7 @@ function fixture(t, { saved, demo = false, sampleWalk = false, building = false,
   const state=withTeams||sampleWalk?structuredClone(villageDemoActivityState(baseState)):baseState;
   const start=()=>{
     root=new Element();root.id="history-village";body.replaceChildren(root);
-    view=initVillage({getChats:()=>chats,getState:()=>state,demo,teamMessaging,initiative,onNavigate:id=>navigations.push(id),
+    view=initVillage({...meetingOptions,getChats:()=>chats,getState:()=>state,demo,teamMessaging,initiative,onNavigate:id=>navigations.push(id),
       onOpenChat:(id,encounter)=>openedChats.push({id,encounter})});
     if(visible)view.setVisible(true);return view;
   };
@@ -504,4 +504,85 @@ test('dismissing one invitation reveals the same resident’s next assignment, i
  markers()[0].click();assert.equal(f.element('village-quest-peek-title').textContent,second.title);
  f.element('village-idea-dismiss').click();assert.deepEqual(remaining(),[]);
  assert.deepEqual(starts,[]);
+});
+
+
+test('a live village encounter shows the named participants and links the actual dialogue to its TODO', async t => {
+  const calls = [], opened = [];
+  let f;
+  const previous = {id:'old',participants:['a','b'],createdAt:1,turns:[],status:'completed'};
+  const initial = {enabled:false,encounters:[previous]};
+  const meetingOptions = {
+    api:async (route, body) => {
+      calls.push([route,body]);
+      if (route === 'encounters/settings') return {...initial,enabled:body.enabled};
+      return initial;
+    },
+    encounterActions:{connected:()=>true,model:()=>'sample-model',openTodo:id=>opened.push(id),
+      receive:snapshot=>{f.state.encounters=snapshot;f.view.render();}},
+  };
+  f=fixture(t,{meetingOptions});
+  await new Promise(resolve=>setImmediate(resolve));
+  const toggle=f.element('village-encounters-enabled'), notice=f.element('village-encounter-notice');
+  assert.equal(toggle.checked,false);
+  assert.equal(notice.hidden,true);
+  toggle.checked=true; await toggle.onchange();
+  assert.deepEqual(calls.map(([route])=>route),['encounters/state','encounters/settings']);
+  const spawned={id:'bump',participants:['a','c'],createdAt:2,status:'talking',turns:[]};
+  f.state.encounters={enabled:true,encounters:[spawned,previous]};
+  f.view.render();
+  assert.equal(notice.hidden,false);
+  assert.match(notice.textContent,/a \/ c/);
+  f.state.encounters={enabled:true,encounters:[{...spawned,status:'completed',turns:[{conversationId:'c',text:'A synthetic idea'}],task:{id:'bump',title:'A synthetic task'}},previous]};
+  f.state.todos={items:[{id:'bump'}]}; f.view.render();
+  assert.match(notice.textContent,/A synthetic idea/);
+  notice.click();
+  const history=f.element('village-encounters');
+  assert.equal(history.open,true);
+  assert.equal(history.querySelector('select').value,'bump');
+  assert.equal(notice.hidden,true);
+  history.querySelector('button').click();
+  assert.deepEqual(opened,['bump']);
+  f.view.setVisible(false); f.view.setVisible(true);
+  assert.equal(notice.hidden,true);
+  await new Promise(resolve=>setImmediate(resolve));
+});
+
+test('the sample village never creates a live encounter or exposes its controls', t => {
+  const f=fixture(t,{demo:true,meetingOptions:{api:()=>assert.fail('sample contacted backend'),encounterActions:{}}});
+  f.advance(5);
+  assert.equal(f.element('village-encounters-enabled'),null);
+});
+
+test('walking back through a teammate reports their distinct chat IDs through the live encounter endpoint', async t => {
+  let f;
+  const contacts = [];
+  const state = {enabled:true,encounters:[]};
+  const options = {
+    api:async (route,body) => {
+      if (route === 'encounters/contact') contacts.push(body);
+      return state;
+    },
+    encounterActions:{connected:()=>true,model:()=>'synthetic-model',openTodo:()=>{},
+      receive:value=>{f.state.encounters=value;f.view.render();}},
+  };
+  f=fixture(t,{meetingOptions:options});
+  await new Promise(resolve=>setImmediate(resolve));
+  const canvas=f.element('village-canvas');
+  f.advance(3,150);
+  assert.deepEqual(contacts,[]);
+  for(const key of ['d','a','w','s']){
+    canvas.dispatch('keydown',{key});
+    f.advance(20,150);
+    await new Promise(resolve=>setImmediate(resolve));
+    if(contacts.length)break;
+  }
+  assert.ok(contacts.length,'real map walk should produce a contact');
+  const receipt=contacts[0];
+  assert.equal(new Set(receipt.conversationIds).size,2);
+  assert.ok(receipt.conversationIds.every(id=>['a','b','c'].includes(id)));
+  assert.equal(receipt.model,'synthetic-model');
+  const count=contacts.length;
+  f.advance(10,150);
+  assert.equal(contacts.length,count);
 });

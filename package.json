@@ -94,6 +94,7 @@
           "adventure.mjs",
           "discovery-store.mjs",
           "village.mjs",
+          "encounter-runner.mjs",
           "projects.mjs",
           "project-workspaces.mjs",
           "project-codex.mjs",

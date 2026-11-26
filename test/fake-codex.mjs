@@ -120,6 +120,12 @@ createInterface({input:process.stdin}).on('line',line=>{
    if(activeTurns.get(p.threadId)!==current)return;activeTurns.delete(p.threadId);completedTurns++;
    const options=controls(),failed=options.failTurnNumber===current.number;
    let output=(failed?'Fixture partial ':'Fixture result ')+current.number+'.'.repeat(options.outputLength||0);
+   if (options.encounterReplies) {
+    const input = (p.input || []).map(item => item.text || '').join('\n');
+    const phase = input.match(/A2ACRAFT_ENCOUNTER_(OPENING|REPLY|DECISION)\b/)?.[1];
+    if (phase) output = options.encounterReplies[phase];
+    else if (options.encounterTask && input.includes(options.encounterTask.title)) output = options.encounterTask.result;
+   }
    if(projectContext){
     const context=projectContext;
     if(context.phase==='plan')output=JSON.stringify({status:'done',summary:'Two independent changes',steps:[0,1].map(i=>({title:'Feature '+i,task:'Write feature '+i,criteria:'File and test pass',role:'Builder',repoId:'r1',dependsOn:[]}))});

@@ -17,6 +17,15 @@ export function initTodos({api,demo,storeKey,getState,getChats,getParty,getMedia
  function values(){const target=$('#todo-assignee').value;return {id:selected||undefined,title:$('#todo-title').value.trim(),description:$('#todo-description').value,criteria:$('#todo-criteria').value,priority:$('#todo-priority').value,due:$('#todo-due').value,assignee:target.startsWith('chat:')?{type:'chat',conversationId:target.slice(5)}:{type:target},mediaIds:[...document.querySelectorAll('#todo-media-list input:checked')].map(input=>input.value)};}
  function readFields(value){
   sourceLabel.replaceChildren();sourceLabel.hidden=!value.source;if(value.source?.provider==='backlog'){sourceLabel.append(node('p','Backlog: '+value.source.issueKey+questText(' · 元の状態: ')+value.source.status+questText(' · TODOの完了はBacklogへ書き戻しません。')));if(value.source.truncated)sourceLabel.append(node('p',questText('取り込み時に省略があります。原文を確認してください。')));const copy=node('button',questText('課題URLをコピー'),'text-btn');copy.type='button';copy.onclick=()=>navigator.clipboard.writeText(value.source.url).catch(()=>error(questText('URLをコピーできませんでした。')));sourceLabel.append(copy);}
+  if(value.source?.provider==='encounter'){
+   const source=value.source, name=id=>source.participantNames?.[id]||getChats().find(chat=>chat.id===id)?.title||id;
+   sourceLabel.append(node('p',questText('村の出会いから生まれたタスク · {names}',{names:source.participants.map(name).join(' / ')})));
+   if(source.turns?.length){
+    const original=node('details');original.append(node('summary',questText('元の対話を見る')));
+    for(const turn of source.turns){const line=node('p');line.append(node('strong',name(turn.conversationId)+' '),node('span',turn.text));original.append(line);}
+    sourceLabel.append(original);
+   }
+  }
   if(value.source?.provider==='teams'){
    const source=value.source;sourceLabel.append(node('p',questText('Teamsからの依頼 · ')+(source.author||questText('送信者不明'))+questText(' · TODOの完了後に返信内容を確認します。')));
    const original=node('details'),summary=node('summary',questText('元の依頼')),body=node('pre',source.request);body.style.whiteSpace='pre-wrap';body.style.overflowWrap='anywhere';original.append(summary,body);sourceLabel.append(original);
