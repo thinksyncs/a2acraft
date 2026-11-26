@@ -13,7 +13,7 @@ REPO = "https://github.com/thinksyncs/a2acraft"
 COPY = {
     "ja": {
         "title": "ゲームプレイ映像",
-        "summary": "村を歩き、仲間の依頼を引き受け、王城で報告を聞く。A2ACraftの世界を45秒で紹介します。",
+        "summary": "村で交わす会話から、新しい出会いや発明のヒントが生まれます。依頼では、一人が調べたことを次の仲間が自動で引き継ぎます。45秒の映像で、村から王城までを巡ります。",
         "language": "日本語", "navigation": "ナビゲーション", "video_label": "A2ACraft 紹介動画（日本語、45秒）",
         "language_choice": "表示言語",
         "download": "動画を保存（MP4）", "captions": "字幕を保存（VTT）", "try_mac": "Mac版を試す",
@@ -21,7 +21,7 @@ COPY = {
     },
     "en": {
         "title": "Gameplay film",
-        "summary": "Walk through the village, take on a quest and hear the party reports at the castle in this 45-second tour of A2ACraft.",
+        "summary": "A village conversation can lead to a new friendship or spark an invention. On a quest, each companion’s findings pass automatically to the next. Follow the party from village to castle in this 45-second film.",
         "language": "English", "navigation": "Navigation", "video_label": "A2ACraft gameplay film in English, 45 seconds",
         "language_choice": "Display language",
         "download": "Download film (MP4)", "captions": "Download captions (VTT)", "try_mac": "Try it on Mac",
