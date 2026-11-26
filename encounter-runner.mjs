@@ -85,7 +85,7 @@ function prompt(row, phase, proposed) {
 export class EncounterRunner {
   constructor({read, write, turn, createTask, onChange = () => {}, onIdle = () => {}, now = Date.now}) {
     Object.assign(this, {read, write, turn, createTask, onChange, onIdle, now});
-    this.state = {version: 1, enabled: false, encounters: []};
+    this.state = {version: 1, enabled: true, encounters: []};
     this.writing = Promise.resolve();
     this.task = null;
   }

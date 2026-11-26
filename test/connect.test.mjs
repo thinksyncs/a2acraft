@@ -53,7 +53,7 @@ test('Village contact carries one resident’s words to the other and completes 
  const planner = await makeResident('Watering plans', planNote);
  const baseline = (await f.log()).filter(call => call.method === 'turn/start').length;
  const contact = {conversationIds:[gardener,planner], model:'fixture-model', locale:'en'};
- assert.equal((await f.post('encounters/settings', {enabled:true})).status, 200);
+ assert.equal((await f.post('encounters/state')).body.enabled, true);
  const started = await f.post('encounters/contact', contact);
  assert.ok(started.status < 300, JSON.stringify(started.body));
  const finished = await f.until(state => state.todos.items.some(item => item.status === 'done' && item.title === taskTitle));

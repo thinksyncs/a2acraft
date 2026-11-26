@@ -45,8 +45,6 @@ async function run(h, input = request) {
 test('encounter residents actually receive the previous reply and explicitly agree on the exact assigned task', async () => {
   const h = harness();
   await h.runner.load();
-  assert.equal(await run(h), undefined);
-  await h.runner.configure(true);
   const record = await run(h);
   assert.deepEqual(h.calls.map(c => [c.conversationId, c.phase]), [['gardener', 'opening'], ['maker', 'reply'], ['gardener', 'decision']]);
   assert.ok(h.calls.every(c => c.model === 'test-model' && c.locale === 'en' && c.encounterId === record.id));
@@ -58,6 +56,19 @@ test('encounter residents actually receive the previous reply and explicitly agr
   assert.deepEqual(record.task, {id: record.id, assigneeId: 'maker', title: task.title, description: task.description, status: 'started'});
   assert.equal(record.status, 'completed');
   assert.deepEqual(h.saved().encounters[0], record);
+});
+
+test('turning off encounters before the first contact persists across restart', async () => {
+  const first = harness();
+  await first.runner.load();
+  assert.equal(first.runner.public().enabled, true);
+  await first.runner.configure(false);
+  const restarted = harness({saved: first.saved()});
+  await restarted.runner.load();
+  assert.equal(restarted.runner.public().enabled, false);
+  assert.equal(await run(restarted), undefined);
+  assert.equal(restarted.calls.length, 0);
+  assert.equal(restarted.tasks.length, 0);
 });
 
 test('same-chat overlaps, unanswered proposals and explicit rejections cannot dispatch a task', async () => {
