@@ -3,6 +3,8 @@ import { t, registerMessages } from './i18n.js';
 // This catalogue is used at authored labels and built-in item definitions.
 // User prompts, saved party or character names, outputs and skill IDs stay verbatim.
 const english = {
+  "村の出会いから生まれたタスク · {names}": "Task from a village encounter · {names}",
+  "元の対話を見る": "View original conversation",
   "パーティに渡されたクエストを、指定された役割で進めてください。": "Work on the party’s quest in your assigned role.",
   "あなたの役割: ": "Your role: ",
   "担当としてクエストへの最終回答を返してください。": "Complete the quest and give your final answer.",

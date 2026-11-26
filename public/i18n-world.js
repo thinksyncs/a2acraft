@@ -1,6 +1,20 @@
 import {applyTranslations, getLocale, onLocaleChange, registerMessages, t} from './i18n.js';
 
 const english = {
+  "出会いの記録を開く": "Open encounter history",
+  "村で出会いました · {names}": "Village encounter · {names}",
+  "住民の出会い": "Resident encounters",
+  "出会いからタスクを作る": "Create tasks from encounters",
+  "住民がぶつかると、Codexの利用枠を使い、それぞれの最近の発言をもとに話します。二人が合意した文章作成や検討をTODOに追加し、自動で開始します。": "When residents meet, they use your Codex allowance to discuss their recent chat messages. Writing or analysis they agree on is added to TODO and starts automatically.",
+  "出会いの記録": "Encounter history",
+  "対話中": "In conversation",
+  "タスクを準備中": "Preparing task",
+  "対話完了": "Conversation complete",
+  "対話に失敗しました": "Conversation failed",
+  "対話が中断されました": "Conversation interrupted",
+  "村で住民が出会うと、ここに会話が表示されます。": "Conversations appear here when residents meet in the village.",
+  "この対話ではタスクは生まれませんでした。": "This conversation ended without a new task.",
+  "TODOで進行と結果を見る": "View task progress and results",
   "村": "Village",
   "構想": "Planned",
   "建設": "Building",
