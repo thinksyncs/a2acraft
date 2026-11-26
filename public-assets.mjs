@@ -90,6 +90,7 @@ const sourceFiles = [
   "village-3d-scene.js",
   "village-activity.js",
   "village-ambient.js",
+  "village-encounters.js",
   "village-art.js",
   "village-context.js",
   "village-delegates.js",
