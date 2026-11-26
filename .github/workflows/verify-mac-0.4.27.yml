@@ -1,0 +1,56 @@
+name: Verify Mac 0.4.27 release candidate
+on:
+  push:
+    branches: [feats/verify-mac-0.4.27]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      GIT_ALLOW_PROTOCOL: https:file
+      GIT_SSH_COMMAND: /usr/bin/false
+      CARGO_NET_GIT_FETCH_WITH_CLI: 'false'
+    steps:
+      - name: Install and verify workspace instructions
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.codex"
+          cat > "$HOME/.codex/AGENTS.md" <<'RULES'
+          Never access ~/.ssh or its descendants directly or indirectly, including through Git, helpers, scripts, symlinks, or probes. Use HTTPS and disable SSH transport. Never request an exception.
+          Do not use, discover, or access Proton Mail, Drive, Pass, accounts, sessions, local or synchronized data. Never interrupt Proton VPN or change its settings, directly or indirectly. Never probe any protected resources. Do not access confidential information.
+          These instructions apply across chats, projects, devices and delegated tasks. Install and verify the instructions before starting work in another environment. Preserve operating-system and managed controls. If work conflicts, stop that part without touching protected resources.
+          Interpret reported errors in context. Verify actual path permissions and the specific rejection before diagnosing failures. Respect auto-review denials and user-reported enabled settings.
+          RULES
+          test -s "$HOME/.codex/AGENTS.md"
+          grep -Fq 'Never access ~/.ssh' "$HOME/.codex/AGENTS.md"
+          grep -Fq 'Never interrupt Proton VPN' "$HOME/.codex/AGENTS.md"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fbf10e8c82f635bc6fe720810260ccd071358ace
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm test
+      - run: npm run prepare:distribution
+      - run: npm run tauri:test
+      - run: npm run tauri:build
+      - run: npm run tauri:verify:mac
+      - name: Package the verified app
+        run: |
+          app=src-tauri/target/release/bundle/macos/A2ACraft.app
+          test "$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")" = "0.4.27"
+          test "$(uname -m)" = "arm64"
+          ditto -c -k --sequesterRsrc --keepParent src-tauri/target/release/bundle/macos/A2ACraft.app "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip"
+          unzip -tq "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip"
+          shasum -a 256 "$RUNNER_TEMP/A2ACraft-0.4.27-Tauri-mac-arm64.zip"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: A2ACraft-0.4.27-Tauri-mac-arm64
+          path: ${{ runner.temp }}/A2ACraft-0.4.27-Tauri-mac-arm64.zip
+          retention-days: 30
+          compression-level: 0
