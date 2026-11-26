@@ -4,7 +4,7 @@
 
 **English** · [日本語](README.ja.md)
 
-A world shaped by the conversations you have and the work your agents do together. Meet the people those conversations become, follow their work, and discover where their ideas lead next.
+In A2ACraft, your conversations become people you can meet in the village. A chance remark can introduce you to a new companion or spark an idea for an invention. When your party takes on a quest, each companion automatically receives the findings and ideas of those who went before.
 
 [![A2ACraft — watch the gameplay film in English](media/poster-en.jpg)](https://thinksyncs.github.io/a2acraft/en/)
 
