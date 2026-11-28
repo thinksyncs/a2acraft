@@ -29,6 +29,12 @@ body.desktop-app[data-view][data-platform="darwin"]:not([data-town-tools="open"]
 .workspace-menu-heading h2{margin:0;color:#fff0cb;font-size:26px;line-height:1.4}
 #workspace-menu-close,#workbench-toggle{min-height:44px;padding:10px 16px;font:16px/1.5 var(--font-ui);white-space:normal;border:1px solid #81977a;border-radius:8px;background:#10252d;color:#e8eee2}
 #workspace-menu-close{flex:none}
+#toyama-tram-dialog{width:min(1400px,96vw);height:min(960px,94dvh);max-width:100vw;max-height:100dvh;padding:0;border:1px solid #81977a;border-radius:12px;background:#142b31;color:#edf1e8;overflow:hidden}
+#toyama-tram-dialog[open]{display:flex;flex-direction:column}
+#toyama-tram-dialog::backdrop{background:#061217c9}
+#toyama-tram-dialog form{display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
+#toyama-tram-dialog button{min-height:36px}
+#toyama-tram-dialog iframe{flex:1;width:100%;min-height:0;border:0;background:#fff}
 .workspace-menu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:24px 28px}
 .workspace-menu-grid button{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;min-width:0;min-height:80px;padding:14px 16px;text-align:left;border:1px solid #526e6b;border-radius:10px;background:#1b3639;color:#f1eee2;font-family:var(--font-ui);white-space:normal}
 .workspace-menu-grid strong{font-size:18px;line-height:1.5;color:#f5dfac}

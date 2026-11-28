@@ -85,6 +85,11 @@ const sourceFiles = [
   "town-activity.js",
   "town-shell.css",
   "town-walk.js",
+  "toyama-tram/app.js",
+  "toyama-tram/data/replay.json",
+  "toyama-tram/index.html",
+  "toyama-tram/model.js",
+  "toyama-tram/style.css",
   "town.css",
   "town.js",
   "village-3d-scene.js",
@@ -146,3 +151,8 @@ export const staticFiles = Object.freeze(Object.assign(Object.create(null),
   Object.fromEntries(sourceFiles.map((file) => ["/" + file, file])),
 ));
 
+export function publicFramePolicy(pathname, origin) {
+  if (pathname === "/") return `frame-src ${origin}/toyama-tram/index.html; frame-ancestors 'none'`;
+  if (pathname === "/toyama-tram/index.html") return "frame-src 'none'; frame-ancestors 'self'";
+  return "frame-src 'none'; frame-ancestors 'none'";
+}

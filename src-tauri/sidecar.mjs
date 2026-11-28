@@ -72,8 +72,8 @@ if (stateOnly) {
   console.log(JSON.stringify({type:'ready'}));
 } else if (demo) {
   const {startPreviewServer} = await import('./electron/preview-server.mjs');
-  const {staticFiles} = await import('./public-assets.mjs');
-  const server = await startPreviewServer({root:path.join(root,'public'),assets:staticFiles,token:process.env.CHAT_UI_SESSION_TOKEN});
+  const {staticFiles,publicFramePolicy} = await import('./public-assets.mjs');
+  const server = await startPreviewServer({root:path.join(root,'public'),assets:staticFiles,publicFramePolicy,token:process.env.CHAT_UI_SESSION_TOKEN});
   if (process.stdin.readableEnded) {
     await queue;
     await server.close();

@@ -32,10 +32,10 @@ async function requireResource(reference, owner) {
 }
 
 test("every public JavaScript module and stylesheet is explicitly served", async () => {
-  assert.deepEqual(Object.values(staticFiles).filter((file) => file !== "index.html").sort(),
+  assert.deepEqual(Object.values(staticFiles).filter((file) => /\.(?:js|css)$/.test(file)).sort(),
     await publicSourceFiles());
   const server = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
-  assert.match(server, /import\s*\{\s*staticFiles\s*\}\s*from\s*['"]\.\/public-assets\.mjs['"]/);
+  assert.match(server, /import\s*\{\s*staticFiles,\s*publicFramePolicy\s*\}\s*from\s*['"]\.\/public-assets\.mjs['"]/);
 });
 
 test("the entry page and all module imports, styles, fonts and images resolve", async () => {
@@ -60,7 +60,7 @@ test("the entry page and all module imports, styles, fonts and images resolve", 
     }
     if (file.endsWith(".html")) {
       for (const match of source.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
-        if (!match[1].startsWith("/") || match[1].startsWith("/?")) continue;
+        if (!/^(?:\.{1,2})?\//.test(match[1]) || match[1].startsWith("/?")) continue;
         await requireResource(match[1], file);
         resources++;
       }

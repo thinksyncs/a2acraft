@@ -325,6 +325,7 @@
     <button type="button" data-view="tavern"><strong data-i18n="shell.nav.party">酒場とパーティ</strong><span data-i18n="shell.menu.party">仲間を選び、依頼を進める</span></button>
     <button id="workspace-menu-party-map" type="button"><strong data-i18n="shell.menu.square">パーティの広場</strong><span data-i18n="shell.menu.squareHint">掲示板・作業・お城への報告を見る</span></button>
     <button id="workspace-menu-village-preview" type="button"><strong data-i18n="shell.menu.demo">村のデモを見る</strong><span data-i18n="shell.menu.demoHint">169人・16棟の街を体験</span></button>
+    <button id="workspace-menu-tram" type="button" aria-haspopup="dialog" aria-controls="toyama-tram-dialog"><strong data-i18n="shell.menu.tram">富山市内電車</strong><span data-i18n="shell.menu.tramHint">時刻表を変えて仮想電車を走らせる</span></button>
     <button type="button" data-view="castle"><strong data-i18n="shell.town.castle">お城</strong><span data-i18n="shell.menu.plan">大きな依頼を計画する</span></button>
     <button type="button" data-view="todos"><strong data-i18n="shell.tasks.notebook">依頼ノート</strong><span data-i18n="shell.menu.tasks">TODOと進み具合を確認</span></button>
     <button type="button" data-view="image"><strong data-i18n="shell.nav.media">画像と資料</strong><span data-i18n="shell.menu.media">画像を確認・会話に添付</span></button>
@@ -338,6 +339,9 @@
     <button type="button" data-view="teams"><strong data-i18n="shell.teams.replies">Teams返信</strong><span data-i18n="shell.menu.teams">メッセージを確認して返信</span></button>
   </nav>
   <div class="workspace-menu-footer"><p data-i18n="shell.menu.advancedHint">一覧や状態表示をまとめて使うときは</p><button id="workbench-toggle" type="button" class="outline" aria-pressed="false"><!--i18n:shell.menu.advanced-->詳細な作業デスクを表示</button></div>
+</dialog>
+<dialog id="toyama-tram-dialog" aria-labelledby="toyama-tram-title">
+  <form method="dialog"><strong id="toyama-tram-title" data-i18n="shell.menu.tram">富山市内電車</strong><button type="submit" class="outline" data-i18n="shell.close">閉じる</button></form>
 </dialog>
 <div id="toast" role="alert" hidden></div>
 <dialog id="history-dialog" class="history-dialog" aria-labelledby="history-title" aria-describedby="history-help">

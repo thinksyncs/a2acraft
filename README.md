@@ -75,6 +75,8 @@ On an Apple Silicon Mac with Node.js 22 or later, run `npm run tauri:build` for 
 - [First start and verification](docs/mac-first-start.md)
 - [Third-party notices](NOTICE.md)
 
+From the development build, choose **Menu → Toyama trams** for the Japanese tram simulator. Select a trip, adjust its timing, and compare the simulation with recorded vehicle positions. The replay also works offline.
+
 ## Help shape the first quest
 
 What everyday task would you like to turn into a small adventure? [Share an idea or feedback](https://github.com/thinksyncs/a2acraft/issues/new). Please use fictional examples and keep private conversations and credentials out of public issues.

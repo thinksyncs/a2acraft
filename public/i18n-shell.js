@@ -330,6 +330,8 @@ const english = {
   "shell.menu.party": "Choose a party for a quest",
   "shell.menu.square": "Party square",
   "shell.menu.squareHint": "View the board, ongoing work and castle reports",
+  "shell.menu.tram": "Toyama trams",
+  "shell.menu.tramHint": "Run a virtual tram on your own timetable",
   "shell.menu.demo": "Visit the demo village",
   "shell.menu.demoHint": "Explore a town with 169 residents and 16 buildings",
   "shell.menu.plan": "Plan a larger quest",

@@ -75,6 +75,8 @@ Apple Silicon MacとNode.js 22以降で、Tauri版は `npm run tauri:build`、El
 - [初回起動と確認手順](docs/mac-first-start.md)
 - [同梱ソフトウェアの通知](NOTICE.md)
 
+開発版の **メニュー → 富山市内電車** から、富山地方鉄道の3停留場を走る試作を開けます。便を選んで仮想電車の発着時刻を調整し、記録した実車の位置と見比べられます。保存データはオフラインでも再生できます。[操作とデータ更新](docs/toyama-tram.md)
+
 ## 最初のクエストを一緒に考える
 
 日常のどんな仕事を、小さな冒険に変えてみたいですか？ [アイデア・感想を送る](https://github.com/thinksyncs/a2acraft/issues/new)。公開Issueには架空の例を使い、個人の会話や認証情報を含めないでください。

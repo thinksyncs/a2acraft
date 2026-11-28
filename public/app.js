@@ -989,6 +989,15 @@ $('#chat-navigation').onclick=()=>{workspaceMenu.showModal();$('#chat-navigation
 $('#chat-connect').onclick=()=>switchView('settings');
 $('#workspace-menu-close').onclick=()=>workspaceMenu.close();
 $('#workspace-menu-party-map').onclick=()=>{workspaceMenu.close();openPartyMap();};
+const tramDialog = $('#toyama-tram-dialog');
+$('#workspace-menu-tram').onclick = () => {
+  const frame = document.createElement('iframe');
+  frame.title = $('#toyama-tram-title').textContent;
+  frame.src = '/toyama-tram/index.html';
+  tramDialog.append(frame);
+  tramDialog.showModal();
+};
+tramDialog.addEventListener('close', () => tramDialog.querySelector('iframe')?.remove());
 $('#workspace-menu-village-preview').onclick=()=>location.assign('/?demo=1&village=sample');
 workspaceMenu.addEventListener('close',()=>{for(const id of ['town-tools-toggle','chat-navigation'])$('#'+id).setAttribute('aria-expanded','false');});
 $('#workspace-menu-open-history').addEventListener('click',()=>workspaceMenu.close(),{capture:true});

@@ -79,6 +79,7 @@
           "server.mjs",
           "backend-bootstrap.mjs",
           "public-assets.mjs",
+          "toyama-tram-live.mjs",
           "send-delivery.mjs",
           "policy.mjs",
           "terminal.mjs",

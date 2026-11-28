@@ -341,9 +341,9 @@ function installIpc() {
 async function startBackend(token) {
   const backendRoot = app.isPackaged ? path.join(process.resourcesPath, 'backend') : app.getAppPath();
   if(demo){
-    const {staticFiles}=await import(pathToFileURL(path.join(backendRoot,'public-assets.mjs')).href);
+    const {staticFiles,publicFramePolicy}=await import(pathToFileURL(path.join(backendRoot,'public-assets.mjs')).href);
     if(quitting)return;
-    previewServer=await startPreviewServer({root:path.join(backendRoot,'public'),assets:staticFiles,token});
+    previewServer=await startPreviewServer({root:path.join(backendRoot,'public'),assets:staticFiles,publicFramePolicy,token});
     origin=previewServer.origin;
     return;
   }

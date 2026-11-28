@@ -1077,7 +1077,11 @@ async function attachmentBody(req){
  for await(const chunk of req){size+=chunk.length;if(size>MAX_ATTACHMENT_BYTES)throw Error('添付ファイルは10 MiB以内にしてください。');chunks.push(chunk);}
  return Buffer.concat(chunks);
 }
-import {staticFiles} from './public-assets.mjs';
+import {staticFiles, publicFramePolicy} from './public-assets.mjs';
+import {createTramLiveHandler} from './toyama-tram-live.mjs';
+const tramLive = createTramLiveHandler({
+ loadSchedule: async () => JSON.parse(await readFile(path.join(root, 'public/toyama-tram/data/service.json'), 'utf8')),
+});
 function authenticated(req){
  if(!desktop)return true;
  const candidate=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('chat_ui_session='))?.slice('chat_ui_session='.length)||'';
@@ -1093,6 +1097,11 @@ const server=http.createServer(async(req,res)=>{
   if(!authenticated(req))return json(res,403,{error:'Invalid desktop session'});
   if(closing)return json(res,503,{error:'Shutting down'});
   const url=new URL(req.url,origin),p=url.pathname;
+  if (req.method === 'GET' && p === '/toyama-tram/api/live') {
+   const snapshot = await tramLive();
+   res.writeHead(snapshot.status, Object.fromEntries(snapshot.headers));
+   return res.end(await snapshot.text());
+  }
   if(req.method==='GET'&&p==='/events'){
    res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});clients.add(res);res.write(`event: state\ndata: ${JSON.stringify(publicState())}\n\n`);res.write(`event: conversations\ndata: ${JSON.stringify(conversations)}\n\n`);
    res.write(`event: context-board\ndata: ${JSON.stringify(contextBoard.public())}\n\n`);
@@ -1328,9 +1337,9 @@ const server=http.createServer(async(req,res)=>{
   }
   const asset=/^\/(?:fonts|assets)\/[A-Za-z0-9_./-]+\.(?:woff2?|ttf|otf|svg|png|jpe?g|webp|gif)$/.test(p)&&!p.split('/').includes('..')?p.slice(1):null;
   if(req.method==='GET'&&(staticFiles[p]||asset||vendorFiles[p])){
-   const vendor=vendorFiles[p],file=vendor?path.join(path.dirname(require.resolve(vendor[0])),vendor[1]):path.join(root,'public',staticFiles[p]||asset),types={'.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.html':'text/html','.woff2':'font/woff2','.woff':'font/woff','.ttf':'font/ttf','.otf':'font/otf','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif'};
+   const vendor=vendorFiles[p],file=vendor?path.join(path.dirname(require.resolve(vendor[0])),vendor[1]):path.join(root,'public',staticFiles[p]||asset),types={'.json':'application/json','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.html':'text/html','.woff2':'font/woff2','.woff':'font/woff','.ttf':'font/ttf','.otf':'font/otf','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif'};
    let contents;try{contents=await readFile(file);}catch(e){if(e.code==='ENOENT')return json(res,404,{error:'Not found'});throw e;}
-   res.writeHead(200,{'Content-Type':(types[path.extname(file)]||'application/octet-stream')+(/\.(?:m?js|css|html)$/.test(file)?'; charset=utf-8':''),'Cache-Control':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'});return res.end(contents);
+   res.writeHead(200,{'Content-Type':(types[path.extname(file)]||'application/octet-stream')+(/\.(?:m?js|css|html)$/.test(file)?'; charset=utf-8':''),'Cache-Control':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; base-uri 'none'; "+publicFramePolicy(p,`http://${req.headers.host}`),'X-Content-Type-Options':'nosniff'});return res.end(contents);
   }
   json(res,404,{error:'Not found'});
  }catch(e){json(res,400,{error:e.message});}

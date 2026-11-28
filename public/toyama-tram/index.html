@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#122e2b">
+  <title>富山トラムラボ | 運行シミュレーター</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="top"><div class="frame mast">
+    <div class="brand"><svg aria-hidden="true" viewBox="0 0 40 40"><rect x="2" y="2" width="36" height="36" rx="10" fill="#f1aa65"/><g fill="none" stroke="#153530" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="11" width="16" height="18" rx="4"/><path d="M15 15h10v6H15zM16 32l2-3m6 3-2-3M18 8h5"/><path d="M16 25h1m6 0h1"/></g></svg><span>富山トラムラボ</span></div>
+    <span class="head-tag">運行シミュレーター</span></div></header>
+  <main class="frame">
+    <div class="intro"><div><p class="eyebrow">富山地方鉄道 市内電車</p><h1>路面電車の運行を試す</h1><p>時刻表から動く仮想車両と、公開データで観測された車両の位置を見比べられます。</p></div></div>
+    <div class="layout">
+      <section class="map-card" aria-labelledby="map-title">
+        <div class="map-head"><div><p class="eyebrow">走行区間</p><h2 id="map-title">南富山駅前 <span aria-hidden="true">→</span> 堀川小泉</h2></div><span class="map-mark">区間図</span></div>
+        <svg id="map" viewBox="0 0 680 320" role="img" aria-label="3停留場の区間図。時刻表の仮想車両と、区間内で観測された車両を表示します。">
+          <defs><pattern id="grid" patternUnits="userSpaceOnUse" width="32" height="32"><path d="M32 0H0V32" fill="none" stroke="#86ada2" stroke-opacity=".13" stroke-width="1"/><circle cx="0" cy="0" r="1.3" fill="#86ada2" opacity=".3"/></pattern></defs>
+          <rect width="680" height="320" fill="url(#grid)"/>
+          <g transform="translate(35,27)" fill="none" stroke="#a9c6bc" stroke-width="1.5"><path d="m0 27 0-19m-4 6 4-6 4 6"/><text y="0" fill="#bbd1c7" stroke="none" text-anchor="middle" font-family="sans-serif" font-size="11">N</text></g>
+          <g id="rail"></g><g id="stations"></g><g id="phantom"></g><g id="markers"></g>
+        </svg>
+        <div class="map-foot"><div><i class="swatch sim"></i>仮想車両</div><div><i class="swatch actual"></i>観測位置</div><span>北が上 · 軌道形状に基づく区間図</span></div>
+      </section>
+      <section class="panel operation" aria-labelledby="op-title">
+        <h2 id="op-title">再生コントロール</h2>
+        <fieldset class="segments"><legend class="sr-only">データモード</legend><label><input type="radio" name="mode" id="recorded" checked><span>記録再生</span></label><label><input type="radio" name="mode" id="live"><span>ライブ</span></label></fieldset>
+        <div class="row-picker"><label for="trip">出発便 <small>南富山駅前発</small></label><select id="trip" disabled><option>読み込み中</option></select></div>
+        <div class="clock-line"><span id="clock-label">再生時刻 <small>JST</small></span><strong id="clock">--:--:--</strong></div>
+        <input type="range" id="seek" aria-label="再生位置" min="0" max="100" value="0" disabled>
+        <div class="playback"><button id="play" class="primary" disabled><span aria-hidden="true">▶</span> 再生</button><button id="reset" disabled>先頭へ</button><label class="speed"><span class="sr-only">再生速度</span><select id="speed" aria-label="再生速度"><option value="1">1 倍速</option><option value="5">5 倍速</option><option value="10" selected>10 倍速</option><option value="30">30 倍速</option></select></label></div>
+        <p id="notice" class="notice" role="status">公開データを読み込んでいます。</p>
+      </section>
+    </div>
+    <div class="lower">
+      <section class="panel schedule" aria-labelledby="time-title"><div class="section-head"><div><p class="eyebrow">停留場別</p><h2 id="time-title">時刻表とシナリオ</h2></div><small id="date"></small></div>
+        <table><thead><tr><th scope="col">停留場</th><th scope="col">時刻表</th><th scope="col">仮想時刻</th></tr></thead><tbody id="table"></tbody></table>
+      </section>
+      <section class="panel scenario" aria-labelledby="scenario-title"><div class="section-head"><div><p class="eyebrow">仮想車両</p><h2 id="scenario-title">運行条件</h2></div><button class="text-btn" id="defaults">初期値に戻す</button></div>
+        <div class="scenario-input"><label for="delay">出発の遅れ</label><input type="range" id="delay" min="0" max="600" step="30" value="0"><output for="delay" id="delay-val">0 秒</output></div>
+        <div class="scenario-input"><label for="duration">区間所要時間</label><input type="range" id="duration" min="50" max="200" step="10" value="100"><output for="duration" id="duration-val">1.0 倍</output></div>
+        <p class="scenario-state" id="scenario-state">車両を準備しています。</p>
+      </section>
+    </div>
+    <section class="panel readings" aria-labelledby="read-title"><div class="section-head"><div><p class="eyebrow">車両位置データ</p><h2 id="read-title">観測記録</h2></div><span id="meas-badge" class="badge">待機中</span></div>
+      <div class="reading-grid"><div><span>最終観測時刻 <small>JST</small></span><b id="obs-time">—</b></div><div><span>緯度・経度</span><b id="obs-coords">—</b></div><div><span>区間との関係</span><b id="obs-scope">—</b></div></div><p id="obs-note">この便の観測情報を表示します。</p>
+    </section>
+    <footer><span>データ提供　富山地方鉄道株式会社</span><span id="source"></span></footer>
+  </main>
+  <noscript>運行シミュレーターを使用するにはJavaScriptを有効にしてください。</noscript>
+</body>
+</html>
